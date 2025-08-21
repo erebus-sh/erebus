@@ -7,7 +7,7 @@ interface Bindings {
   internalRequestId: string;
 }
 
-const app = new Hono<{
+export const app = new Hono<{
   Bindings: Bindings;
   Variables: { internalRequestId: string };
 }>().basePath("/api");

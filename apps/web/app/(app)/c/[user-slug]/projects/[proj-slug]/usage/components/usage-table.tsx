@@ -131,8 +131,14 @@ export const columns: ColumnDef<Doc<"usage">>[] = [
       );
     },
     cell: ({ row }) => {
-      const date = row.getValue("timestamp") as Date;
-      return <div className="text-right">{date.toLocaleString()}</div>;
+      const timestamp = row.getValue("timestamp") as number | string | Date;
+      const date = new Date(timestamp);
+      const yyyy = date.getFullYear();
+      const mm = String(date.getMonth() + 1).padStart(2, "0");
+      const dd = String(date.getDate()).padStart(2, "0");
+      const time = date.toLocaleTimeString();
+      const formattedDateTime = `${yyyy}/${mm}/${dd} ${time}`;
+      return <div className="text-right">{formattedDateTime}</div>;
     },
   },
   {
