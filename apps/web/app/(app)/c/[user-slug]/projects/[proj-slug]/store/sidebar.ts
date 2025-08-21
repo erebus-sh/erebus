@@ -8,7 +8,7 @@ interface SidebarStore {
 }
 
 export const useSidebarStore = create<SidebarStore>((set) => ({
-  selectedItem: "",
+  selectedItem: "usage",
   setSelectedItem: (item) => set({ selectedItem: item }),
   sidebarCollapsed: false,
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),

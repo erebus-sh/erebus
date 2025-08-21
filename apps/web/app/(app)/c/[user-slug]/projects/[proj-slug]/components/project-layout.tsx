@@ -33,16 +33,16 @@ interface SidebarItem {
 
 const sidebarItems = [
   {
-    label: "API Keys",
-    icon: KeyIcon,
-    shortLabel: "Keys",
-    href: "/keys",
-  },
-  {
     label: "Usage",
     icon: BarChart3,
     shortLabel: "Usage",
     href: "/usage",
+  },
+  {
+    label: "API Keys",
+    icon: KeyIcon,
+    shortLabel: "Keys",
+    href: "/keys",
   },
   {
     label: "Logs",
