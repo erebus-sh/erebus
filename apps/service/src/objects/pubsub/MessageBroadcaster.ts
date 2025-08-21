@@ -424,17 +424,16 @@ export class MessageBroadcaster extends BaseService {
     seq: string,
     subscriberClientIds: string[],
   ): Promise<void> {
-    // These operations run in the background and don't block the response
-
     // Enqueue usage tracking webhook
+    // TODO: for now we only have "usage" and "websocket.message" events, but later we will have more events
     const usageEnvelope: QueueEnvelope = {
       packetType: "usage",
       payload: {
-        projectId,
-        channelName,
-        topic,
-        message: JSON.stringify(messageBody),
         event: "websocket.message",
+        data: {
+          projectId,
+          payloadLength: messageBody.payload.length,
+        },
       },
     };
 
@@ -450,7 +449,9 @@ export class MessageBroadcaster extends BaseService {
         seq,
       ),
       // Enqueue usage tracking for webhooks
-      this.env.EREBUS_QUEUE.send(usageEnvelope),
+      this.env.EREBUS_QUEUE.send(usageEnvelope, {
+        contentType: "json",
+      }),
     ]).catch((error) => {
       this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });

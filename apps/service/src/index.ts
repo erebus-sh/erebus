@@ -4,7 +4,7 @@ import { pubsub } from "./handlers/pubsub";
 import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
-import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
+import { QueueEnvelope, QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
 import { UsageWebhook } from "./services/webhooks/usage";
 
 export default {
@@ -181,17 +181,16 @@ export default {
       switch (queueEnvelope.packetType) {
         case "usage":
           // Send usage webhook to the server
-          const usageWebhook = new UsageWebhook(env, env.WEBHOOK_BASE_URL);
-          const eventType = queueEnvelope.payload.event || "websocket.message";
-          await usageWebhook.sendUsage({
-            event: eventType,
+          const usageWebhook = new UsageWebhook(env.WEBHOOK_BASE_URL);
+          await usageWebhook.send({
+            event: queueEnvelope.payload.event,
             data: {
-              projectId: queueEnvelope.payload.projectId,
-              payloadLength: queueEnvelope.payload.message.length,
+              projectId: queueEnvelope.payload.data.projectId,
+              payloadLength: queueEnvelope.payload.data.payloadLength,
             },
           });
           console.log(
-            `[QUEUE] Sent usage webhook for project ${queueEnvelope.payload.projectId}: ${queueEnvelope.payload.message.length} bytes`,
+            `[QUEUE] Sent usage webhook for project ${queueEnvelope.payload.data.projectId}: ${queueEnvelope.payload.data.payloadLength} bytes`,
           );
           break;
         default:
