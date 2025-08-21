@@ -18,6 +18,7 @@ import { api } from "@/convex/_generated/api";
 import { useQueryWithState } from "@/utils/query";
 import { useParams } from "next/navigation";
 import Spinner from "@/components/spinner";
+import SidesLayout from "../components/sides-layout";
 
 function formatDate(timestamp: number) {
   if (!timestamp) return "";
@@ -190,7 +191,7 @@ export default function KeysPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <SidesLayout>
       <div className="mb-8">
         <h1 className="mb-2 text-2xl font-bold tracking-tight">
           Your API Keys
@@ -233,6 +234,6 @@ export default function KeysPage() {
           ))}
         </div>
       )}
-    </div>
+    </SidesLayout>
   );
 }

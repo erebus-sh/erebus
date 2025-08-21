@@ -4,7 +4,7 @@ import { pubsub } from "./handlers/pubsub";
 import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
-import { QueueEnvelope, QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
+import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
 import { UsageWebhook } from "./services/webhooks/usage";
 
 export default {
@@ -18,10 +18,9 @@ export default {
    *
    * @param request - Incoming client request
    * @param env - Environment bindings from wrangler.jsonc
-   * @param ctx - Execution context
    * @returns Response to establish or reject the WebSocket connection
    */
-  async fetch(request, env, ctx): Promise<Response> {
+  async fetch(request, env): Promise<Response> {
     /**
      * Extract general request information.
      */
@@ -63,7 +62,7 @@ export default {
       if (!rootApiKey) {
         return new Response(
           JSON.stringify({
-            error: "Unauthorized you must provide a root api key",
+            error: "Authentication required: Root API key must be provided",
           }),
           {
             status: 401,
@@ -75,7 +74,7 @@ export default {
       if (rootApiKey !== env.ROOT_API_KEY) {
         return new Response(
           JSON.stringify({
-            error: "Unauthorized you must provide a valid root api key",
+            error: "Authentication failed: Invalid root API key provided",
           }),
           {
             status: 401,
@@ -88,7 +87,7 @@ export default {
       if (!command.success) {
         return new Response(
           JSON.stringify({
-            error: "Unauthorized you must provide a valid command",
+            error: "Invalid request: Command format is not valid",
           }),
           {
             status: 401,
@@ -108,7 +107,7 @@ export default {
         default:
           return new Response(
             JSON.stringify({
-              error: "Unauthorized you must provide a valid command",
+              error: "Invalid request: Unsupported command type",
             }),
             {
               status: 401,
@@ -124,17 +123,22 @@ export default {
      */
     if (method !== "GET") {
       // Explicitly guard the method so POST /v1/pubsub (or anything else) doesn't reach the DO
-      return new Response(JSON.stringify({ error: "Method Not Allowed" }), {
-        status: 405,
-        headers: {
-          Allow: "GET",
-          "Content-Type": "application/json",
+      return new Response(
+        JSON.stringify({ error: "Method not allowed for this endpoint" }),
+        {
+          status: 405,
+          headers: {
+            Allow: "GET",
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
     }
     if (upgrade !== "websocket") {
       return new Response(
-        JSON.stringify({ error: "Erebus service expects a WebSocket request" }),
+        JSON.stringify({
+          error: "WebSocket upgrade required for this service",
+        }),
         {
           status: 400,
           headers: { "Content-Type": "application/json" },
@@ -157,7 +161,7 @@ export default {
       throw new Error("Not implemented /v1/state/");
     }
 
-    return new Response(JSON.stringify({ error: "Not found" }), {
+    return new Response(JSON.stringify({ error: "Endpoint not found" }), {
       status: 404,
       headers: { "Content-Type": "application/json" },
     });
@@ -174,7 +178,7 @@ export default {
     for (const msg of batch.messages) {
       const envelope = QueueEnvelopeSchema.safeParse(msg.body);
       if (!envelope.success) {
-        throw new Error("Invalid queue envelope");
+        throw new Error("Invalid queue envelope format");
       }
       const queueEnvelope = envelope.data;
 
@@ -194,7 +198,7 @@ export default {
           );
           break;
         default:
-          throw new Error("Invalid queue envelope");
+          throw new Error("Unsupported queue envelope type");
       }
       msg.ack();
     }

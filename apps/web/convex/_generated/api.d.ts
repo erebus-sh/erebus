@@ -28,6 +28,7 @@ import type * as tables_projects from "../tables/projects.js";
 import type * as tables_usage from "../tables/usage.js";
 import type * as tables_user_profiles from "../tables/user_profiles.js";
 import type * as usage_mutation from "../usage/mutation.js";
+import type * as usage_query from "../usage/query.js";
 import type * as user_profile_query from "../user_profile/query.js";
 import type * as users_query from "../users/query.js";
 import type * as utils_api_key from "../utils/api_key.js";
@@ -57,6 +58,7 @@ declare const fullApi: ApiFromModules<{
   "tables/usage": typeof tables_usage;
   "tables/user_profiles": typeof tables_user_profiles;
   "usage/mutation": typeof usage_mutation;
+  "usage/query": typeof usage_query;
   "user_profile/query": typeof user_profile_query;
   "users/query": typeof users_query;
   "utils/api_key": typeof utils_api_key;
