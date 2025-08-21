@@ -8,7 +8,5 @@
 </p>
 
 <p align="center">
-  <code>
-    bun init erebus@latest
-  </code>
+  <code>bun init erebus@latest</code>
 </p>
