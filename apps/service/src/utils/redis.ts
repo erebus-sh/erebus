@@ -1,5 +1,5 @@
-import { Redis } from '@upstash/redis/cloudflare';
-import { Env } from '@/env';
+import { Redis } from "@upstash/redis/cloudflare";
+import { Env } from "@/env";
 
 /**
  * Get a redis client for a given region
@@ -9,8 +9,8 @@ import { Env } from '@/env';
  * @returns Redis client
  */
 export function getRedis(env: Env): Redis {
-	return new Redis({
-		url: env.UPSTASH_REDIS_REST_URL,
-		token: env.UPSTASH_REDIS_REST_TOKEN,
-	});
+  return new Redis({
+    url: env.UPSTASH_REDIS_REST_URL,
+    token: env.UPSTASH_REDIS_REST_TOKEN,
+  });
 }

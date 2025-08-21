@@ -1,5 +1,5 @@
 {
-  "name": "schemas",
+  "name": "@repo/schemas",
   "module": "index.ts",
   "type": "module",
   "devDependencies": {

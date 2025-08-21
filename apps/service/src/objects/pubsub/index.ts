@@ -20,35 +20,39 @@
  */
 
 // Core Services
-export { ErebusPubSubService } from './ErebusPubSubService';
-export { BaseService } from './BaseService';
-export { MessageHandler } from './MessageHandler';
-export type { MessageBroadcastCoordinator } from './MessageHandler';
-export { SubscriptionManager } from './SubscriptionManager';
-export { MessageBroadcaster } from './MessageBroadcaster';
-export { MessageBuffer } from './MessageBuffer';
-export { SequenceManager } from './SequenceManager';
-export { ShardManager } from './ShardManager';
+export { ErebusPubSubService } from "./ErebusPubSubService";
+export { BaseService } from "./BaseService";
+export { MessageHandler } from "./MessageHandler";
+export type { MessageBroadcastCoordinator } from "./MessageHandler";
+export { SubscriptionManager } from "./SubscriptionManager";
+export { MessageBroadcaster } from "./MessageBroadcaster";
+export { MessageBuffer } from "./MessageBuffer";
+export { SequenceManager } from "./SequenceManager";
+export { ShardManager } from "./ShardManager";
 
 // Types and Interfaces
 export type {
-	SocketSendResult,
-	MessageRecord,
-	MessageMetrics,
-	ServiceContext,
-	BroadcastConfig,
-	StorageKeys,
-	WebSocketSendParams,
-	PublishMessageParams,
-	SubscriptionParams,
-	GetMessagesParams,
-	UpdateLastSeenParams,
-} from './types';
+  SocketSendResult,
+  MessageRecord,
+  MessageMetrics,
+  ServiceContext,
+  BroadcastConfig,
+  StorageKeys,
+  WebSocketSendParams,
+  PublishMessageParams,
+  SubscriptionParams,
+  GetMessagesParams,
+  UpdateLastSeenParams,
+} from "./types";
 
 // Constants and Configuration
-export { PUBSUB_CONSTANTS, DEFAULT_BROADCAST_CONFIG, STORAGE_KEYS } from './types';
+export {
+  PUBSUB_CONSTANTS,
+  DEFAULT_BROADCAST_CONFIG,
+  STORAGE_KEYS,
+} from "./types";
 
 /**
  * Re-export the refactored ChannelV1 class
  */
-export { ChannelV1 } from './channel';
+export { ChannelV1 } from "./channel";
