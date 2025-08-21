@@ -1,0 +1,3 @@
+CORE : AGPLv3
+SDK : MIT
+DOCS : CC-BY-SA 4.0
