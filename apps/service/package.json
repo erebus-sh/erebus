@@ -1,30 +1,30 @@
 {
-	"name": "service",
-	"version": "0.0.0",
-	"devDependencies": {
-		"@cloudflare/vitest-pool-workers": "^0.8.60",
-		"@cloudflare/workers-types": "^4.20250819.0",
-		"prettier": "3.6.2",
-		"typescript": "^5.5.2",
-		"wrangler": "^4.31.0"
-	},
-	"private": true,
-	"scripts": {
-		"deploy": "wrangler deploy",
-		"dev": "wrangler dev",
-		"format": "prettier --write .",
-		"test": "vitest --run --config vitest.config.ts",
-		"start": "wrangler dev",
-		"cf-typegen": "wrangler types"
-	},
-	"dependencies": {
-		"@repo/schemas": "workspace:*",
-		"@upstash/redis": "^1.35.3",
-		"cloudflare": "^4.5.0",
-		"jose": "^6.0.12",
-		"ky": "^1.8.2",
-		"ulid": "^3.0.1",
-		"vitest": "~3.2.0",
-		"zod": "^4.0.17"
-	}
+  "name": "service",
+  "version": "0.0.0",
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.8.60",
+    "@cloudflare/workers-types": "^4.20250819.0",
+    "prettier": "3.6.2",
+    "typescript": "^5.5.2",
+    "wrangler": "^4.31.0"
+  },
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "format": "prettier --write .",
+    "test": "vitest --run --config vitest.config.ts",
+    "start": "wrangler dev",
+    "cf-typegen": "wrangler types"
+  },
+  "dependencies": {
+    "@repo/schemas": "workspace:*",
+    "@upstash/redis": "^1.35.3",
+    "cloudflare": "^4.5.0",
+    "jose": "^6.0.12",
+    "ky": "^1.8.2",
+    "ulid": "^3.0.1",
+    "vitest": "~3.2.0",
+    "zod": "^4.0.17"
+  }
 }
