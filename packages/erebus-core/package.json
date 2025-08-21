@@ -1,0 +1,38 @@
+{
+  "name": "erebus-core",
+  "module": "index.ts",
+  "type": "module",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build:js": "bun run build.config.ts",
+    "build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "build": "bun run clean && bun run build:js && bun run build:types",
+    "format": "bunx prettier . --write",
+    "prepublishOnly": "bun run build",
+    "test": "vitest run",
+    "test:react": "vitest run --config vitest.jsdom.config.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "jsdom": "^26.1.0",
+    "prettier": "3.6.2",
+    "vitest": "^3.2.4"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.18.2",
+    "@hono/zod-validator": "^0.7.2",
+    "@testing-library/react": "^16.3.0",
+    "consola": "^3.4.2",
+    "hono": "^4.9.1",
+    "jose": "^6.0.12",
+    "ky": "^1.8.2",
+    "zod": "^4.0.17",
+    "zustand": "^5.0.7"
+  },
+  "exclude": [
+    "test_projects"
+  ]
+}
