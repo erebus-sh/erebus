@@ -1,4 +1,4 @@
-import { PacketEnvelope } from "@/schemas/packetEnvelope";
+import { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import { SELF, env } from "cloudflare:test";
 import { describe, it, expect } from "vitest";
 

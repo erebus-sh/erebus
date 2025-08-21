@@ -1,6 +1,6 @@
 import { ErebusService } from "@/service/Service";
 import { expect, test } from "vitest";
-import { Access } from "@/internal/schemas/grant";
+import { Access } from "@repo/schemas/grant";
 
 test("ErebusService", async () => {
   /**

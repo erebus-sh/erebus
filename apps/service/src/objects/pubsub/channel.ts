@@ -1,6 +1,6 @@
-import { GrantSchema } from "@/schemas/grant";
+import { GrantSchema } from "@repo/schemas/grant";
 import { Env } from "@/env";
-import { MessageBody } from "@/schemas/messageBody";
+import { MessageBody } from "@repo/schemas/messageBody";
 import { monoNow } from "@/lib/monotonic";
 import { ErebusPubSubService } from "./ErebusPubSubService";
 import { MessageHandler, MessageBroadcastCoordinator } from "./MessageHandler";

@@ -2,11 +2,8 @@ import { logger } from "@/internal/logger/consola";
 import {
   PacketEnvelopeSchema,
   type PacketEnvelope,
-} from "@/internal/schemas/packetEnvelope";
-import {
-  MessageBodySchema,
-  type MessageBody,
-} from "@/internal/schemas/messageBody";
+} from "@repo/schemas/packetEnvelope";
+import { MessageBodySchema, type MessageBody } from "@repo/schemas/messageBody";
 
 export function encodeEnvelope(pkt: PacketEnvelope): string {
   logger.info("[encodeEnvelope] called", { packetType: pkt.packetType });

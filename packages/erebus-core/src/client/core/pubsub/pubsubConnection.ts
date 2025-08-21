@@ -1,6 +1,6 @@
 import { encodeEnvelope, parseServerFrame } from "@/client/core/wire";
-import type { PacketEnvelope } from "@/internal/schemas/packetEnvelope";
-import type { MessageBody } from "@/internal/schemas/messageBody";
+import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import type { MessageBody } from "@repo/schemas/messageBody";
 import { logger } from "@/internal/logger/consola";
 import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
 import consola from "consola";

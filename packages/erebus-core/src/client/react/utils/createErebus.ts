@@ -1,4 +1,4 @@
-import type { MessageBody } from "@/internal/schemas/messageBody";
+import type { MessageBody } from "@repo/schemas/messageBody";
 import { useCallback, useEffect } from "react";
 import { useErebusStore } from "@/client/react/store/erebus";
 import { useChannelState } from "@/client/react/store/channelState";

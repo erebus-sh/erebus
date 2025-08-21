@@ -1,4 +1,4 @@
-import { MessageBody } from "@/schemas/messageBody";
+import { MessageBody } from "@repo/schemas/messageBody";
 import { Env } from "@/env";
 
 /**

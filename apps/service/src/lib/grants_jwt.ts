@@ -1,4 +1,4 @@
-import { GrantSchema, Grant } from "@/schemas/grant";
+import { GrantSchema, Grant } from "@repo/schemas/grant";
 import { verify } from "./jwt";
 
 /**

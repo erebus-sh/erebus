@@ -1,6 +1,6 @@
-import { Access } from "schemas/grant";
-import { GrantSchema } from "schemas/grant";
-import { MessageBody } from "schemas/messageBody";
+import { Access } from "@repo/schemas/grant";
+import { GrantSchema } from "@repo/schemas/grant";
+import { MessageBody } from "@repo/schemas/messageBody";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,

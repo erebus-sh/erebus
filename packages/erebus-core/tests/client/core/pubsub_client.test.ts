@@ -2,8 +2,8 @@ import { beforeAll, afterAll, test, expect } from "vitest";
 import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
 import { startAuthServer } from "@/server/app";
 import { ErebusService } from "@/service/Service";
-import { Access } from "@/internal/schemas/grant";
-import type { MessageBody } from "@/internal/schemas/messageBody";
+import { Access } from "@repo/schemas/grant";
+import type { MessageBody } from "@repo/schemas/messageBody";
 
 // Enhanced interface for proper latency tracking
 interface MessagePayloadWithLatency extends MessageBody {

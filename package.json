@@ -20,5 +20,9 @@
   "workspaces": [
     "apps/*",
     "packages/*"
-  ]
+  ],
+  "dependencies": {
+    "repo": ".",
+    "zod": "^4.0.17"
+  }
 }

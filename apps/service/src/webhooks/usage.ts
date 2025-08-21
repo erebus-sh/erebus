@@ -1,12 +1,18 @@
 import ky from "ky";
-
+import { Env } from "@/env";
+import { Webhook } from "./webhook";
+import { UsagePayload } from "@repo/schemas/webhooks/usageRequest";
 // TODO: Implement usage tracking webhooks here
 export class UsageWebhook {
-  constructor(private readonly env: Env) {}
+  private readonly webhook: Webhook;
+  constructor(
+    private readonly env: Env,
+    baseUrl: string,
+  ) {
+    this.webhook = new Webhook(env, baseUrl);
+  }
 
-  async sendUsage(usage: Usage) {
-    const response = await ky.post(this.env.EREBUS_USAGE_WEBHOOK_URL, {
-      json: usage,
-    });
+  async sendUsage(usage: UsagePayload) {
+    await this.webhook.send("usage", usage);
   }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "erebus-core",
+  "name": "@repo/erebus-core",
   "module": "index.ts",
   "type": "module",
   "scripts": {

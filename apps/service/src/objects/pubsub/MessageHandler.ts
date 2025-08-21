@@ -1,6 +1,9 @@
-import { Access, GrantSchema, Grant } from "schemas/grant";
-import { PacketEnvelope, PacketEnvelopeSchema } from "schemas/packetEnvelope";
-import { MessageBody } from "schemas/messageBody";
+import { Access, GrantSchema, Grant } from "@repo/schemas/grant";
+import {
+  PacketEnvelope,
+  PacketEnvelopeSchema,
+} from "@repo/schemas/packetEnvelope";
+import { MessageBody } from "@repo/schemas/messageBody";
 import { verify } from "@/lib/jwt";
 import { monoNow } from "@/lib/monotonic";
 import { WsErrors } from "@/enums/wserrors";

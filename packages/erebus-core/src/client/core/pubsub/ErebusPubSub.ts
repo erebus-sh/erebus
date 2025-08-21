@@ -1,7 +1,7 @@
 import { PubSubConnection } from "./pubsubConnection";
 import { logger } from "@/internal/logger/consola";
-import type { MessageBody } from "@/internal/schemas/messageBody";
-import type { PacketEnvelope } from "@/internal/schemas/packetEnvelope";
+import type { MessageBody } from "@repo/schemas/messageBody";
+import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import consola from "consola";
 
 export type ErebusOptions = {

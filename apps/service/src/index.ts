@@ -1,10 +1,10 @@
 import { getLocationHint } from "./lib/location_hint";
-import { RootCommandSchema } from "schemas/rootCommands";
+import { RootCommandSchema } from "@repo/schemas/rootCommands";
 import { pubsub } from "./handlers/pubsub";
 import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
-import { QueueEnvelopeSchema } from "schemas/queueEnvelope";
+import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
 
 export default {
   /**

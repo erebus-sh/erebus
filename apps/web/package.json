@@ -15,6 +15,7 @@
     "generate-keys": "bun run scripts/generate_keys.ts"
   },
   "dependencies": {
+    "@repo/schemas": "workspace:*",
     "@auth/core": "0.37.0",
     "@convex-dev/auth": "^0.0.87",
     "@edge-runtime/vm": "^5.0.0",
