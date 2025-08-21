@@ -8,6 +8,9 @@ export const QueueEnvelopeSchema = z.discriminatedUnion("packetType", [
       channelName: z.string(),
       topic: z.string(),
       message: z.string(),
+      event: z
+        .enum(["websocket.connect", "websocket.subscribe", "websocket.message"])
+        .optional(),
     }),
   }),
 ]);

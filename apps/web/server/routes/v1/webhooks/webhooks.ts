@@ -1,7 +1,8 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { z } from "zod";
 import { UsagePayloadSchema } from "@repo/schemas/webhooks/usageRequest";
+import { fetchMutation } from "convex/nextjs";
+import { api } from "@/convex/_generated/api";
 
 export const webhooksRoute = new Hono();
 
@@ -10,17 +11,33 @@ webhooksRoute.post(
   zValidator("json", UsagePayloadSchema),
   async (c) => {
     const body = await c.req.valid("json");
-    console.log(body);
+    console.log("Received usage webhook:", body);
+
     const { event, data } = body;
-    switch (event) {
-      case "websocket.connect":
-        throw new Error("Not implemented");
-      case "websocket.message":
-        throw new Error("Not implemented");
-      case "websocket.subscribe":
-        throw new Error("Not implemented");
-      default:
-        throw new Error("Unknown event");
+
+    try {
+      // Track usage in Convex database
+      await fetchMutation(api.usage.mutation.trackUsage, {
+        projectId: data.projectId,
+        event,
+        payloadLength: data.payloadLength || 0,
+      });
+
+      // Return success response
+      return c.json({
+        success: true,
+        message: `Usage event ${event} processed successfully`,
+        projectId: data.projectId,
+      });
+    } catch (error) {
+      console.error("Error processing usage webhook:", error);
+      return c.json(
+        {
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        },
+        500,
+      );
     }
   },
 );

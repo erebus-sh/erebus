@@ -1,0 +1,11 @@
+# Ignore common artifacts:
+build
+dist
+out
+coverage
+node_modules
+*.log
+*.tmp
+*.cache
+*.tsbuildinfo
+worker-configuration.d.ts

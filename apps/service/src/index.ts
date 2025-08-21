@@ -5,6 +5,7 @@ import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
 import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
+import { UsageWebhook } from "./webhooks/usage";
 
 export default {
   /**
@@ -179,7 +180,19 @@ export default {
 
       switch (queueEnvelope.packetType) {
         case "usage":
-          throw new Error("Not implemented");
+          // Send usage webhook to the server
+          const usageWebhook = new UsageWebhook(env, env.WEBHOOK_BASE_URL);
+          const eventType = queueEnvelope.payload.event || "websocket.message";
+          await usageWebhook.sendUsage({
+            event: eventType,
+            data: {
+              projectId: queueEnvelope.payload.projectId,
+              payloadLength: queueEnvelope.payload.message.length,
+            },
+          });
+          console.log(
+            `[QUEUE] Sent usage webhook for project ${queueEnvelope.payload.projectId}: ${queueEnvelope.payload.message.length} bytes`,
+          );
           break;
         default:
           throw new Error("Invalid queue envelope");

@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { grantRequestSchema } from "@/zod/request/grantChannelRequest";
+import { grantRequestSchema } from "@repo/schemas/request/grantChannelRequest";
 import { sign } from "@/lib/jwt";
 import { zValidator } from "@hono/zod-validator";
-import { Grant, Access } from "@/zod/grant";
+import { Grant, Access } from "@repo/schemas/grant";
 import { ConvexError } from "convex/values";
 import { ratelimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/redis";

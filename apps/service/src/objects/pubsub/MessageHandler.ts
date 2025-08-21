@@ -4,6 +4,7 @@ import {
   PacketEnvelopeSchema,
 } from "@repo/schemas/packetEnvelope";
 import { MessageBody } from "@repo/schemas/messageBody";
+import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
 import { verify } from "@/lib/jwt";
 import { monoNow } from "@/lib/monotonic";
 import { WsErrors } from "@/enums/wserrors";
@@ -216,6 +217,9 @@ export class MessageHandler extends BaseService {
       this.logDebug(
         `[WS_CONNECT] JWT verified and grant attached for userId: ${attachment.userId}`,
       );
+
+      // Enqueue usage tracking for successful connection
+      await this.enqueueUsageEvent("websocket.connect", attachment.project_id);
     } catch (error) {
       this.logError(`[WS_CONNECT] JWT verification failed: ${error}`);
       this.closeWebSocketWithError(
@@ -305,6 +309,9 @@ export class MessageHandler extends BaseService {
         clientId,
       });
       this.logDebug(`[WS_SUBSCRIBE] Successfully subscribed to channel`);
+
+      // Enqueue usage tracking for successful subscription
+      await this.enqueueUsageEvent("websocket.subscribe", projectId);
 
       // Retrieve and deliver missed messages
       await this.deliverMissedMessages(ws, grant.data, topic);
@@ -605,6 +612,36 @@ export class MessageHandler extends BaseService {
       }
     } catch (error) {
       this.logError(`[CLOSE_WS] Error closing WebSocket: ${error}`);
+    }
+  }
+
+  /**
+   * Enqueue usage tracking event to the queue.
+   */
+  private async enqueueUsageEvent(
+    event: "websocket.connect" | "websocket.subscribe",
+    projectId: string,
+  ): Promise<void> {
+    const usageEnvelope: QueueEnvelope = {
+      packetType: "usage",
+      payload: {
+        projectId,
+        channelName: "", // Not applicable for connect/subscribe events
+        topic: "", // Not applicable for connect/subscribe events
+        message: "", // Empty message for connect/subscribe events
+        event,
+      },
+    };
+
+    try {
+      await this.env.EREBUS_QUEUE.send(usageEnvelope);
+      this.logDebug(
+        `[USAGE_ENQUEUE] Enqueued ${event} event for project ${projectId}`,
+      );
+    } catch (error) {
+      this.logError(
+        `[USAGE_ENQUEUE] Failed to enqueue ${event} event: ${error}`,
+      );
     }
   }
 

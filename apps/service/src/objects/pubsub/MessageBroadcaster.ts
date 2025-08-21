@@ -1,6 +1,7 @@
 import { Access } from "@repo/schemas/grant";
 import { GrantSchema } from "@repo/schemas/grant";
 import { MessageBody } from "@repo/schemas/messageBody";
+import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -425,7 +426,18 @@ export class MessageBroadcaster extends BaseService {
   ): Promise<void> {
     // These operations run in the background and don't block the response
 
-    // TODO: enqueue tasks related to webhooks here
+    // Enqueue usage tracking webhook
+    const usageEnvelope: QueueEnvelope = {
+      packetType: "usage",
+      payload: {
+        projectId,
+        channelName,
+        topic,
+        message: JSON.stringify(messageBody),
+        event: "websocket.message",
+      },
+    };
+
     await Promise.all([
       // Buffer the message for persistence
       this.bufferMessage(messageBody, projectId, channelName, topic, seq),
@@ -437,6 +449,8 @@ export class MessageBroadcaster extends BaseService {
         topic,
         seq,
       ),
+      // Enqueue usage tracking for webhooks
+      this.env.EREBUS_QUEUE.send(usageEnvelope),
     ]).catch((error) => {
       this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });
