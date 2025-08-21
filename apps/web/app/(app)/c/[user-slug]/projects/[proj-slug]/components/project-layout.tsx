@@ -9,10 +9,12 @@ import {
   FileText,
   Wifi,
   ChevronLeft,
+  Info,
 } from "lucide-react";
 import { useSidebarStore } from "../store/sidebar";
 import { useCallback } from "react";
 import { useNavStackStore } from "@/stores/navigation";
+import Link from "next/link";
 
 interface ConsoleLayoutProps {
   children: React.ReactNode;
@@ -193,15 +195,19 @@ export default function ProjectLayout({
           })}
         </nav>
 
-        {/* Sidebar Footer
         <div className="border-t p-4">
           {!sidebarCollapsed && (
-            <div className="text-muted-foreground text-xs">
-              <p>Erebus Edge Infrastructure</p>
-              <p className="mt-1">v1.0.0</p>
+            <div className="flex flex-col">
+              <Link
+                href="/feedback"
+                className="w-fit text-xs font-medium text-zinc-500 flex items-center gap-1"
+              >
+                <Info className="h-3 w-3" />
+                Share Feedback
+              </Link>
             </div>
           )}
-        </div> */}
+        </div>
       </div>
 
       {/* Main Content */}
