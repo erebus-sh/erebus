@@ -5,7 +5,7 @@ import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
 import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
-import { UsageWebhook } from "./webhooks/usage";
+import { UsageWebhook } from "./services/webhooks/usage";
 
 export default {
   /**

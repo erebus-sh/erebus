@@ -7,7 +7,7 @@ interface Bindings {
   internalRequestId: string;
 }
 
-export const app = new Hono<{
+const app = new Hono<{
   Bindings: Bindings;
   Variables: { internalRequestId: string };
 }>().basePath("/api");
@@ -20,12 +20,14 @@ app.use("*", async (c, next) => {
   await next();
 });
 
-app.route("/helper", helperRoute);
-app.route("/v1", v1Route);
+// Register main route handlers - let each index.ts handle its own sub-routing
+const routes = app
+  .route("/helper", helperRoute)
+  .route("/v1", v1Route)
+  .get("/health", (c) => {
+    const id = c.get("internalRequestId");
+    return c.json({ ok: true, internalRequestId: id }, 200);
+  });
 
-app.get("/health", (c) => {
-  const id = c.get("internalRequestId");
-  return c.json({ ok: true, internalRequestId: id });
-});
-
-export default app;
+export default routes;
+export type AppType = typeof routes;

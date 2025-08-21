@@ -4,9 +4,7 @@ import { UsagePayloadSchema } from "@repo/schemas/webhooks/usageRequest";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 
-export const webhooksRoute = new Hono();
-
-webhooksRoute.post(
+export const webhooksRoute = new Hono().post(
   "/usage",
   zValidator("json", UsagePayloadSchema),
   async (c) => {

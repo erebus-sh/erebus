@@ -10,8 +10,6 @@ import { ratelimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/redis";
 import { sha256 } from "@/utils/hash";
 
-export const grantRoute = new Hono();
-
 // Allow "*" for topics, otherwise only letters, numbers, and underscores
 const TOPIC_RE = /^([A-Za-z0-9_]+|\*)$/;
 
@@ -109,7 +107,7 @@ async function setCachedGrant(
   }
 }
 
-grantRoute.post(
+export const grantRoute = new Hono().post(
   "/grant-channel",
   zValidator("json", grantRequestSchema),
   async (c) => {

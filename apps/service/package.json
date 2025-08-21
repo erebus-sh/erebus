@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@repo/schemas": "workspace:*",
+    "@repo/web": "workspace:*",
     "@upstash/redis": "^1.35.3",
     "cloudflare": "^4.5.0",
     "jose": "^6.0.12",
