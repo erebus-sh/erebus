@@ -19,6 +19,7 @@ import type * as helper_action from "../helper/action.js";
 import type * as http from "../http.js";
 import type * as keys_mutation from "../keys/mutation.js";
 import type * as keys_query from "../keys/query.js";
+import type * as lib_guard from "../lib/guard.js";
 import type * as lib_jwt from "../lib/jwt.js";
 import type * as projects_mutation from "../projects/mutation.js";
 import type * as projects_query from "../projects/query.js";
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "keys/mutation": typeof keys_mutation;
   "keys/query": typeof keys_query;
+  "lib/guard": typeof lib_guard;
   "lib/jwt": typeof lib_jwt;
   "projects/mutation": typeof projects_mutation;
   "projects/query": typeof projects_query;
