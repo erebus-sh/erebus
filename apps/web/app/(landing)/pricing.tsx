@@ -30,25 +30,6 @@ interface PricingTier {
 
 const pricingTiers: PricingTier[] = [
   {
-    name: "Free",
-    price: "$0",
-    description: "Self-hosted solution with basic features",
-    features: [
-      "Self-hosted on your infrastructure",
-      "Basic pub/sub messaging",
-      "Community support only",
-      "No uptime guarantees",
-      "Limited scalability",
-      "Manual configuration required",
-    ],
-    cta: {
-      text: "View on GitHub",
-      href: "https://github.com/erebus/erebus",
-      variant: "outline",
-      external: true,
-    },
-  },
-  {
     name: "Pay-As-You-Go",
     price: "Usage-based",
     description: "Flexible pricing with $5 free credit",
@@ -147,7 +128,7 @@ export default function Pricing() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 max-w-7xl mx-auto">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
         {pricingTiers.map((tier, index) => (
           <Card
             key={tier.name}
@@ -214,11 +195,33 @@ export default function Pricing() {
         ))}
       </div>
 
-      <div className="text-center mt-12">
+      <div className="text-center mt-12 space-y-4">
         <p className="text-muted-foreground text-sm">
           All plans include our core pub/sub messaging features. Enterprise
           plans include custom terms and conditions.
         </p>
+
+        <div className="pt-4 border-t border-border/50">
+          <p className="text-muted-foreground text-sm">
+            Prefer to self-host? Erebus is open-source.{" "}
+            <Button
+              variant="link"
+              size="sm"
+              className="p-0 h-auto text-muted-foreground hover:text-foreground underline-offset-4"
+              asChild
+            >
+              <a
+                href="https://github.com/erebus/erebus"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1"
+              >
+                View it on GitHub
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </Button>
+          </p>
+        </div>
       </div>
     </section>
   );
