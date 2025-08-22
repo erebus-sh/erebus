@@ -138,35 +138,32 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
 
     // Enhanced table of contents
     nav: ({ children, ...props }) => {
-      // Debug: Let's see what nav elements we're getting
-      console.log("Nav element props:", props);
-      console.log("Nav element children:", children);
-
-      // For now, render ALL nav elements as sidebar to test positioning
       return (
         <>
-          {/* Sticky TOC Sidebar - Hidden on mobile, visible on desktop */}
+          {/* Floating TOC Sidebar - Positioned in the left margin area */}
           <nav
-            className="fixed top-20 left-4 w-64 max-h-[calc(100vh-6rem)] overflow-y-auto 
-                       bg-red-500 border rounded-lg shadow-lg p-4 z-50
+            className="fixed top-20 left-4 w-64 max-h-[calc(100vh-6rem)] overflow-y-auto
+                       bg-background border rounded-lg shadow-lg p-4
                        hidden lg:block
                        scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
             {...props}
           >
-            <div className="mb-3 pb-2 border-b border-white">
-              <h2 className="text-base font-semibold text-white font-mono tracking-tight">
-                DEBUG - Table of Contents
+            <div className="mb-3 pb-2 border-b border-border">
+              <h2 className="text-base font-semibold text-foreground font-mono tracking-tight">
+                Table of Contents
               </h2>
             </div>
-            <div className="space-y-1 text-sm text-white">{children}</div>
+            <div className="space-y-1 text-sm text-muted-foreground">
+              {children}
+            </div>
           </nav>
 
           {/* Mobile TOC - Collapsible at top of content */}
-          <details className="lg:hidden mb-8 bg-red-500 border rounded-lg shadow-sm">
-            <summary className="p-4 cursor-pointer font-mono text-sm font-semibold text-white hover:bg-red-600 transition-colors">
-              DEBUG - Table of Contents
+          <details className="lg:hidden mb-8 bg-background border rounded-lg shadow-sm">
+            <summary className="p-4 cursor-pointer font-mono text-sm font-semibold text-foreground hover:bg-muted transition-colors">
+              Table of Contents
             </summary>
-            <div className="px-4 pb-4 space-y-1 text-sm border-t border-white mt-2 pt-3 text-white">
+            <div className="px-4 pb-4 space-y-1 text-sm border-t border-border mt-2 pt-3 text-muted-foreground">
               {children}
             </div>
           </details>
