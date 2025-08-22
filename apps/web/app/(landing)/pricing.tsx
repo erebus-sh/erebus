@@ -86,30 +86,8 @@ const pricingTiers: PricingTier[] = [
       "Advanced security features",
     ],
     cta: {
-      text: "Contact Sales",
-      variant: "default",
-    },
-    highlight: true,
-  },
-  {
-    name: "Enterprise",
-    price: "Custom",
-    description: "Tailored solutions for large organizations",
-    features: [
-      "Everything in Pro",
-      "99.99% uptime SLA",
-      "White-label solution",
-      "Custom SLA agreements",
-      "Dedicated account team",
-      "On-premise deployment option",
-      "Custom security requirements",
-      "Advanced compliance features",
-      "Custom integrations & APIs",
-      "24/7 phone support",
-    ],
-    cta: {
-      text: "Contact Enterprise Sales",
-      variant: "default",
+      text: "Coming Soon",
+      variant: "outline",
     },
     highlight: true,
   },
@@ -128,8 +106,8 @@ export default function Pricing({ id }: { id: string }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-        {pricingTiers.map((tier, index) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        {pricingTiers.map((tier) => (
           <Card
             key={tier.name}
             className="relative h-full transition-all duration-200 hover:shadow-lg"

@@ -37,9 +37,9 @@ export function FeaturesSection({ id }: { id: string }) {
       icon: <Share2 />,
     },
     {
-      title: "Transparent Pricing (soon)",
+      title: "Transparent Pricing",
       description:
-        "Use it free while we build. Paid hosting will be simple and fair when it's ready.",
+        "No hidden fees or surprises. Simple, honest pricing you can trust.",
       icon: <DollarSign />,
     },
     {
