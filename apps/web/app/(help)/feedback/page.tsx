@@ -223,7 +223,7 @@ export default function FeedbackPage() {
         <div className="text-center space-y-4">
           <div className="flex items-center justify-center gap-6 text-sm text-muted-foreground">
             <Link
-              href="/privacy"
+              href="/legal/privacy"
               className="hover:text-foreground transition-colors"
             >
               Privacy Policy

@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { Providers } from "@/components/providers";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { Toaster } from "@/components/ui/sonner";
+import { useMDXComponents } from "@/mdx-components";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,6 +34,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Initialize MDX components for the app
+  useMDXComponents({});
+
   return (
     <ConvexAuthNextjsServerProvider>
       <html lang="en" suppressHydrationWarning>
@@ -42,7 +46,7 @@ export default function RootLayout({
           <ThemeProvider
             attribute="class"
             defaultTheme="dark"
-            enableSystem={false} // ❌ disable system-based toggle
+            enableSystem={false}
           >
             <Providers>{children}</Providers>
             <Toaster />

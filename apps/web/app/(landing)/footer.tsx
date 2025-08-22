@@ -66,8 +66,8 @@ const footerLinks = {
   company: [
     { label: "About", href: "#" },
     { label: "Contact", href: "#" },
-    { label: "Privacy", href: "#" },
-    { label: "Terms", href: "#" },
+    { label: "Privacy", href: "/legal/privacy" },
+    { label: "Terms", href: "/legal/terms" },
   ] as FooterLink[],
 };
 

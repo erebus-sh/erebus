@@ -28,11 +28,11 @@ export default function SignInPage() {
       </div>
 
       <footer className="space-x-4 text-center text-xs text-zinc-500">
-        <Link href="/privacy" className="hover:underline">
+        <Link href="/legal/privacy" className="hover:underline">
           Privacy Policy
         </Link>
         <span>·</span>
-        <Link href="/terms" className="hover:underline">
+        <Link href="/legal/terms" className="hover:underline">
           Terms of Service
         </Link>
       </footer>

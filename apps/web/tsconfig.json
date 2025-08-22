@@ -23,5 +23,14 @@
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "**/*.mdx",
+    "**/*.md",
+    "app/**/*.mdx",
+    "app/**/*.md"
+  ],
+  "ts-node": {
+    "esm": true
+  }
 }
