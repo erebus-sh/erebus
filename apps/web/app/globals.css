@@ -195,6 +195,26 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
+  
+  /* Smooth scrolling for anchor links */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Style for anchor links in headings */
+  .anchor {
+    text-decoration: none;
+    transition: opacity 0.2s ease;
+  }
+  
+  .anchor:hover {
+    opacity: 0.8;
+  }
+  
+  /* Adjust scroll position for fixed header if needed */
+  :target {
+    scroll-margin-top: 2rem;
+  }
 }
 
 @theme inline {

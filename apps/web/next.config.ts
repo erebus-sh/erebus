@@ -9,8 +9,39 @@ const nextConfig: NextConfig = {
 const withMDX = createMDX({
   // Add markdown plugins here, as desired
   options: {
-    remarkPlugins: [],
-    rehypePlugins: [],
+    remarkPlugins: [
+      // Handle frontmatter first
+      "remark-frontmatter",
+      // Extract frontmatter as exports
+      "remark-mdx-frontmatter",
+      // GitHub Flavored Markdown
+      "remark-gfm",
+      // Table of contents - insert after GFM processing
+      [
+        "remark-toc",
+        {
+          heading: "Table of Contents",
+          tight: true,
+          maxDepth: 3,
+          skip: "h1",
+          ordered: false,
+        },
+      ],
+    ],
+    rehypePlugins: [
+      // Add IDs to headings for TOC linking
+      "rehype-slug",
+      // Add links to headings
+      [
+        "rehype-autolink-headings",
+        {
+          behavior: "wrap",
+          properties: {
+            className: ["anchor"],
+          },
+        },
+      ],
+    ],
   },
   // Ensure MDX files are processed correctly
   extension: /\.mdx?$/,

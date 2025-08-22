@@ -2,57 +2,195 @@ import type { MDXComponents } from "mdx/types";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
-    // Allow customizing built-in components, e.g. for styled markdown
-    h1: ({ children }) => (
-      <h1 className="text-4xl font-bold mb-6 text-foreground">{children}</h1>
+    // Document title from frontmatter
+    h1: ({ children, ...props }) => (
+      <h1
+        className="text-4xl font-bold mb-8 text-foreground font-mono tracking-tight border-b border-border pb-4"
+        {...props}
+      >
+        {children}
+      </h1>
     ),
-    h2: ({ children }) => (
-      <h2 className="text-3xl font-semibold mb-4 text-foreground">
+
+    // Section headings
+    h2: ({ children, ...props }) => (
+      <h2
+        className="text-2xl font-semibold mb-6 mt-12 text-foreground font-mono tracking-tight scroll-mt-20"
+        {...props}
+      >
         {children}
       </h2>
     ),
-    h3: ({ children }) => (
-      <h3 className="text-2xl font-medium mb-3 text-foreground">{children}</h3>
+
+    h3: ({ children, ...props }) => (
+      <h3
+        className="text-xl font-medium mb-4 mt-8 text-foreground font-mono tracking-tight scroll-mt-20"
+        {...props}
+      >
+        {children}
+      </h3>
     ),
-    p: ({ children }) => (
-      <p className="mb-4 text-muted-foreground leading-relaxed">{children}</p>
+
+    h4: ({ children, ...props }) => (
+      <h4
+        className="text-lg font-medium mb-3 mt-6 text-foreground font-mono tracking-tight scroll-mt-20"
+        {...props}
+      >
+        {children}
+      </h4>
     ),
-    ul: ({ children }) => (
-      <ul className="list-disc list-inside mb-4 space-y-2 text-muted-foreground">
+
+    // Paragraphs with proper spacing
+    p: ({ children, ...props }) => (
+      <p
+        className="mb-6 text-muted-foreground leading-relaxed font-mono text-sm"
+        {...props}
+      >
+        {children}
+      </p>
+    ),
+
+    // Lists with better spacing
+    ul: ({ children, ...props }) => (
+      <ul
+        className="list-disc list-inside mb-6 space-y-2 text-muted-foreground font-mono text-sm ml-4"
+        {...props}
+      >
         {children}
       </ul>
     ),
-    ol: ({ children }) => (
-      <ol className="list-decimal list-inside mb-4 space-y-2 text-muted-foreground">
+
+    ol: ({ children, ...props }) => (
+      <ol
+        className="list-decimal list-inside mb-6 space-y-2 text-muted-foreground font-mono text-sm ml-4"
+        {...props}
+      >
         {children}
       </ol>
     ),
-    li: ({ children }) => <li className="text-muted-foreground">{children}</li>,
-    a: ({ href, children }) => (
-      <a
-        href={href}
-        className="text-primary hover:text-primary/80 underline"
-        target="_blank"
-        rel="noopener noreferrer"
+
+    li: ({ children, ...props }) => (
+      <li
+        className="text-muted-foreground font-mono text-sm leading-relaxed"
+        {...props}
       >
         {children}
-      </a>
+      </li>
     ),
-    blockquote: ({ children }) => (
-      <blockquote className="border-l-4 border-primary pl-4 italic my-4 text-muted-foreground">
+
+    // Links with consistent styling
+    a: ({ href, children, className, ...props }) => {
+      // Handle anchor links (internal TOC links)
+      if (href?.startsWith("#")) {
+        return (
+          <a
+            href={href}
+            className={`text-primary hover:text-primary/80 font-mono text-sm transition-colors duration-200 no-underline hover:underline ${className || ""}`}
+            {...props}
+          >
+            {children}
+          </a>
+        );
+      }
+
+      // External links
+      return (
+        <a
+          href={href}
+          className={`text-primary hover:text-primary/80 font-mono underline transition-colors duration-200 ${className || ""}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+
+    // Enhanced blockquotes
+    blockquote: ({ children, ...props }) => (
+      <blockquote
+        className="border-l-2 border-primary/30 pl-6 my-6 italic text-muted-foreground bg-muted/20 py-4 rounded-r font-mono text-sm"
+        {...props}
+      >
         {children}
       </blockquote>
     ),
-    code: ({ children }) => (
-      <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono text-foreground">
+
+    // Code blocks
+    code: ({ children, ...props }) => (
+      <code
+        className="bg-muted/50 px-2 py-1 rounded text-xs font-mono text-foreground border"
+        {...props}
+      >
         {children}
       </code>
     ),
-    pre: ({ children }) => (
-      <pre className="bg-muted p-4 rounded-lg overflow-x-auto my-4">
+
+    pre: ({ children, ...props }) => (
+      <pre
+        className="bg-muted/30 p-6 rounded-lg overflow-x-auto my-6 border font-mono text-sm"
+        {...props}
+      >
         {children}
       </pre>
     ),
+
+    // Enhanced table of contents
+    nav: ({ children, ...props }) => {
+      // Debug: Let's see what nav elements we're getting
+      console.log("Nav element props:", props);
+      console.log("Nav element children:", children);
+
+      // For now, render ALL nav elements as sidebar to test positioning
+      return (
+        <>
+          {/* Sticky TOC Sidebar - Hidden on mobile, visible on desktop */}
+          <nav
+            className="fixed top-20 left-4 w-64 max-h-[calc(100vh-6rem)] overflow-y-auto 
+                       bg-red-500 border rounded-lg shadow-lg p-4 z-50
+                       hidden lg:block
+                       scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent"
+            {...props}
+          >
+            <div className="mb-3 pb-2 border-b border-white">
+              <h2 className="text-base font-semibold text-white font-mono tracking-tight">
+                DEBUG - Table of Contents
+              </h2>
+            </div>
+            <div className="space-y-1 text-sm text-white">{children}</div>
+          </nav>
+
+          {/* Mobile TOC - Collapsible at top of content */}
+          <details className="lg:hidden mb-8 bg-red-500 border rounded-lg shadow-sm">
+            <summary className="p-4 cursor-pointer font-mono text-sm font-semibold text-white hover:bg-red-600 transition-colors">
+              DEBUG - Table of Contents
+            </summary>
+            <div className="px-4 pb-4 space-y-1 text-sm border-t border-white mt-2 pt-3 text-white">
+              {children}
+            </div>
+          </details>
+        </>
+      );
+    },
+
+    // Strong text
+    strong: ({ children, ...props }) => (
+      <strong className="font-semibold text-foreground font-mono" {...props}>
+        {children}
+      </strong>
+    ),
+
+    // Emphasis
+    em: ({ children, ...props }) => (
+      <em className="italic text-muted-foreground font-mono" {...props}>
+        {children}
+      </em>
+    ),
+
+    // HR divider
+    hr: ({ ...props }) => <hr className="my-12 border-border" {...props} />,
+
     ...components,
   };
 }
