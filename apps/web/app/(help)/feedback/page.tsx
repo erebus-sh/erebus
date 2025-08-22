@@ -230,7 +230,7 @@ export default function FeedbackPage() {
             </Link>
             <div className="w-1 h-1 bg-muted-foreground rounded-full" />
             <Link
-              href="/terms"
+              href="/legal/terms"
               className="hover:text-foreground transition-colors"
             >
               Terms of Service

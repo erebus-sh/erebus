@@ -37,3 +37,64 @@ export const createKey = mutation({
     return api_key;
   },
 });
+
+export const revokeKey = mutation({
+  args: {
+    keyId: v.id("api_keys"),
+    projectSlug: v.string(),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const user = await ctx.runQuery(api.users.query.getMe);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const project = await ctx.runQuery(api.projects.query.getProjectBySlug, {
+      slug: args.projectSlug,
+    });
+    if (!project) throw new ConvexError("Project not found");
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError("Key not found");
+
+    if (key.projectId !== project._id)
+      throw new ConvexError("Key does not belong to this project");
+
+    if (key.createdBy !== user._id)
+      throw new ConvexError("You are not authorized to revoke this key");
+
+    await ctx.db.patch(args.keyId, { status: "revoked" });
+    return true;
+  },
+});
+
+export const updateKey = mutation({
+  args: {
+    keyId: v.id("api_keys"),
+    projectSlug: v.string(),
+    title: v.string(),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const user = await ctx.runQuery(api.users.query.getMe);
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const project = await ctx.runQuery(api.projects.query.getProjectBySlug, {
+      slug: args.projectSlug,
+    });
+    if (!project) throw new ConvexError("Project not found");
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) throw new ConvexError("Key not found");
+
+    if (key.projectId !== project._id)
+      throw new ConvexError("Key does not belong to this project");
+
+    if (key.createdBy !== user._id)
+      throw new ConvexError("You are not authorized to update this key");
+
+    await ctx.db.patch(args.keyId, { label: args.title });
+    return true;
+  },
+});

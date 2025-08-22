@@ -11,6 +11,28 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import CreateNewKeyDialog from "./components/create-new-key-dialog";
 import { Doc } from "@/convex/_generated/dataModel";
@@ -19,7 +41,7 @@ import { useQueryWithState } from "@/utils/query";
 import { useParams } from "next/navigation";
 import Spinner from "@/components/spinner";
 import SidesLayout from "../components/sides-layout";
-
+import { useMutation } from "convex/react";
 function formatDate(timestamp: number) {
   if (!timestamp) return "";
   const date = new Date(timestamp);
@@ -32,22 +54,104 @@ function formatDate(timestamp: number) {
 
 function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
   const [show, setShow] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
+  const [newTitle, setNewTitle] = useState(apiKey.label || "");
+  const revokeKey = useMutation(api.keys.mutation.revokeKey);
+  const updateKey = useMutation(api.keys.mutation.updateKey);
+  const handleRevoke = async () => {
+    await revokeKey({ keyId: apiKey._id, projectSlug: apiKey.projectId });
+    setIsDialogOpen(false);
+  };
+
+  const handleUpdate = async () => {
+    if (newTitle.trim()) {
+      await updateKey({
+        keyId: apiKey._id,
+        projectSlug: apiKey.projectId,
+        title: newTitle.trim(),
+      });
+      setIsUpdateDialogOpen(false);
+    }
+  };
 
   return (
     <Card className="mb-6">
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-row items-center justify-between gap-2 text-base">
           <span className="text-muted-foreground text-xs font-medium">
-            API Key:
+            API Key: {apiKey.label}
           </span>
           <div className="flex gap-2">
-            <Button type="button" size="sm" variant="outline">
-              Settings
-            </Button>
-            <Button type="button" size="sm" variant="destructive">
-              <Trash2 className="mr-1 h-4 w-4" />
-              Revoke key
-            </Button>
+            <Dialog
+              open={isUpdateDialogOpen}
+              onOpenChange={setIsUpdateDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button type="button" size="sm" variant="outline">
+                  Settings
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                  <DialogTitle>Edit API Key</DialogTitle>
+                  <DialogDescription>
+                    Update the title of your API key. This helps you identify
+                    and manage your keys better.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="title">Title</Label>
+                    <Input
+                      id="title"
+                      value={newTitle}
+                      onChange={(e) => setNewTitle(e.target.value)}
+                      placeholder="Enter a descriptive title for your API key"
+                    />
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsUpdateDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button type="button" onClick={handleUpdate}>
+                    Save changes
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+            <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button type="button" size="sm" variant="destructive">
+                  <Trash2 className="mr-1 h-4 w-4" />
+                  Revoke key
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to revoke this API key? This action
+                    cannot be undone. Any applications using this key will lose
+                    access to your WebSocket infrastructure.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleRevoke}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Revoke Key
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </CardTitle>
         <CardDescription>
