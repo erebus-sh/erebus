@@ -41,7 +41,7 @@ export const createKey = mutation({
 export const revokeKey = mutation({
   args: {
     keyId: v.id("api_keys"),
-    projectSlug: v.string(),
+    projectId: v.id("projects"),
   },
   handler: async (ctx, args): Promise<boolean> => {
     const user = await ctx.runQuery(api.users.query.getMe);
@@ -49,9 +49,7 @@ export const revokeKey = mutation({
       throw new Error("User not found");
     }
 
-    const project = await ctx.runQuery(api.projects.query.getProjectBySlug, {
-      slug: args.projectSlug,
-    });
+    const project = await ctx.db.get(args.projectId);
     if (!project) throw new ConvexError("Project not found");
 
     const key = await ctx.db.get(args.keyId);
@@ -71,7 +69,7 @@ export const revokeKey = mutation({
 export const updateKey = mutation({
   args: {
     keyId: v.id("api_keys"),
-    projectSlug: v.string(),
+    projectId: v.id("projects"),
     title: v.string(),
   },
   handler: async (ctx, args): Promise<boolean> => {
@@ -80,9 +78,7 @@ export const updateKey = mutation({
       throw new Error("User not found");
     }
 
-    const project = await ctx.runQuery(api.projects.query.getProjectBySlug, {
-      slug: args.projectSlug,
-    });
+    const project = await ctx.db.get(args.projectId);
     if (!project) throw new ConvexError("Project not found");
 
     const key = await ctx.db.get(args.keyId);

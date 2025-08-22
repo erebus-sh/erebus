@@ -42,6 +42,8 @@ import { useParams } from "next/navigation";
 import Spinner from "@/components/spinner";
 import SidesLayout from "../components/sides-layout";
 import { useMutation } from "convex/react";
+import { toast } from "sonner";
+
 function formatDate(timestamp: number) {
   if (!timestamp) return "";
   const date = new Date(timestamp);
@@ -57,21 +59,40 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isUpdateDialogOpen, setIsUpdateDialogOpen] = useState(false);
   const [newTitle, setNewTitle] = useState(apiKey.label || "");
+  const [isRevoking, setIsRevoking] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const revokeKey = useMutation(api.keys.mutation.revokeKey);
   const updateKey = useMutation(api.keys.mutation.updateKey);
+
   const handleRevoke = async () => {
-    await revokeKey({ keyId: apiKey._id, projectSlug: apiKey.projectId });
-    setIsDialogOpen(false);
+    setIsRevoking(true);
+    try {
+      await revokeKey({ keyId: apiKey._id, projectId: apiKey.projectId });
+      setIsDialogOpen(false);
+    } catch (error) {
+      toast.error("Failed to revoke API key. Please try again.");
+      console.error("Error revoking key:", error);
+    } finally {
+      setIsRevoking(false);
+    }
   };
 
   const handleUpdate = async () => {
     if (newTitle.trim()) {
-      await updateKey({
-        keyId: apiKey._id,
-        projectSlug: apiKey.projectId,
-        title: newTitle.trim(),
-      });
-      setIsUpdateDialogOpen(false);
+      setIsUpdating(true);
+      try {
+        await updateKey({
+          keyId: apiKey._id,
+          projectId: apiKey.projectId,
+          title: newTitle.trim(),
+        });
+        setIsUpdateDialogOpen(false);
+      } catch (error) {
+        toast.error("Failed to update API key. Please try again.");
+        console.error("Error updating key:", error);
+      } finally {
+        setIsUpdating(false);
+      }
     }
   };
 
@@ -116,11 +137,16 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
                     type="button"
                     variant="outline"
                     onClick={() => setIsUpdateDialogOpen(false)}
+                    disabled={isUpdating}
                   >
                     Cancel
                   </Button>
-                  <Button type="button" onClick={handleUpdate}>
-                    Save changes
+                  <Button
+                    type="button"
+                    onClick={handleUpdate}
+                    disabled={isUpdating || !newTitle.trim()}
+                  >
+                    {isUpdating ? "Saving..." : "Save changes"}
                   </Button>
                 </DialogFooter>
               </DialogContent>
@@ -142,12 +168,15 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogCancel disabled={isRevoking}>
+                    Cancel
+                  </AlertDialogCancel>
                   <AlertDialogAction
                     onClick={handleRevoke}
+                    disabled={isRevoking}
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                   >
-                    Revoke Key
+                    {isRevoking ? "Revoking..." : "Revoke Key"}
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
