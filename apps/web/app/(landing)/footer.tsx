@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Mail, ExternalLink } from "lucide-react";
+import Logo from "@/components/navbar-components/logo";
 
 const GithubIcon = () => (
   <svg
@@ -91,14 +92,7 @@ export function Footer() {
             {/* Brand and description */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2 mb-4">
-                <div className="h-6 w-6 rounded bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground text-sm font-bold">
-                    E
-                  </span>
-                </div>
-                <span className="text-foreground font-mono font-bold text-lg">
-                  Erebus
-                </span>
+                <Logo size="lg" />
               </div>
               <p className="text-muted-foreground mb-6 max-w-md font-mono text-sm leading-relaxed">
                 Drop-in real-time messaging at the edge. Erebus runs your

@@ -10,9 +10,9 @@ export default function HomePage() {
     <main>
       <Navbar />
       <div className="mx-4 sm:mx-6 md:mx-10 md:border-x md:border-[#232322] lg:mx-14">
-        <Hero />
-        <FeaturesSection />
-        <Pricing />
+        <Hero id="home" />
+        <FeaturesSection id="features" />
+        <Pricing id="pricing" />
       </div>
       <Footer />
       <div className="mx-4 sm:mx-6 md:mx-10 md:border-x md:border-[#232322] lg:mx-14">

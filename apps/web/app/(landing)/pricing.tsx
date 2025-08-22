@@ -115,9 +115,9 @@ const pricingTiers: PricingTier[] = [
   },
 ];
 
-export default function Pricing() {
+export default function Pricing({ id }: { id: string }) {
   return (
-    <section className="py-20">
+    <section id={id} className="py-20">
       <div className="text-center mb-16">
         <h2 className="text-4xl font-bold tracking-tight mb-4">
           Choose Your Plan

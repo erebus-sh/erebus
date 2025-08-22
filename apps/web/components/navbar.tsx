@@ -18,10 +18,10 @@ import Link from "next/link";
 
 // Navigation links array to be used in both desktop and mobile menus
 const navigationLinks = [
-  { href: "#", label: "Home", active: true },
-  { href: "#", label: "Features" },
-  { href: "#", label: "Pricing" },
-  { href: "#", label: "About" },
+  { href: "#home", label: "Home" },
+  { href: "#features", label: "Features" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#about", label: "About" },
 ];
 
 export default function Navbar() {
@@ -73,7 +73,7 @@ export default function Navbar() {
                       <NavigationMenuLink
                         href={link.href}
                         className="py-1.5"
-                        active={link.active}
+                        active={false}
                       >
                         {link.label}
                       </NavigationMenuLink>
@@ -85,16 +85,15 @@ export default function Navbar() {
           </Popover>
           {/* Main nav */}
           <div className="flex items-center gap-6">
-            <a href="#" className="inline-block h-6 w-auto">
-              <Logo />
-            </a>
+            <Logo />
+
             {/* Navigation menu */}
             <NavigationMenu className="max-md:hidden">
               <NavigationMenuList className="gap-2">
                 {navigationLinks.map((link, index) => (
                   <NavigationMenuItem key={index}>
                     <NavigationMenuLink
-                      active={link.active}
+                      active={false}
                       href={link.href}
                       className="text-muted-foreground hover:text-primary py-1.5 font-medium"
                     >

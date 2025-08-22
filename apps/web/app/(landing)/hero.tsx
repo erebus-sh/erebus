@@ -3,9 +3,9 @@ import { ArrowRight } from "lucide-react";
 import { Terminal } from "./terminal";
 import { Spotlight } from "@/components/ui/spotlight-new";
 
-export function Hero() {
+export function Hero({ id }: { id: string }) {
   return (
-    <section className="py-20 sm:py-32 md:py-40">
+    <section id={id} className="py-20 sm:py-32 md:py-40">
       <Spotlight />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">

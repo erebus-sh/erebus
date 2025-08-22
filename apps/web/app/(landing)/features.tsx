@@ -10,7 +10,7 @@ import {
   Heart,
 } from "lucide-react";
 
-export function FeaturesSection() {
+export function FeaturesSection({ id }: { id: string }) {
   const features = [
     {
       title: "Open Source",
@@ -62,7 +62,7 @@ export function FeaturesSection() {
     },
   ];
   return (
-    <section className="py-10">
+    <section id={id} className="py-10">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 relative z-10 max-w-7xl mx-auto">
         {features.map((feature, index) => (
           <Feature key={feature.title} {...feature} index={index} />
