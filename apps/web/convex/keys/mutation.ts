@@ -51,7 +51,26 @@ export const revokeKey = mutation({
       "revoke",
     );
 
-    await ctx.db.patch(args.keyId, { status: "revoked" });
+    // Check if key is disabled - if so, prevent revocation
+    const key = await ctx.db.get(args.keyId);
+    if (!key) {
+      throw new Error("API key not found");
+    }
+
+    if (key.status === "disabled") {
+      throw new Error(
+        "Cannot revoke a disabled key. Please re-enable the key first.",
+      );
+    }
+
+    if (key.status === "revoked") {
+      throw new Error("Key is already revoked");
+    }
+
+    await ctx.db.patch(args.keyId, {
+      status: "revoked",
+      revokedAt: Date.now(),
+    });
     return true;
   },
 });
@@ -73,7 +92,55 @@ export const updateKey = mutation({
       "update",
     );
 
+    // Check if key is disabled - if so, prevent updates
+    const key = await ctx.db.get(args.keyId);
+    if (!key) {
+      throw new Error("API key not found");
+    }
+
+    if (key.status === "disabled") {
+      throw new Error(
+        "Cannot update a disabled key. Please re-enable the key first.",
+      );
+    }
+
+    if (key.status === "revoked") {
+      throw new Error("Key is already revoked and cannot be updated");
+    }
+
     await ctx.db.patch(args.keyId, { label: args.title });
     return true;
+  },
+});
+
+export const toggleKeyStatus = mutation({
+  args: {
+    keyId: v.id("api_keys"),
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const user = await getAuthenticatedUser(ctx);
+    await getValidatedProject(ctx, args.projectId);
+    await getValidatedAndAuthorizedKey(
+      ctx,
+      args.keyId,
+      args.projectId,
+      user._id,
+      "update",
+    );
+
+    const key = await ctx.db.get(args.keyId);
+    if (!key) {
+      throw new Error("API key not found");
+    }
+
+    // Don't allow toggling revoked keys
+    if (key.status === "revoked") {
+      throw new Error("Cannot toggle status of revoked key");
+    }
+
+    const newStatus = key.status === "active" ? "disabled" : "active";
+    await ctx.db.patch(args.keyId, { status: newStatus });
+    return newStatus;
   },
 });

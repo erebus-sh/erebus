@@ -1,7 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Eye, EyeOff, Trash2, KeyRound } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  Trash2,
+  KeyRound,
+  Copy,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -61,8 +69,16 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
   const [newTitle, setNewTitle] = useState(apiKey.label || "");
   const [isRevoking, setIsRevoking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [isToggling, setIsToggling] = useState(false);
+
   const revokeKey = useMutation(api.keys.mutation.revokeKey);
   const updateKey = useMutation(api.keys.mutation.updateKey);
+  const toggleKeyStatus = useMutation(api.keys.mutation.toggleKeyStatus);
+
+  // Helper functions for status
+  const isRevoked = apiKey.status === "revoked";
+  const isDisabled = apiKey.status === "disabled";
+  const isActive = apiKey.status === "active" || !apiKey.status;
 
   const handleRevoke = async () => {
     setIsRevoking(true);
@@ -96,91 +112,191 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
     }
   };
 
+  const handleToggleStatus = async () => {
+    if (isRevoked) return; // Can't toggle revoked keys
+
+    setIsToggling(true);
+    try {
+      const newStatus = await toggleKeyStatus({
+        keyId: apiKey._id,
+        projectId: apiKey.projectId,
+      });
+      toast.success(
+        `API key ${newStatus === "active" ? "enabled" : "disabled"}`,
+      );
+    } catch (error) {
+      toast.error("Failed to toggle API key status. Please try again.");
+      console.error("Error toggling key status:", error);
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  const handleCopyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(apiKey.key);
+      toast.success("API key copied to clipboard!");
+    } catch (error) {
+      toast.error("Failed to copy API key. Please try again.");
+      console.error("Error copying key:", error);
+    }
+  };
+
   return (
-    <Card className="mb-6">
+    <Card
+      className={`mb-6 ${isRevoked ? "border-destructive bg-destructive/10" : isDisabled ? "opacity-60" : ""}`}
+    >
       <CardHeader className="pb-2">
         <CardTitle className="flex flex-row items-center justify-between gap-2 text-base">
           <span className="text-muted-foreground text-xs font-medium">
             API Key: {apiKey.label}
           </span>
           <div className="flex gap-2">
-            <Dialog
-              open={isUpdateDialogOpen}
-              onOpenChange={setIsUpdateDialogOpen}
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={handleCopyKey}
+              disabled={isRevoked}
+              className={isRevoked ? "opacity-50 cursor-not-allowed" : ""}
             >
-              <DialogTrigger asChild>
-                <Button type="button" size="sm" variant="outline">
-                  Settings
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
-                <DialogHeader>
-                  <DialogTitle>Edit API Key</DialogTitle>
-                  <DialogDescription>
-                    Update the title of your API key. This helps you identify
-                    and manage your keys better.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="title">Title</Label>
-                    <Input
-                      id="title"
-                      value={newTitle}
-                      onChange={(e) => setNewTitle(e.target.value)}
-                      placeholder="Enter a descriptive title for your API key"
-                    />
-                  </div>
-                </div>
-                <DialogFooter>
+              <Copy className="mr-1 h-4 w-4" />
+              Copy
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={handleToggleStatus}
+              disabled={isRevoked || isToggling}
+              className={isRevoked ? "opacity-50 cursor-not-allowed" : ""}
+            >
+              {isActive ? (
+                <ToggleRight className="mr-1 h-4 w-4" />
+              ) : (
+                <ToggleLeft className="mr-1 h-4 w-4" />
+              )}
+              {isToggling ? "..." : isActive ? "Disable" : "Enable"}
+            </Button>
+            {isDisabled ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled
+                className="opacity-50 cursor-not-allowed"
+                onClick={() =>
+                  toast.error("Please re-enable the key first to edit settings")
+                }
+              >
+                Settings
+              </Button>
+            ) : (
+              <Dialog
+                open={isUpdateDialogOpen}
+                onOpenChange={setIsUpdateDialogOpen}
+              >
+                <DialogTrigger asChild>
                   <Button
                     type="button"
+                    size="sm"
                     variant="outline"
-                    onClick={() => setIsUpdateDialogOpen(false)}
-                    disabled={isUpdating}
+                    disabled={isRevoked}
                   >
-                    Cancel
+                    Settings
                   </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[425px]">
+                  <DialogHeader>
+                    <DialogTitle>Edit API Key</DialogTitle>
+                    <DialogDescription>
+                      Update the title of your API key. This helps you identify
+                      and manage your keys better.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="title">Title</Label>
+                      <Input
+                        id="title"
+                        value={newTitle}
+                        onChange={(e) => setNewTitle(e.target.value)}
+                        placeholder="Enter a descriptive title for your API key"
+                      />
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsUpdateDialogOpen(false)}
+                      disabled={isUpdating}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleUpdate}
+                      disabled={isUpdating || !newTitle.trim()}
+                    >
+                      {isUpdating ? "Saving..." : "Save changes"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
+            {isDisabled ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                disabled
+                className="opacity-50 cursor-not-allowed"
+                onClick={() =>
+                  toast.error("Please re-enable the key first to revoke it")
+                }
+              >
+                <Trash2 className="mr-1 h-4 w-4" />
+                Revoke key
+              </Button>
+            ) : (
+              <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <AlertDialogTrigger asChild>
                   <Button
                     type="button"
-                    onClick={handleUpdate}
-                    disabled={isUpdating || !newTitle.trim()}
+                    size="sm"
+                    variant="destructive"
+                    disabled={isRevoked}
+                    className={isRevoked ? "opacity-50 cursor-not-allowed" : ""}
                   >
-                    {isUpdating ? "Saving..." : "Save changes"}
+                    <Trash2 className="mr-1 h-4 w-4" />
+                    {isRevoked ? "Revoked" : "Revoke key"}
                   </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-            <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <AlertDialogTrigger asChild>
-                <Button type="button" size="sm" variant="destructive">
-                  <Trash2 className="mr-1 h-4 w-4" />
-                  Revoke key
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to revoke this API key? This action
-                    cannot be undone. Any applications using this key will lose
-                    access to your WebSocket infrastructure.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={isRevoking}>
-                    Cancel
-                  </AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={handleRevoke}
-                    disabled={isRevoking}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    {isRevoking ? "Revoking..." : "Revoke Key"}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Revoke API Key</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to revoke this API key? This action
+                      cannot be undone. Any applications using this key will
+                      lose access to your WebSocket infrastructure.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isRevoking}>
+                      Cancel
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={handleRevoke}
+                      disabled={isRevoking}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      {isRevoking ? "Revoking..." : "Revoke Key"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </CardTitle>
         <CardDescription>
@@ -240,6 +356,14 @@ function ApiKeyCard({ apiKey }: { apiKey: Doc<"api_keys"> }) {
             <span className="font-medium">Created</span>
             <span className="ml-2">{formatDate(apiKey.createdAt)}</span>
           </div>
+          {isRevoked && apiKey.revokedAt && (
+            <div>
+              <span className="font-medium text-destructive">REVOKED</span>
+              <span className="ml-2 text-destructive font-semibold">
+                {formatDate(apiKey.revokedAt)}
+              </span>
+            </div>
+          )}
           <div>
             <span className="font-medium">Name</span>
             <span className="ml-2">
