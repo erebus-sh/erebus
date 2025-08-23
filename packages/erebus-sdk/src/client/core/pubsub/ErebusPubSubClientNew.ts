@@ -2,11 +2,13 @@ import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { AckCallback } from "../types";
 import { PubSubConnection } from "./PubSubConnectionNew";
+import { StateManager } from "./StateManager";
 import { logger } from "@/internal/logger/consola";
 import consola from "consola";
 
 export type ErebusOptions = {
   wsUrl: string;
+  channel: string; // Required channel upfront
   tokenProvider: (channel: string) => Promise<string>;
   heartbeatMs?: number;
   log?: (l: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
@@ -23,19 +25,30 @@ export type Handler = (
  */
 export class ErebusPubSubClientNew {
   #conn: PubSubConnection;
-  #handlers = new Map<string, Set<Handler>>();
-  #instanceId: string;
-  #processedMessages = new Set<string>();
-  #pendingSubscriptions = new Set<string>();
-  #channel: string | null = null;
+  #stateManager: StateManager;
   #debug: boolean;
 
   constructor(opts: ErebusOptions) {
-    this.#instanceId = Math.random().toString(36).substring(2, 8);
     this.#debug = opts.debug ?? false;
+    const instanceId = Math.random().toString(36).substring(2, 8);
 
-    consola.info(`[Erebus:${this.#instanceId}] Constructor called`, {
+    // Validate channel upfront
+    if (
+      !opts.channel ||
+      typeof opts.channel !== "string" ||
+      opts.channel.trim().length === 0
+    ) {
+      const error = "Channel is required and must be a non-empty string";
+      consola.error(`[Erebus:${instanceId}] ${error}`, {
+        channel: opts.channel,
+      });
+      logger.error("Invalid channel in constructor", { channel: opts.channel });
+      throw new Error(error);
+    }
+
+    consola.info(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
+      channel: opts.channel,
       heartbeatMs: opts.heartbeatMs,
       hasTokenProvider: !!opts.tokenProvider,
       hasCustomLog: !!opts.log,
@@ -46,36 +59,45 @@ export class ErebusPubSubClientNew {
     this.#conn = new PubSubConnection({
       url: opts.wsUrl,
       tokenProvider: opts.tokenProvider,
-      channel: this.#channel || "",
+      channel: opts.channel, // Use the channel from options
       heartbeatMs: opts.heartbeatMs,
       log: opts.log,
       onMessage: (m: PacketEnvelope) => this.#handleMessage(m),
     });
 
-    consola.info(`[Erebus:${this.#instanceId}] Instance created successfully`, {
+    // Initialize state manager with connection ID and set channel immediately
+    this.#stateManager = new StateManager(this.#conn.connectionId);
+    this.#stateManager.setChannel(opts.channel);
+
+    consola.info(`[Erebus:${instanceId}] Instance created successfully`, {
       wsUrl: opts.wsUrl,
+      channel: opts.channel,
     });
-    logger.info("Erebus instance created", { wsUrl: opts.wsUrl });
+    logger.info("Erebus instance created", {
+      wsUrl: opts.wsUrl,
+      channel: opts.channel,
+    });
   }
 
   connect(timeout?: number) {
-    consola.info(`[Erebus:${this.#instanceId}] Connect called`, { timeout });
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] Connect called`, { timeout });
     logger.info("Erebus.connect() called");
 
-    if (!this.#channel) {
-      const error =
-        "Channel must be set before connecting. Call joinChannel(channel) first.";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`);
-      logger.error("Connect failed - no channel set");
-      throw new Error(error);
-    }
-
-    this.#processedMessages.clear();
+    // Channel is guaranteed to be set in constructor, no need to check
+    this.#stateManager.clearProcessedMessages();
     return this.#conn.open(timeout);
   }
 
-  joinChannel(channel: string) {
-    consola.info(`[Erebus:${this.#instanceId}] Joining channel`, { channel });
+  // joinChannel method removed - channel is set in constructor
+
+  /**
+   * Join a channel for this client instance
+   * @param channel The channel to join
+   */
+  joinChannel(channel: string): void {
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] Joining channel`, { channel });
     logger.info("Erebus.joinChannel() called", { channel });
 
     if (
@@ -84,74 +106,70 @@ export class ErebusPubSubClientNew {
       channel.trim().length === 0
     ) {
       const error = "Invalid channel: must be a non-empty string";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`, { channel });
+      consola.error(`[Erebus:${instanceId}] ${error}`, { channel });
       logger.error("Invalid channel", { channel });
       throw new Error(error);
     }
 
-    this.#channel = channel;
+    // Update both state manager and connection
+    this.#stateManager.setChannel(channel);
     this.#conn.setChannel(channel);
+
+    consola.info(`[Erebus:${instanceId}] Channel joined successfully`, {
+      channel,
+    });
+    logger.info("Channel joined successfully", { channel });
   }
 
   subscribe(topic: string, handler: Handler) {
-    consola.info(`[Erebus:${this.#instanceId}] Subscribe called`, { topic });
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] Subscribe called`, { topic });
     logger.info("Erebus.subscribe() called", { topic });
 
-    if (!this.#channel) {
-      const error =
-        "Channel must be set before subscribing. Call joinChannel(channel) first.";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`, { topic });
-      logger.error("Subscribe failed - no channel set", { topic });
-      throw new Error(error);
-    }
-
+    // Channel is guaranteed to be set in constructor, no need to check
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`, { topic });
+      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Invalid topic", { topic });
       throw new Error(error);
     }
 
     if (typeof handler !== "function") {
       const error = "Invalid handler: must be a function";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`);
+      consola.error(`[Erebus:${instanceId}] ${error}`);
       logger.error("Invalid handler", { handlerType: typeof handler });
       throw new Error(error);
     }
 
-    if (!this.#handlers.has(topic)) {
-      this.#handlers.set(topic, new Set());
-    }
-    this.#handlers.get(topic)!.add(handler);
-
-    this.#pendingSubscriptions.add(topic);
+    this.#stateManager.addHandler(topic, handler);
+    this.#stateManager.addPendingSubscription(topic);
     this.#conn.subscribe(topic);
   }
 
   unsubscribe(topic: string) {
-    consola.info(`[Erebus:${this.#instanceId}] Unsubscribe called`, { topic });
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] Unsubscribe called`, { topic });
     logger.info("Unsubscribe function called", { topic });
 
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      consola.error(`[Erebus:${this.#instanceId}] ${error}`, { topic });
+      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Invalid topic", { topic });
       throw new Error(error);
     }
 
-    const set = this.#handlers.get(topic);
-    if (!set) {
+    const handlers = this.#stateManager.getHandlers(topic);
+    if (!handlers || handlers.size === 0) {
       consola.warn(
-        `[Erebus:${this.#instanceId}] No handler set found during unsubscribe`,
+        `[Erebus:${instanceId}] No handler set found during unsubscribe`,
         { topic },
       );
       logger.warn("No handler set found during unsubscribe", { topic });
       return;
     }
 
-    set.clear();
-    this.#handlers.delete(topic);
-    this.#pendingSubscriptions.delete(topic);
+    this.#stateManager.clearHandlers(topic);
+    this.#stateManager.removePendingSubscription(topic);
     this.#conn.unsubscribe(topic);
   }
 
@@ -180,7 +198,8 @@ export class ErebusPubSubClientNew {
   }
 
   close() {
-    consola.info(`[Erebus:${this.#instanceId}] Close called`);
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] Close called`);
     logger.info("Erebus.close() called");
     this.#conn.close();
   }
@@ -196,7 +215,7 @@ export class ErebusPubSubClientNew {
       const checkReadiness = () => {
         // In a real implementation, we'd wait for server ACKs
         // For now, we assume subscriptions are ready after a short delay
-        if (this.#pendingSubscriptions.size === 0) {
+        if (this.#stateManager.pendingSubscriptionsCount === 0) {
           resolve();
           return;
         }
@@ -213,7 +232,7 @@ export class ErebusPubSubClientNew {
 
       // Simulate acknowledgment after a short delay
       setTimeout(() => {
-        this.#pendingSubscriptions.clear();
+        this.#stateManager.clearPendingSubscriptions();
         checkReadiness();
       }, 100);
     });
@@ -227,16 +246,17 @@ export class ErebusPubSubClientNew {
     topics: string[];
     counts: Record<string, number>;
   } {
-    consola.info(`[Erebus:${this.#instanceId}] __debugSummary getter called`);
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] __debugSummary getter called`);
     logger.info("Erebus.__debugSummary getter called");
 
     const counts: Record<string, number> = {};
     let handlerCount = 0;
-    for (const [topic, set] of this.#handlers) {
-      const n = set.size;
+    for (const topic of this.#stateManager.getTopicsWithHandlers()) {
+      const n = this.#stateManager.getHandlerCountForTopic(topic);
       handlerCount += n;
       counts[topic] = n;
-      consola.info(`[Erebus:${this.#instanceId}] Counting handlers for topic`, {
+      consola.info(`[Erebus:${instanceId}] Counting handlers for topic`, {
         topic,
         count: n,
       });
@@ -245,7 +265,7 @@ export class ErebusPubSubClientNew {
         count: n,
       });
     }
-    consola.info(`[Erebus:${this.#instanceId}] __debugSummary returning`, {
+    consola.info(`[Erebus:${instanceId}] __debugSummary returning`, {
       handlerCount,
       topics: Object.keys(counts),
       counts,
@@ -267,7 +287,8 @@ export class ErebusPubSubClientNew {
    * Useful for asserting lifecycle calls in tests. Treat as read-only.
    */
   get __debugConn(): PubSubConnection {
-    consola.info(`[Erebus:${this.#instanceId}] __debugConn getter called`);
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] __debugConn getter called`);
     logger.info("Erebus.__debugConn getter called");
     return this.#conn;
   }
@@ -289,17 +310,18 @@ export class ErebusPubSubClientNew {
     counts: Record<string, number>;
     processedMessagesCount: number;
   } {
-    consola.info(`[Erebus:${this.#instanceId}] __debugObject getter called`);
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] __debugObject getter called`);
     logger.info("Erebus.__debugObject getter called");
 
     const counts: Record<string, number> = {};
     let handlerCount = 0;
-    for (const [topic, set] of this.#handlers) {
-      const n = set.size;
+    for (const topic of this.#stateManager.getTopicsWithHandlers()) {
+      const n = this.#stateManager.getHandlerCountForTopic(topic);
       handlerCount += n;
       counts[topic] = n;
       consola.info(
-        `[Erebus:${this.#instanceId}] Counting handlers for topic (debugObject)`,
+        `[Erebus:${instanceId}] Counting handlers for topic (debugObject)`,
         {
           topic,
           count: n,
@@ -321,17 +343,14 @@ export class ErebusPubSubClientNew {
 
     const debugObj = {
       conn: this.#conn,
-      handlers: this.#handlers,
+      handlers: this.#stateManager.__debugState.handlers,
       connectionObject,
       handlerCount,
       topics: Object.keys(counts),
       counts,
-      processedMessagesCount: this.#processedMessages.size,
+      processedMessagesCount: this.#stateManager.processedMessagesCount,
     };
-    consola.info(
-      `[Erebus:${this.#instanceId}] __debugObject returning`,
-      debugObj,
-    );
+    consola.info(`[Erebus:${instanceId}] __debugObject returning`, debugObj);
     logger.info("Erebus.__debugObject returning", debugObj);
     return debugObj;
   }
@@ -346,23 +365,86 @@ export class ErebusPubSubClientNew {
   }
 
   get channel(): string | null {
-    return this.#channel;
+    return this.#stateManager.channel;
   }
 
   get subscriptionCount(): number {
-    return this.#handlers.size;
+    return this.#stateManager.subscriptionCount;
   }
 
   get activeTopics(): string[] {
-    return Array.from(this.#handlers.keys());
+    return this.#stateManager.activeTopics;
   }
 
   get pendingSubscriptionsCount(): number {
-    return this.#pendingSubscriptions.size;
+    return this.#stateManager.pendingSubscriptionsCount;
   }
 
   get processedMessagesCount(): number {
-    return this.#processedMessages.size;
+    return this.#stateManager.processedMessagesCount;
+  }
+
+  /**
+   * Get connection health information
+   */
+  get connectionHealth(): {
+    state: string;
+    isConnected: boolean;
+    isReadable: boolean;
+    isWritable: boolean;
+    channel: string | null;
+    subscriptionCount: number;
+    pendingSubscriptionsCount: number;
+    processedMessagesCount: number;
+    connectionDetails: {
+      state: string;
+      isConnected: boolean;
+      isReadable: boolean;
+      isWritable: boolean;
+      channel: string;
+      subscriptionCount: number;
+      readyState: number | undefined;
+      bufferedAmount: number;
+      connectionId: string;
+      url: string;
+    };
+  } {
+    return {
+      state: this.connectionState,
+      isConnected: this.isConnected,
+      isReadable: this.isReadable,
+      isWritable: this.isWritable,
+      channel: this.channel,
+      subscriptionCount: this.subscriptionCount,
+      pendingSubscriptionsCount: this.pendingSubscriptionsCount,
+      processedMessagesCount: this.processedMessagesCount,
+      connectionDetails: {
+        state: this.#conn.state,
+        isConnected: this.#conn.isConnected,
+        isReadable: this.#conn.isReadable,
+        isWritable: this.#conn.isWritable,
+        channel: this.#conn.channel,
+        subscriptionCount: this.#conn.subscriptionCount,
+        readyState: this.#conn.readyState,
+        bufferedAmount: this.#conn.bufferedAmount,
+        connectionId: this.#conn.connectionId,
+        url: this.#conn.url,
+      },
+    };
+  }
+
+  /**
+   * Check if the connection is readable (can receive messages)
+   */
+  get isReadable(): boolean {
+    return this.#conn.isReadable;
+  }
+
+  /**
+   * Check if the connection is writable (can send messages)
+   */
+  get isWritable(): boolean {
+    return this.#conn.isWritable;
   }
 
   #publishInternal(
@@ -373,12 +455,7 @@ export class ErebusPubSubClientNew {
     timeoutMs?: number,
   ): Promise<void> {
     // Validation logic here (same as original)
-    if (!this.#channel) {
-      throw new Error(
-        "Channel must be set before publishing. Call joinChannel(channel) first.",
-      );
-    }
-
+    // Channel is guaranteed to be set in constructor, no need to check
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       throw new Error("Invalid topic: must be a non-empty string");
     }
@@ -423,14 +500,12 @@ export class ErebusPubSubClientNew {
   }
 
   #handleMessage(m: PacketEnvelope): void {
+    const instanceId = this.#conn.connectionId;
     if (m.packetType !== "publish") {
       if (this.#debug) {
-        consola.info(
-          `[Erebus:${this.#instanceId}] Ignoring non-message packetType`,
-          {
-            packetType: m.packetType,
-          },
-        );
+        consola.info(`[Erebus:${instanceId}] Ignoring non-message packetType`, {
+          packetType: m.packetType,
+        });
       }
       return;
     }
@@ -438,45 +513,32 @@ export class ErebusPubSubClientNew {
     const messageId = m.payload?.id || "unknown";
 
     // Check for duplicate messages
-    if (this.#processedMessages.has(messageId)) {
+    if (this.#stateManager.isMessageProcessed(messageId)) {
       if (this.#debug) {
-        consola.info(
-          `[Erebus:${this.#instanceId}] Skipping duplicate message`,
-          {
-            messageId:
-              messageId.length > 8
-                ? `${messageId.substring(0, 4)}...${messageId.substring(messageId.length - 4)}`
-                : messageId,
-            topic: m.payload?.topic,
-          },
-        );
+        consola.info(`[Erebus:${instanceId}] Skipping duplicate message`, {
+          messageId:
+            messageId.length > 8
+              ? `${messageId.substring(0, 4)}...${messageId.substring(messageId.length - 4)}`
+              : messageId,
+          topic: m.payload?.topic,
+        });
       }
       return;
     }
 
-    this.#processedMessages.add(messageId);
+    this.#stateManager.addProcessedMessage(messageId);
 
-    // Clean up old message IDs to prevent memory leaks
-    if (this.#processedMessages.size > 1000) {
-      const ids = Array.from(this.#processedMessages);
-      this.#processedMessages.clear();
-      ids.slice(-500).forEach((id) => this.#processedMessages.add(id));
-    }
-
-    const set = this.#handlers.get(m.payload?.topic || "");
-    if (!set) {
+    const handlers = this.#stateManager.getHandlers(m.payload?.topic || "");
+    if (!handlers || handlers.size === 0) {
       if (this.#debug) {
-        consola.warn(
-          `[Erebus:${this.#instanceId}] No handlers found for topic`,
-          {
-            topic: m.payload?.topic,
-          },
-        );
+        consola.warn(`[Erebus:${instanceId}] No handlers found for topic`, {
+          topic: m.payload?.topic,
+        });
       }
       return;
     }
 
-    for (const fn of set) {
+    for (const fn of handlers) {
       try {
         fn(m.payload!, {
           topic: m.payload!.topic,
@@ -486,7 +548,7 @@ export class ErebusPubSubClientNew {
       } catch (error) {
         if (this.#debug) {
           consola.error(
-            `[Erebus:${this.#instanceId}] Error in message handler`,
+            `[Erebus:${this.#conn.connectionId}] Error in message handler`,
             {
               error,
               topic: m.payload?.topic,

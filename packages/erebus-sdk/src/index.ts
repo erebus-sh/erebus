@@ -11,6 +11,7 @@ export {
   MessageProcessor,
   GrantManager,
   HeartbeatManager,
+  StateManager,
   BackpressureError,
   NotConnectedError,
 } from "./client/core/pubsub";
@@ -38,6 +39,7 @@ export type {
   IGrantManager,
   IHeartbeatManager,
   IMessageProcessor,
+  IStateManager,
 } from "./client/core/pubsub";
 
 export { AuthError } from "./client/core/errors";

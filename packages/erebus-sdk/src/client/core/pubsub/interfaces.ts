@@ -128,6 +128,47 @@ export interface IMessageProcessor {
 }
 
 /**
+ * State management interface
+ */
+export interface IStateManager {
+  readonly connectionState: ConnectionState;
+  readonly isConnected: boolean;
+  readonly isConnecting: boolean;
+  readonly isClosed: boolean;
+  readonly isIdle: boolean;
+  readonly channel: string | null;
+  readonly subscriptionCount: number;
+  readonly handlerCount: number;
+  readonly processedMessagesCount: number;
+  readonly pendingSubscriptionsCount: number;
+  readonly hasError: boolean;
+  readonly isReconnecting: boolean;
+  readonly reconnectAttempts: number;
+  readonly lastActivity: number;
+
+  setConnectionState(state: ConnectionState): void;
+  setChannel(channel: string): void;
+  setSubscriptionStatus(topic: string, status: SubscriptionStatus): void;
+  getSubscriptionStatus(topic: string): SubscriptionStatus;
+  isSubscribed(topic: string): boolean;
+  addProcessedMessage(messageId: string): void;
+  isMessageProcessed(messageId: string): boolean;
+  addHandler(topic: string, handler: any): void;
+  removeHandler(topic: string, handler: any): void;
+  clearHandlers(topic: string): void;
+  getHandlers(topic: string): Set<any> | undefined;
+  addPendingSubscription(topic: string): void;
+  removePendingSubscription(topic: string): void;
+  setError(error: Error): void;
+  clearError(): void;
+  setReconnecting(reconnecting: boolean): void;
+  incrementReconnectAttempts(): void;
+  resetReconnectAttempts(): void;
+  reset(): void;
+  clear(): void;
+}
+
+/**
  * Connection health information
  */
 export interface ConnectionHealth {

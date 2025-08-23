@@ -54,6 +54,7 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
     client: ErebusClientState.PubSub,
     authBaseUrl: "http://localhost:6969",
     wsBaseUrl: "ws://localhost:8787",
+    channel: "test_channel", // Pass channel in constructor
   });
   console.log("Client1 created");
 
@@ -61,16 +62,15 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
     client: ErebusClientState.PubSub,
     authBaseUrl: "http://localhost:6969", // Test local server [This simulate user of erebus server]
     wsBaseUrl: "ws://localhost:8787", // Cloudflare service local
+    channel: "test_channel", // Pass channel in constructor
   });
   console.log("Client2 created");
 
-  // Join the test channel before connecting
-  // Alternative: You could pass channel: "test_channel" in createClient options
-  // and set autoConnect: true to do this automatically
-  console.log("Joining test_channel for both clients...");
-  client1.joinChannel("test_channel");
-  client2.joinChannel("test_channel");
-  console.log("Both clients joined test_channel");
+  // Channel is now set in constructor, no need to call joinChannel
+  // console.log("Joining test_channel for both clients...");
+  // client1.joinChannel("test_channel");
+  // client2.joinChannel("test_channel");
+  // console.log("Both clients joined test_channel");
 
   // Now connect both clients
   console.log("Connecting clients...");
