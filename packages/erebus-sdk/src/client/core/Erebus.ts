@@ -8,7 +8,6 @@ export interface ErebusClientOptions {
   client: ErebusClientState;
   authBaseUrl: string;
   wsBaseUrl?: string;
-  channel: string; // Required channel for PubSub operations
 }
 
 export class ErebusClient {
@@ -25,7 +24,6 @@ export class ErebusClient {
             const authorize = new Authorize(opts.authBaseUrl);
             return await authorize.generateToken(channel);
           },
-          channel: opts.channel,
         });
 
         return pubSubClient;
@@ -47,7 +45,6 @@ export class ErebusClient {
             // The consumer must handle the async tokenProvider as usual.
             return authorize.generateToken(channel);
           },
-          channel: opts.channel,
         });
 
         return pubSubClient;

@@ -131,14 +131,12 @@ test("useChannel hook sends and receives messages end-to-end", async () => {
   const testMessage = `Random message: ${Math.random().toString(36).substring(2, 10)}`;
   const publisher = new ErebusPubSubClient({
     wsUrl: "ws://localhost:8787/v1/pubsub",
-    channel: "test_channel", // Pass channel in constructor
     tokenProvider: async () => {
       const authorize = new Authorize("http://localhost:6970");
       return authorize.generateToken("test_channel");
     },
   });
-  // Channel is now set in constructor, no need to call joinChannel
-  // publisher.joinChannel("test_channel");
+  publisher.joinChannel("test_channel");
   await publisher.connect();
   // Publisher also subscribes to the topic (server requires subscription handshake)
   publisher.subscribe(uniqueTopic, () => {});

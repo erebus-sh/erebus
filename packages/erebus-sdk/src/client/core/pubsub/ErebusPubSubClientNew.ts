@@ -8,7 +8,6 @@ import consola from "consola";
 
 export type ErebusOptions = {
   wsUrl: string;
-  channel: string; // Required channel upfront
   tokenProvider: (channel: string) => Promise<string>;
   heartbeatMs?: number;
   log?: (l: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
@@ -32,24 +31,8 @@ export class ErebusPubSubClientNew {
     this.#debug = opts.debug ?? false;
     const instanceId = Math.random().toString(36).substring(2, 8);
 
-    // Validate channel upfront
-    if (
-      !opts.channel ||
-      typeof opts.channel !== "string" ||
-      opts.channel.trim().length === 0
-    ) {
-      const error = "Channel is required and must be a non-empty string";
-      consola.error(`[Erebus:${instanceId}] ${error}`, {
-        channel: opts.channel,
-      });
-      logger.error("Invalid channel in constructor", { channel: opts.channel });
-      throw new Error(error);
-    }
-
     consola.info(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
-      channel: opts.channel,
-      heartbeatMs: opts.heartbeatMs,
       hasTokenProvider: !!opts.tokenProvider,
       hasCustomLog: !!opts.log,
     });
@@ -59,7 +42,7 @@ export class ErebusPubSubClientNew {
     this.#conn = new PubSubConnection({
       url: opts.wsUrl,
       tokenProvider: opts.tokenProvider,
-      channel: opts.channel, // Use the channel from options
+      channel: "", // Empty channel initially, will be set via joinChannel
       heartbeatMs: opts.heartbeatMs,
       log: opts.log,
       onMessage: (m: PacketEnvelope) => this.#handleMessage(m),
@@ -67,15 +50,13 @@ export class ErebusPubSubClientNew {
 
     // Initialize state manager with connection ID and set channel immediately
     this.#stateManager = new StateManager(this.#conn.connectionId);
-    this.#stateManager.setChannel(opts.channel);
+    // Channel will be set via joinChannel
 
     consola.info(`[Erebus:${instanceId}] Instance created successfully`, {
       wsUrl: opts.wsUrl,
-      channel: opts.channel,
     });
     logger.info("Erebus instance created", {
       wsUrl: opts.wsUrl,
-      channel: opts.channel,
     });
   }
 
@@ -83,6 +64,14 @@ export class ErebusPubSubClientNew {
     const instanceId = this.#conn.connectionId;
     consola.info(`[Erebus:${instanceId}] Connect called`, { timeout });
     logger.info("Erebus.connect() called");
+
+    if (!this.#stateManager.channel) {
+      const error =
+        "Channel must be set before connecting. Call joinChannel(channel) first.";
+      consola.error(`[Erebus:${instanceId}] ${error}`);
+      logger.error("Connect failed - no channel set");
+      throw new Error(error);
+    }
 
     // Channel is guaranteed to be set in constructor, no need to check
     this.#stateManager.clearProcessedMessages();
@@ -125,6 +114,14 @@ export class ErebusPubSubClientNew {
     const instanceId = this.#conn.connectionId;
     consola.info(`[Erebus:${instanceId}] Subscribe called`, { topic });
     logger.info("Erebus.subscribe() called", { topic });
+
+    if (!this.#stateManager.channel) {
+      const error =
+        "Channel must be set before subscribing. Call joinChannel(channel) first.";
+      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error("Subscribe failed - no channel set", { topic });
+      throw new Error(error);
+    }
 
     // Channel is guaranteed to be set in constructor, no need to check
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
@@ -455,6 +452,12 @@ export class ErebusPubSubClientNew {
     timeoutMs?: number,
   ): Promise<void> {
     // Validation logic here (same as original)
+    if (!this.#stateManager.channel) {
+      throw new Error(
+        "Channel must be set before publishing. Call joinChannel(channel) first.",
+      );
+    }
+
     // Channel is guaranteed to be set in constructor, no need to check
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       throw new Error("Invalid topic: must be a non-empty string");
