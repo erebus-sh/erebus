@@ -20,6 +20,11 @@ export type SubscriptionStatus = "subscribed" | "unsubscribed" | "pending";
 export type OnMessage = (msg: PacketEnvelope) => void;
 
 /**
+ * Handler function type for topic subscriptions
+ */
+export type MessageHandler = (msg: PacketEnvelope) => void | Promise<void>;
+
+/**
  * Logging callback type
  */
 export type Logger = (
@@ -153,10 +158,10 @@ export interface IStateManager {
   isSubscribed(topic: string): boolean;
   addProcessedMessage(messageId: string): void;
   isMessageProcessed(messageId: string): boolean;
-  addHandler(topic: string, handler: any): void;
-  removeHandler(topic: string, handler: any): void;
+  addHandler(topic: string, handler: MessageHandler): void;
+  removeHandler(topic: string, handler: MessageHandler): void;
   clearHandlers(topic: string): void;
-  getHandlers(topic: string): Set<any> | undefined;
+  getHandlers(topic: string): Set<MessageHandler> | undefined;
   addPendingSubscription(topic: string): void;
   removePendingSubscription(topic: string): void;
   setError(error: Error): void;

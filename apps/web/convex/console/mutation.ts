@@ -6,7 +6,7 @@ import { customAlphabet } from "nanoid";
 import { Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
 
-function logWithTag(tag: string, fn: string, ...args: any[]) {
+function logWithTag(tag: string, fn: string, ...args: unknown[]) {
   console.log(`[${fn}] [${tag}]`, ...args);
 }
 

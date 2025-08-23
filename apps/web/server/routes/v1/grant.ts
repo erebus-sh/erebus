@@ -35,7 +35,10 @@ function getMostPermissive(scope1: string, scope2: string): string {
 /**
  * Normalizes and deduplicates topics, choosing the most permissive scope for duplicates
  */
-function normalizeTopics(topics: any[]): any[] {
+function normalizeTopics(topics: { topic: string; scope: string }[]): {
+  topic: string;
+  scope: string;
+}[] {
   const topicMap = new Map<string, string>();
 
   for (const topic of topics) {

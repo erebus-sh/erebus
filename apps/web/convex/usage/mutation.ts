@@ -12,7 +12,7 @@ export const trackUsage = mutation({
     payloadLength: v.optional(v.number()),
     apiKeyId: v.optional(v.id("api_keys")),
   },
-  handler: async (ctx: any, args: any) => {
+  handler: async (ctx, args) => {
     const { projectId, event, payloadLength, apiKeyId } = args;
 
     const timestamp = Date.now();

@@ -14,35 +14,47 @@ const once = <T extends Event>(emitter: EventTarget, type: string) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Helper Functions
+// Helper Functions and Types
 interface WebSocketConnection {
   ws: WebSocket;
   response: Response;
 }
 
+interface MessagePayload {
+  message?: string;
+  messageNumber?: number;
+  sentAt?: string;
+  testId?: string;
+  clientMsgId?: string;
+  clientPublishTs?: number;
+  [key: string]: unknown;
+}
+
+interface ReceivedMessage {
+  payload: {
+    payload: string | MessagePayload; // Can be string or object
+  };
+  topic: string;
+  senderId: string;
+  seq: string;
+  sentAt: string;
+  // New timing fields
+  t_ingress?: number;
+  t_enqueued?: number;
+  t_broadcast_begin?: number;
+  t_ws_write_end?: number;
+  t_broadcast_end?: number;
+  // Client correlation fields
+  clientMsgId?: string;
+  clientPublishTs?: number;
+  publishTime?: number; // Computed field
+  publishToServerLatency?: number; // Computed field
+  serverToClientLatency?: number; // Computed field
+  totalRoundtripLatency?: number; // Computed field
+}
+
 interface MessageListener {
-  messages: {
-    payload: {
-      payload: any; // Can be string or object now
-    };
-    topic: string;
-    senderId: string;
-    seq: string;
-    sentAt: string;
-    // New timing fields
-    t_ingress?: number;
-    t_enqueued?: number;
-    t_broadcast_begin?: number;
-    t_ws_write_end?: number;
-    t_broadcast_end?: number;
-    // Client correlation fields
-    clientMsgId?: string;
-    clientPublishTs?: number;
-    publishTime?: number; // Computed field
-    publishToServerLatency?: number; // Computed field
-    serverToClientLatency?: number; // Computed field
-    totalRoundtripLatency?: number; // Computed field
-  }[];
+  messages: ReceivedMessage[];
   timestamps: number[];
   cleanup: () => void;
 }
@@ -123,16 +135,21 @@ async function publishMessage(
   messageId: string,
   senderId: string = "test-sender",
 ): Promise<void> {
+  const clientMsgId = messageContent.clientMsgId || crypto.randomUUID();
+
   const messagePacket: PacketEnvelope = {
     packetType: "publish",
     topic: topic,
+    clientMsgId: clientMsgId,
     payload: {
       id: messageId,
       topic: topic,
       senderId: senderId,
       seq: messageId,
       sentAt: new Date(),
-      payload: JSON.stringify(messageContent), // Now passes object directly instead of JSON.stringify
+      payload: JSON.stringify(messageContent),
+      clientMsgId: clientMsgId,
+      clientPublishTs: messageContent.clientPublishTs,
     },
   };
 
@@ -146,7 +163,7 @@ function setupMessageListener(
   ws: WebSocket,
   publishTimestamps?: Map<string, number>,
 ): MessageListener {
-  const messages: any[] = [];
+  const messages: ReceivedMessage[] = [];
   const timestamps: number[] = [];
 
   const messageHandler = (event: MessageEvent) => {

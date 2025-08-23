@@ -4,7 +4,7 @@ interface DocumentMetadata {
   title?: string;
   description?: string;
   lastUpdated?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 interface MDXDocumentProps {
