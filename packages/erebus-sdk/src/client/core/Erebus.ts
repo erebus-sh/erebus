@@ -1,5 +1,5 @@
 import { Authorize } from "./authorize";
-import { ErebusPubSubClient } from "./pubsub/ErebusPubSub";
+import { ErebusPubSubClientNew as ErebusPubSubClient } from "./pubsub/ErebusPubSubClientNew";
 export enum ErebusClientState {
   PubSub,
 }

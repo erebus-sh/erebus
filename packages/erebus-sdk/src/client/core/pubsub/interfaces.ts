@@ -64,6 +64,7 @@ export interface IConnectionManager {
   open(timeout?: number): Promise<void>;
   close(): void;
   send(packet: PacketEnvelope): void;
+  sendRaw(data: string): void;
   setChannel(channel: string): void;
 }
 

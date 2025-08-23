@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { ErebusPubSubClient } from "@/client/core/pubsub/ErebusPubSub";
+import { ErebusPubSubClient } from "@/client/core/pubsub";
 
 test("Creating an Erebus client object", () => {
   process.env.NODE_ENV = "test";

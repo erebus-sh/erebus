@@ -443,12 +443,7 @@ export class PubSubConnection {
 
     try {
       // Heartbeats are raw ping strings, not packet envelopes
-      // Use a workaround to access the raw WebSocket
-      const ws = (this.#connectionManager as unknown as { _ws?: WebSocket })
-        ._ws;
-      if (ws) {
-        ws.send("ping");
-      }
+      this.#connectionManager.sendRaw("ping");
     } catch (error) {
       logger.error(`[${this.#connectionId}] Error sending heartbeat`, {
         error,
@@ -469,5 +464,13 @@ export class PubSubConnection {
       grantManager: this.#grantManager,
       heartbeatManager: this.#heartbeatManager,
     };
+  }
+
+  /**
+   * Development-only state getter
+   * @returns The current state of the connection
+   */
+  get __debugState(): string {
+    return this.#connectionManager.state;
   }
 }

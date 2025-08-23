@@ -258,6 +258,41 @@ export class ConnectionManager implements IConnectionManager {
     }
   }
 
+  /**
+   * Send raw string data directly through WebSocket (for heartbeats, etc.)
+   */
+  sendRaw(data: string): void {
+    logger.info(`[${this.#connectionId}] Sending raw data`, {
+      dataType: typeof data,
+      dataLength: data.length,
+    });
+
+    if (!this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
+      logger.error(
+        `[${this.#connectionId}] Cannot send raw data - WebSocket not ready`,
+        {
+          hasWs: !!this.#ws,
+          readyState: this.#ws?.readyState,
+          state: this.#state,
+        },
+      );
+      throw new NotConnectedError(
+        "Not connected readyState: " + this.#ws?.readyState,
+      );
+    }
+
+    try {
+      this.#ws.send(data);
+      logger.info(`[${this.#connectionId}] Raw data sent successfully`);
+    } catch (error) {
+      logger.error(`[${this.#connectionId}] Error sending raw data`, {
+        error,
+        dataLength: data.length,
+      });
+      throw error;
+    }
+  }
+
   setChannel(channel: string): void {
     logger.info(`[${this.#connectionId}] Setting channel`, { channel });
 

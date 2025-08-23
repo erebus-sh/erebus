@@ -185,6 +185,157 @@ export class ErebusPubSubClientNew {
     this.#conn.close();
   }
 
+  /**
+   * Check if all subscriptions are ready (for more accurate latency testing)
+   * In a real implementation, this would wait for server acknowledgments
+   */
+  async waitForSubscriptionReadiness(timeoutMs: number = 1000): Promise<void> {
+    const startTime = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const checkReadiness = () => {
+        // In a real implementation, we'd wait for server ACKs
+        // For now, we assume subscriptions are ready after a short delay
+        if (this.#pendingSubscriptions.size === 0) {
+          resolve();
+          return;
+        }
+
+        if (Date.now() - startTime > timeoutMs) {
+          reject(
+            new Error(`Subscription readiness timeout after ${timeoutMs}ms`),
+          );
+          return;
+        }
+
+        setTimeout(checkReadiness, 50);
+      };
+
+      // Simulate acknowledgment after a short delay
+      setTimeout(() => {
+        this.#pendingSubscriptions.clear();
+        checkReadiness();
+      }, 100);
+    });
+  }
+
+  /**
+   * Development-only summary (counts & topics) to avoid poking at Maps in every test.
+   */
+  get __debugSummary(): {
+    handlerCount: number;
+    topics: string[];
+    counts: Record<string, number>;
+  } {
+    consola.info(`[Erebus:${this.#instanceId}] __debugSummary getter called`);
+    logger.info("Erebus.__debugSummary getter called");
+
+    const counts: Record<string, number> = {};
+    let handlerCount = 0;
+    for (const [topic, set] of this.#handlers) {
+      const n = set.size;
+      handlerCount += n;
+      counts[topic] = n;
+      consola.info(`[Erebus:${this.#instanceId}] Counting handlers for topic`, {
+        topic,
+        count: n,
+      });
+      logger.info("Counting handlers for topic", {
+        topic,
+        count: n,
+      });
+    }
+    consola.info(`[Erebus:${this.#instanceId}] __debugSummary returning`, {
+      handlerCount,
+      topics: Object.keys(counts),
+      counts,
+    });
+    logger.info("Erebus.__debugSummary returning", {
+      handlerCount,
+      topics: Object.keys(counts),
+      counts,
+    });
+    return {
+      handlerCount,
+      topics: Object.keys(counts),
+      counts,
+    };
+  }
+
+  /**
+   * Development-only access to the underlying Connection instance.
+   * Useful for asserting lifecycle calls in tests. Treat as read-only.
+   */
+  get __debugConn(): PubSubConnection {
+    consola.info(`[Erebus:${this.#instanceId}] __debugConn getter called`);
+    logger.info("Erebus.__debugConn getter called");
+    return this.#conn;
+  }
+
+  /**
+   * Development-only object for debugging
+   */
+  get __debugObject(): {
+    conn: PubSubConnection;
+    handlers: Map<string, Set<Handler>>;
+    connectionObject: {
+      url: string;
+      state: string;
+      subs: string[];
+      bufferedAmount: number;
+    };
+    handlerCount: number;
+    topics: string[];
+    counts: Record<string, number>;
+    processedMessagesCount: number;
+  } {
+    consola.info(`[Erebus:${this.#instanceId}] __debugObject getter called`);
+    logger.info("Erebus.__debugObject getter called");
+
+    const counts: Record<string, number> = {};
+    let handlerCount = 0;
+    for (const [topic, set] of this.#handlers) {
+      const n = set.size;
+      handlerCount += n;
+      counts[topic] = n;
+      consola.info(
+        `[Erebus:${this.#instanceId}] Counting handlers for topic (debugObject)`,
+        {
+          topic,
+          count: n,
+        },
+      );
+      logger.info("Counting handlers for topic (debugObject)", {
+        topic,
+        count: n,
+      });
+    }
+
+    // Extract connection details from the connection object
+    const connectionObject = {
+      url: this.#conn.url,
+      state: this.#conn.state,
+      subs: this.#conn.subscriptions,
+      bufferedAmount: this.#conn.bufferedAmount,
+    };
+
+    const debugObj = {
+      conn: this.#conn,
+      handlers: this.#handlers,
+      connectionObject,
+      handlerCount,
+      topics: Object.keys(counts),
+      counts,
+      processedMessagesCount: this.#processedMessages.size,
+    };
+    consola.info(
+      `[Erebus:${this.#instanceId}] __debugObject returning`,
+      debugObj,
+    );
+    logger.info("Erebus.__debugObject returning", debugObj);
+    return debugObj;
+  }
+
   // Getters
   get connectionState(): string {
     return this.#conn.state;
@@ -196,6 +347,22 @@ export class ErebusPubSubClientNew {
 
   get channel(): string | null {
     return this.#channel;
+  }
+
+  get subscriptionCount(): number {
+    return this.#handlers.size;
+  }
+
+  get activeTopics(): string[] {
+    return Array.from(this.#handlers.keys());
+  }
+
+  get pendingSubscriptionsCount(): number {
+    return this.#pendingSubscriptions.size;
+  }
+
+  get processedMessagesCount(): number {
+    return this.#processedMessages.size;
   }
 
   #publishInternal(

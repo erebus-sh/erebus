@@ -6,7 +6,7 @@ import { Access } from "@repo/schemas/grant";
 import { useErebusStore } from "@/client/react/store/erebus";
 import { createErebus } from "@/client/react/utils/createErebus";
 import { z } from "zod";
-import { ErebusPubSubClient } from "@/client/core/pubsub/ErebusPubSub";
+import { ErebusPubSubClient } from "@/client/core/pubsub";
 import { Authorize } from "@/client/core/authorize";
 
 // Simple test schema - similar to core primitive test

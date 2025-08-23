@@ -1,5 +1,5 @@
 import { createStore } from "zustand";
-import { ErebusPubSubClient } from "@/client/core/pubsub/ErebusPubSub";
+import { ErebusPubSubClientNew as ErebusPubSubClient } from "@/client/core/pubsub/ErebusPubSubClientNew";
 
 export type ErebusState = {
   pubsub: ErebusPubSubClient | null;

@@ -1,9 +1,10 @@
 // TODO: later no barrel exports
 
-// New modular exports (recommended)
+// Main client exports
+export { ErebusPubSubClient, PubSubConnection } from "./client/core/pubsub";
+
+// Modular components (for advanced use cases)
 export {
-  PubSubConnection,
-  ErebusPubSubClientNew,
   ConnectionManager,
   AckManager,
   SubscriptionManager,
@@ -13,9 +14,6 @@ export {
   BackpressureError,
   NotConnectedError,
 } from "./client/core/pubsub";
-
-// Legacy exports (deprecated, use modular versions above)
-export { ErebusPubSubClient } from "./client/core/pubsub/ErebusPubSub";
 
 export type {
   ErebusOptions,

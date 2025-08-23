@@ -5,8 +5,8 @@ export {
   NotConnectedError,
 } from "./PubSubConnectionNew";
 
-// New modular client
-export { ErebusPubSubClientNew } from "./ErebusPubSubClientNew";
+// Main client export
+export { ErebusPubSubClientNew as ErebusPubSubClient } from "./ErebusPubSubClientNew";
 
 // Individual managers (for advanced use cases)
 export { ConnectionManager } from "./ConnectionManager";
@@ -19,6 +19,4 @@ export { HeartbeatManager } from "./HeartbeatManager";
 // Interfaces and types
 export type * from "./interfaces";
 
-// Legacy exports (will be deprecated)
-export { ErebusPubSubClient } from "./ErebusPubSub";
-export { PubSubConnection as PubSubConnectionLegacy } from "./pubsubConnection";
+// Legacy exports removed - use the modular architecture above
