@@ -23,7 +23,10 @@
 export { ErebusPubSubService } from "./ErebusPubSubService";
 export { BaseService } from "./BaseService";
 export { MessageHandler } from "./MessageHandler";
-export type { MessageBroadcastCoordinator } from "./MessageHandler";
+export type {
+  MessageBroadcastCoordinator,
+  BroadcastResult,
+} from "./MessageHandler";
 export { SubscriptionManager } from "./SubscriptionManager";
 export { MessageBroadcaster } from "./MessageBroadcaster";
 export { MessageBuffer } from "./MessageBuffer";

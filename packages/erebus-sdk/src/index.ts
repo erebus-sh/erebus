@@ -4,6 +4,11 @@ export type {
   ErebusOptions,
   Unsubscribe,
   MessageMeta,
+  AckCallback,
+  AckResponse,
+  AckSuccess,
+  AckError,
+  PendingPublish,
 } from "./client/core/types";
 export {
   NotConnectedError,

@@ -2,6 +2,7 @@ import { PubSubConnection } from "./pubsubConnection";
 import { logger } from "@/internal/logger/consola";
 import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import type { AckCallback } from "../types";
 import consola from "consola";
 
 export type ErebusOptions = {
@@ -338,6 +339,30 @@ export class ErebusPubSubClient {
     topic: string;
     messageBody: string;
   }): Promise<void> {
+    return this.#publishInternal(topic, messageBody, false);
+  }
+
+  publishWithAck({
+    topic,
+    messageBody,
+    onAck,
+    timeoutMs = 30000,
+  }: {
+    topic: string;
+    messageBody: string;
+    onAck: AckCallback;
+    timeoutMs?: number;
+  }): Promise<void> {
+    return this.#publishInternal(topic, messageBody, true, onAck, timeoutMs);
+  }
+
+  #publishInternal(
+    topic: string,
+    messageBody: string,
+    withAck: boolean = false,
+    onAck?: AckCallback,
+    timeoutMs?: number,
+  ): Promise<void> {
     // Validate that channel is set before publishing
     if (!this.#channel) {
       const error =
@@ -366,6 +391,13 @@ export class ErebusPubSubClient {
       throw new Error(error);
     }
 
+    if (withAck && !onAck) {
+      const error = "ACK callback is required when using publishWithAck";
+      consola.error(`[Erebus:${this.#instanceId}] ${error}`, { topic });
+      logger.error("ACK callback required", { topic });
+      throw new Error(error);
+    }
+
     const maskedMessageBody =
       messageBody.length > 20
         ? `${messageBody.substring(0, 10)}...${messageBody.substring(messageBody.length - 10)}`
@@ -376,6 +408,8 @@ export class ErebusPubSubClient {
       channel: this.#channel,
       messageBody: maskedMessageBody,
       messageLength: messageBody.length,
+      withAck,
+      timeoutMs,
     });
 
     // Check if we have handlers for this topic (optional validation)
@@ -395,7 +429,7 @@ export class ErebusPubSubClient {
     const clientMsgId =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
-        : undefined;
+        : `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const clientPublishTs = Date.now();
 
     const actualMessageBody: MessageBody = {
@@ -405,20 +439,27 @@ export class ErebusPubSubClient {
       seq: "TO_BE_SAT",
       sentAt: new Date(), // Note: this is not used by the server, but we need to set it to something
       payload: messageBody,
-      ...(clientMsgId ? { clientMsgId } : {}),
+      clientMsgId,
       clientPublishTs,
     };
+
     consola.info(`[Erebus:${this.#instanceId}] Publishing message`, {
       messageBody: actualMessageBody,
+      withAck,
     });
-    logger.info("Erebus.publish() called", { messageBody: actualMessageBody });
+    logger.info("Erebus.publish() called", {
+      messageBody: actualMessageBody,
+      withAck,
+    });
     logger.info("Erebus.publish() topic", { topic });
-    // messageBody MUST contain topic (your rule)
-    // optionally self-validate here if you export MessageBodySchema
 
     return new Promise<void>((resolve, reject) => {
       try {
-        this.#conn.publish(actualMessageBody);
+        if (withAck && onAck && timeoutMs) {
+          this.#conn.publishWithAck(actualMessageBody, onAck, timeoutMs);
+        } else {
+          this.#conn.publish(actualMessageBody);
+        }
         // For better timing accuracy, we should resolve after the WebSocket send
         // but since WebSocket.send() is synchronous, we resolve immediately
         // In a real implementation, you might want to wait for a server ACK

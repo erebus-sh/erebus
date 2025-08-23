@@ -1,5 +1,6 @@
 import { ServiceContext } from "./types";
 import { Env } from "@/env";
+import { AckPacketType } from "@repo/schemas/packetEnvelope";
 
 /**
  * Base class for all PubSub services providing common functionality.
@@ -155,5 +156,116 @@ export abstract class BaseService {
    */
   protected logWarn(message: string): void {
     console.warn(`${this.getServiceName()} ${message}`);
+  }
+
+  /**
+   * Send an ACK packet to a WebSocket connection.
+   *
+   * @param ws - WebSocket connection to send ACK to
+   * @param ackPacket - Complete ACK packet
+   */
+  protected async sendAck(
+    ws: WebSocket,
+    ackPacket: AckPacketType,
+  ): Promise<void> {
+    try {
+      if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+        ws.send(JSON.stringify(ackPacket));
+        this.logDebug(`[SEND_ACK] ACK sent for path: ${ackPacket.type.path}`);
+      }
+    } catch (error) {
+      this.logError(`[SEND_ACK] Failed to send ACK: ${error}`);
+    }
+  }
+
+  /**
+   * Create a publish success ACK.
+   */
+  protected createPublishSuccessAck(
+    requestId: string | undefined,
+    topic: string,
+    serverMsgId: string,
+    clientMsgId: string,
+    seq: string,
+    tIngress: number,
+  ): AckPacketType {
+    return {
+      packetType: "ack",
+      requestId,
+      type: {
+        type: "ack",
+        path: "publish",
+        seq,
+        serverAssignedId: serverMsgId,
+        clientMsgId,
+        topic,
+        result: {
+          ok: true,
+          serverMsgId,
+          t_ingress: tIngress,
+        },
+      },
+    };
+  }
+
+  /**
+   * Create a publish error ACK.
+   */
+  protected createPublishErrorAck(
+    requestId: string | undefined,
+    topic: string,
+    clientMsgId: string,
+    code:
+      | "UNAUTHORIZED"
+      | "FORBIDDEN"
+      | "INVALID"
+      | "RATE_LIMITED"
+      | "INTERNAL",
+    message: string,
+  ): AckPacketType {
+    return {
+      packetType: "ack",
+      requestId,
+      type: {
+        type: "ack",
+        path: "publish",
+        seq: "0",
+        serverAssignedId: crypto.randomUUID(),
+        clientMsgId,
+        topic,
+        result: {
+          ok: false,
+          code,
+          message,
+        },
+      },
+    };
+  }
+
+  /**
+   * Create a subscription ACK.
+   */
+  protected createSubscriptionAck(
+    requestId: string | undefined,
+    topic: string,
+    status: "subscribed" | "unsubscribed",
+    path: "subscribe" | "unsubscribe",
+  ): AckPacketType {
+    return {
+      packetType: "ack",
+      requestId,
+      type: {
+        type: "ack",
+        path,
+        seq: crypto.randomUUID(),
+        serverAssignedId: crypto.randomUUID(),
+        clientMsgId: crypto.randomUUID(),
+        topic,
+        result: {
+          ok: true,
+          status,
+        },
+      },
+    };
   }
 }

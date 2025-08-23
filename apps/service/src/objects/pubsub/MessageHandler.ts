@@ -14,6 +14,16 @@ import { MessageBuffer } from "./MessageBuffer";
 import { ServiceContext } from "./types";
 
 /**
+ * Result of a broadcast operation containing sequence information for ACKs.
+ */
+export interface BroadcastResult {
+  /** Generated sequence number for the message */
+  seq: string;
+  /** Server-assigned message ID */
+  serverMsgId: string;
+}
+
+/**
  * Message broadcast coordinator interface for dependency injection.
  */
 export interface MessageBroadcastCoordinator {
@@ -25,7 +35,7 @@ export interface MessageBroadcastCoordinator {
     channelName: string,
     tIngress: number,
     tEnqueued: number,
-  ): Promise<void>;
+  ): Promise<BroadcastResult>;
 }
 
 /**
@@ -310,6 +320,16 @@ export class MessageHandler extends BaseService {
       });
       this.logDebug(`[WS_SUBSCRIBE] Successfully subscribed to channel`);
 
+      // Send success ACK (always send for subscribe operations)
+      const subscribeAck = this.createSubscriptionAck(
+        envelope.requestId,
+        topic,
+        "subscribed",
+        "subscribe",
+      );
+      await this.sendAck(ws, subscribeAck);
+      this.logDebug(`[WS_SUBSCRIBE] Subscribe ACK sent for topic: ${topic}`);
+
       // Enqueue usage tracking for successful subscription
       await this.enqueueUsageEvent("websocket.subscribe", projectId);
 
@@ -373,6 +393,18 @@ export class MessageHandler extends BaseService {
         clientId,
       });
       this.logDebug(`[WS_UNSUBSCRIBE] Successfully unsubscribed from channel`);
+
+      // Send success ACK (always send for unsubscribe operations)
+      const unsubscribeAck = this.createSubscriptionAck(
+        envelope.requestId,
+        topic,
+        "unsubscribed",
+        "unsubscribe",
+      );
+      await this.sendAck(ws, unsubscribeAck);
+      this.logDebug(
+        `[WS_UNSUBSCRIBE] Unsubscribe ACK sent for topic: ${topic}`,
+      );
     } catch (error) {
       this.logError(`[WS_UNSUBSCRIBE] Unsubscription failed: ${error}`);
       // Don't close connection for unsubscribe failures
@@ -386,6 +418,7 @@ export class MessageHandler extends BaseService {
    * - Validates write permissions for the topic
    * - Checks subscription status
    * - Initiates message broadcasting to all shards
+   * - Sends ACK responses when requested
    * - Provides performance instrumentation
    *
    * @param ws - WebSocket connection
@@ -425,9 +458,11 @@ export class MessageHandler extends BaseService {
     const channelName = grant.data.channel;
     const projectId = grant.data.project_id;
     const payload = envelope.payload;
+    const needsAck = envelope.ack === true;
+    const clientMsgId = envelope.clientMsgId;
 
     this.logDebug(
-      `[WS_PUBLISH] Publish request - clientId: ${clientId}, topic: ${topic}, channel: ${channelName}`,
+      `[WS_PUBLISH] Publish request - clientId: ${clientId}, topic: ${topic}, channel: ${channelName}, needsAck: ${needsAck}`,
     );
 
     // Check write access permissions
@@ -448,7 +483,19 @@ export class MessageHandler extends BaseService {
       this.logError(
         `[WS_PUBLISH] Client lacks write access for topic "${topic}"`,
       );
-      return; // Silently ignore unauthorized publish
+
+      // Send error ACK if requested
+      if (needsAck) {
+        const errorAck = this.createPublishErrorAck(
+          envelope.requestId,
+          topic,
+          clientMsgId,
+          "FORBIDDEN",
+          "Insufficient permissions for topic",
+        );
+        await this.sendAck(ws, errorAck);
+      }
+      return;
     }
 
     // Check subscription status (required for publishing)
@@ -461,32 +508,79 @@ export class MessageHandler extends BaseService {
 
     if (!isSubscribed) {
       this.logError(`[WS_PUBLISH] Client not subscribed to topic [${topic}]`);
-      return; // Silently ignore unsubscribed publish
+
+      // Send error ACK if requested
+      if (needsAck) {
+        const errorAck = this.createPublishErrorAck(
+          envelope.requestId,
+          topic,
+          clientMsgId,
+          "FORBIDDEN",
+          "Must be subscribed to topic before publishing",
+        );
+        await this.sendAck(ws, errorAck);
+      }
+      return;
     }
 
     // Mark as enqueued after authentication and routing
     const tEnqueued = monoNow();
     this.logDebug(`[WS_PUBLISH] All checks passed, broadcasting message`);
 
-    // Delegate to broadcast coordinator for cross-shard message handling
-    await this.broadcastCoordinator.broadcastToAllShardsAndUpdateState(
-      payload,
-      clientId,
-      topic,
-      projectId,
-      channelName,
-      tIngress,
-      tEnqueued,
-    );
+    try {
+      // Delegate to broadcast coordinator for cross-shard message handling
+      const broadcastResult =
+        await this.broadcastCoordinator.broadcastToAllShardsAndUpdateState(
+          payload,
+          clientId,
+          topic,
+          projectId,
+          channelName,
+          tIngress,
+          tEnqueued,
+        );
 
-    // Performance logging
-    if (this.env.DEBUG) {
-      const tFinish = monoNow();
-      const elapsed = (tFinish - tIngress).toFixed(2);
-      console.log(
-        `[MESSAGE_HANDLER] [WS_PUBLISH] Done topic=${topic} client=${clientId} ` +
-          `elapsed=${elapsed}ms (ingress=${tIngress.toFixed(3)}ms → finish=${tFinish.toFixed(3)}ms)`,
-      );
+      // Send success ACK if requested
+      if (needsAck) {
+        const successAck = this.createPublishSuccessAck(
+          envelope.requestId,
+          topic,
+          broadcastResult.serverMsgId,
+          clientMsgId,
+          broadcastResult.seq,
+          tIngress,
+        );
+        await this.sendAck(ws, successAck);
+        this.logDebug(
+          `[WS_PUBLISH] Success ACK sent for clientMsgId: ${clientMsgId}, seq: ${broadcastResult.seq}`,
+        );
+      }
+
+      // Performance logging
+      if (this.env.DEBUG) {
+        const tFinish = monoNow();
+        const elapsed = (tFinish - tIngress).toFixed(2);
+        console.log(
+          `[MESSAGE_HANDLER] [WS_PUBLISH] Done topic=${topic} client=${clientId} ` +
+            `elapsed=${elapsed}ms (ingress=${tIngress.toFixed(3)}ms → finish=${tFinish.toFixed(3)}ms)`,
+        );
+      }
+    } catch (error) {
+      this.logError(`[WS_PUBLISH] Publish failed: ${error}`);
+
+      // Send error ACK if requested
+      if (needsAck) {
+        const errorAck = this.createPublishErrorAck(
+          envelope.requestId,
+          topic,
+          clientMsgId,
+          "INTERNAL",
+          "Message publishing failed",
+        );
+        await this.sendAck(ws, errorAck);
+      }
+
+      // Don't close connection for publish failures, just log
     }
   }
 
@@ -499,7 +593,7 @@ export class MessageHandler extends BaseService {
    */
   private async deliverMissedMessages(
     ws: WebSocket,
-    grant: any,
+    grant: Grant,
     topic: string,
   ): Promise<void> {
     this.logDebug(
@@ -576,7 +670,10 @@ export class MessageHandler extends BaseService {
    * @param operation - Operation name for logging
    * @returns Parsed grant or null if invalid (WebSocket will be closed)
    */
-  private getValidGrant(ws: WebSocket, operation: string): any {
+  private getValidGrant(
+    ws: WebSocket,
+    operation: string,
+  ): { success: true; data: Grant } | null {
     const grantRaw = ws.deserializeAttachment();
     const grant = GrantSchema.safeParse(grantRaw);
 
@@ -625,11 +722,11 @@ export class MessageHandler extends BaseService {
     const usageEnvelope: QueueEnvelope = {
       packetType: "usage",
       payload: {
-        projectId,
-        channelName: "", // Not applicable for connect/subscribe events
-        topic: "", // Not applicable for connect/subscribe events
-        message: "", // Empty message for connect/subscribe events
         event,
+        data: {
+          projectId,
+          payloadLength: 0, // No payload for connect/subscribe events
+        },
       },
     };
 

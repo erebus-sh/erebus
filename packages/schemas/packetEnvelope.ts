@@ -24,34 +24,37 @@ const UnsubscribePacket = z.object({
 
 const PublishPacket = z.object({
   packetType: z.literal("publish"),
+  ack: z.boolean().optional(),
   requestId: RequestId,
   topic: z.string().min(1),
   payload: MessageBodySchema,
-  clientMsgId: z.string().min(1).optional(), // for idempotency (optional)
+  clientMsgId: z.string().min(1), // for idempotency (required for ACKs)
 });
 
 /** Server → Client (ACK) */
-// We keep one "ack" envelope, with a nested discriminated union on "type".
-const AckSubscribe = z.object({
-  type: z.literal("subscribe"),
-  topic: z.string().min(1),
-  status: z.enum(["subscribed", "unsubscribed"]),
+// Base ACK structure - all ACKs start with type "ack"
+const BaseAck = z.object({
+  type: z.literal("ack"),
+  path: z.enum(["publish", "subscribe", "unsubscribe"]),
+  seq: z.string().min(1),
+  serverAssignedId: z.string().min(1),
+  clientMsgId: z.string().min(1),
 });
 
-// For publish we allow success OR error, while still discriminating on "type".
-const AckPublishOk = z.object({
-  type: z.literal("publish"),
+// Publish ACK - success case
+const AckPublishOk = BaseAck.extend({
+  path: z.literal("publish"),
   topic: z.string().min(1),
   result: z.object({
     ok: z.literal(true),
     serverMsgId: z.string().min(1),
-    seq: z.string().min(1),
-    t_ingress: z.number(), // ms epoch (or ISO if you prefer string)
+    t_ingress: z.number(), // ms epoch
   }),
 });
 
-const AckPublishErr = z.object({
-  type: z.literal("publish"),
+// Publish ACK - error case
+const AckPublishErr = BaseAck.extend({
+  path: z.literal("publish"),
   topic: z.string().min(1),
   result: z.object({
     ok: z.literal(false),
@@ -61,17 +64,26 @@ const AckPublishErr = z.object({
       "INVALID",
       "RATE_LIMITED",
       "INTERNAL",
-      // add more as needed
     ]),
     message: z.string().min(1),
   }),
 });
 
-/** "type" is the discriminator here */
-const AckTypeSchema = z.discriminatedUnion("type", [
-  AckSubscribe,
+// Subscribe/Unsubscribe ACK
+const AckSubscription = BaseAck.extend({
+  path: z.enum(["subscribe", "unsubscribe"]),
+  topic: z.string().min(1),
+  result: z.object({
+    ok: z.literal(true),
+    status: z.enum(["subscribed", "unsubscribed"]),
+  }),
+});
+
+/** Master ACK union discriminated by path */
+const AckTypeSchema = z.discriminatedUnion("path", [
   AckPublishOk,
   AckPublishErr,
+  AckSubscription,
 ]);
 
 const AckPacket = z.object({
@@ -90,3 +102,19 @@ export const PacketEnvelopeSchema = z.discriminatedUnion("packetType", [
 ]);
 
 export type PacketEnvelope = z.infer<typeof PacketEnvelopeSchema>;
+
+// Export individual packet types
+export type ConnectPacketType = z.infer<typeof ConnectPacket>;
+export type SubscribePacketType = z.infer<typeof SubscribePacket>;
+export type UnsubscribePacketType = z.infer<typeof UnsubscribePacket>;
+export type PublishPacketType = z.infer<typeof PublishPacket>;
+export type AckPacketType = z.infer<typeof AckPacket>;
+
+// Export ACK types
+export type AckType = z.infer<typeof AckTypeSchema>;
+export type AckPublishOkType = z.infer<typeof AckPublishOk>;
+export type AckPublishErrType = z.infer<typeof AckPublishErr>;
+export type AckSubscriptionType = z.infer<typeof AckSubscription>;
+
+// Export base ACK structure
+export type BaseAckType = z.infer<typeof BaseAck>;

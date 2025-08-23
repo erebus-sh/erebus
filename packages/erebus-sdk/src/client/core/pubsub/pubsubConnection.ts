@@ -1,6 +1,10 @@
 import { encodeEnvelope, parseServerFrame } from "@/client/core/wire";
-import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import type {
+  PacketEnvelope,
+  AckPacketType,
+} from "@repo/schemas/packetEnvelope";
 import type { MessageBody } from "@repo/schemas/messageBody";
+import type { AckCallback, PendingPublish, AckResponse } from "../types";
 import { logger } from "@/internal/logger/consola";
 import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
 import consola from "consola";
@@ -43,6 +47,10 @@ export class PubSubConnection {
   // Subscription tracking for optimistic updates
   #subscribedTopics = new Set<string>();
   #unsubscribedTopics = new Set<string>();
+
+  // ACK tracking for publish operations
+  #pendingPublishes = new Map<string, PendingPublish>();
+  #ackTimeoutMs = 30000; // 30 seconds timeout for ACKs
   constructor(opts: {
     url: string;
     tokenProvider: (channel: string) => Promise<string>;
@@ -229,7 +237,10 @@ export class PubSubConnection {
     const ws = new WebSocket(connectUrl.toString());
     try {
       // Ensure we receive ArrayBuffer rather than Blob in browsers/JSDOM
-      (ws as any).binaryType = "arraybuffer";
+      // This is a standard WebSocket property but may not be in all type definitions
+      if ("binaryType" in ws) {
+        (ws as WebSocket & { binaryType: string }).binaryType = "arraybuffer";
+      }
     } catch {}
     this.#ws = ws;
 
@@ -303,9 +314,15 @@ export class PubSubConnection {
             ? Buffer.from(ev.data, "utf8").toString("hex")
             : ev.data instanceof ArrayBuffer
               ? Buffer.from(ev.data).toString("hex")
-              : typeof ev.data === "object" && (ev.data as any)?.arrayBuffer
+              : typeof ev.data === "object" &&
+                  ev.data &&
+                  "arrayBuffer" in ev.data
                 ? Buffer.from(
-                    new Uint8Array(await (ev.data as any).arrayBuffer()),
+                    new Uint8Array(
+                      await (
+                        ev.data as { arrayBuffer: () => Promise<ArrayBuffer> }
+                      ).arrayBuffer(),
+                    ),
                   ).toString("hex")
                 : "";
         console.log(`[${this.#connectionId}] WS message hex:`, hex);
@@ -336,11 +353,16 @@ export class PubSubConnection {
           dataStr = "";
         } else if (
           ev.data &&
-          typeof (ev.data as any).arrayBuffer === "function"
+          typeof ev.data === "object" &&
+          "arrayBuffer" in ev.data &&
+          typeof (ev.data as { arrayBuffer: () => Promise<ArrayBuffer> })
+            .arrayBuffer === "function"
         ) {
           // Blob-like (supports arrayBuffer())
           logger.info(`[${this.#connectionId}] Processing Blob-like message`);
-          const arrayBuffer = await (ev.data as any).arrayBuffer();
+          const arrayBuffer = await (
+            ev.data as { arrayBuffer: () => Promise<ArrayBuffer> }
+          ).arrayBuffer();
           const uint8 = new Uint8Array(arrayBuffer);
           if (this.#debugHexDump) {
             const hex = Array.from(uint8)
@@ -358,7 +380,7 @@ export class PubSubConnection {
           });
         } else if (typeof Buffer !== "undefined" && Buffer.isBuffer(ev.data)) {
           // Node Buffer
-          const buf: Buffer = ev.data as any;
+          const buf = ev.data as Buffer;
           const uint8 = new Uint8Array(
             buf.buffer,
             buf.byteOffset,
@@ -419,22 +441,31 @@ export class PubSubConnection {
         });
         return;
       }
-      logger.info(`[${this.#connectionId}] Parsed message`, {
-        topic: parsed.topic,
-        messageId: parsed.id || "unknown",
+
+      logger.info(`[${this.#connectionId}] Parsed packet`, {
+        packetType: parsed.packetType,
       });
 
       try {
-        this.#onMsg({
-          packetType: "publish",
-          topic: parsed.topic,
-          payload: parsed,
-        });
+        // Handle ACK packets
+        if (parsed.packetType === "ack") {
+          this.#handleAckPacket(parsed as AckPacketType);
+        } else if (parsed.packetType === "publish") {
+          // Handle regular publish messages
+          logger.info(`[${this.#connectionId}] Handling publish message`, {
+            topic: parsed.payload.topic,
+            messageId: parsed.payload.id || "unknown",
+          });
+          this.#onMsg(parsed);
+        } else {
+          logger.warn(`[${this.#connectionId}] Unknown packet type`, {
+            packetType: parsed.packetType,
+          });
+        }
       } catch (error) {
-        logger.error(`[${this.#connectionId}] Error in message handler`, {
+        logger.error(`[${this.#connectionId}] Error handling packet`, {
           error,
-          topic: parsed.topic,
-          messageId: parsed.id,
+          packetType: parsed.packetType,
         });
         // Don't rethrow - we want to keep the connection alive even if handlers fail
       }
@@ -446,6 +477,9 @@ export class PubSubConnection {
         retry: this.#retry,
         state: this.#state,
       });
+
+      // Clean up pending ACK callbacks on disconnect
+      this.#cleanupPendingPublishes("Connection lost");
 
       // Only attempt reconnect if we're not already closed and auto-reconnect is enabled
       if (this.#state !== "closed" && this.#autoReconnect) {
@@ -617,15 +651,39 @@ export class PubSubConnection {
   }
 
   publish(payload: MessageBody) {
+    return this.#publishInternal(payload, false);
+  }
+
+  publishWithAck(
+    payload: MessageBody,
+    callback: AckCallback,
+    timeoutMs: number = this.#ackTimeoutMs,
+  ) {
+    return this.#publishInternal(payload, true, callback, timeoutMs);
+  }
+
+  #publishInternal(
+    payload: MessageBody,
+    withAck: boolean = false,
+    callback?: AckCallback,
+    timeoutMs?: number,
+  ) {
     logger.info(`[${this.#connectionId}] Publish called`, {
-      topic: (payload as any).topic,
+      topic: payload.topic,
       payloadType: typeof payload,
+      withAck,
     });
 
     // Validate payload
     if (!payload || typeof payload !== "object") {
       const error = "Invalid payload: must be an object";
       logger.error(`[${this.#connectionId}] ${error}`, { payload });
+      throw new Error(error);
+    }
+
+    if (withAck && !callback) {
+      const error = "ACK callback is required when withAck is true";
+      logger.error(`[${this.#connectionId}] ${error}`);
       throw new Error(error);
     }
 
@@ -677,42 +735,108 @@ export class PubSubConnection {
       });
     }
 
-    this.#log("info", "publish sending", { topic: (payload as any).topic });
-    // Ensure client correlation fields exist (best-effort)
+    this.#log("info", "publish sending", { topic: payload.topic });
+
+    // Generate client correlation fields - always initialize with a fallback
+    let clientMsgId: string = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    let requestId: string | undefined;
+
     try {
       if (!payload.clientPublishTs) {
-        (payload as any).clientPublishTs = Date.now();
+        // Type assertion is safe here as we're adding a valid property to MessageBody
+        Object.assign(payload, { clientPublishTs: Date.now() });
       }
-      if (!payload.clientMsgId) {
+
+      // Generate or use existing clientMsgId
+      if (payload.clientMsgId) {
+        clientMsgId = payload.clientMsgId;
+      } else {
         if (
           typeof crypto !== "undefined" &&
           typeof crypto.randomUUID === "function"
         ) {
-          (payload as any).clientMsgId = crypto.randomUUID();
+          clientMsgId = crypto.randomUUID();
+        } else {
+          clientMsgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
         }
+        // Type assertion is safe here as we're adding a valid property to MessageBody
+        Object.assign(payload, { clientMsgId });
       }
-    } catch (_) {
-      // ignore failures to set optional client fields
+
+      // Generate requestId for ACK tracking
+      if (withAck && callback) {
+        requestId =
+          crypto?.randomUUID?.() ||
+          `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // Set up ACK tracking
+        const pending: PendingPublish = {
+          requestId,
+          clientMsgId,
+          topic: payload.topic,
+          callback,
+          timestamp: Date.now(),
+        };
+
+        // Set timeout for ACK response
+        if (timeoutMs && timeoutMs > 0) {
+          pending.timeoutId = setTimeout(() => {
+            this.#handleAckTimeout(requestId!);
+          }, timeoutMs);
+        }
+
+        this.#pendingPublishes.set(requestId, pending);
+        logger.info(`[${this.#connectionId}] ACK tracking set up`, {
+          requestId,
+          clientMsgId,
+          topic: payload.topic,
+          timeoutMs,
+        });
+      }
+    } catch (err) {
+      // If we fail to generate client fields, ensure fallback is set
+      Object.assign(payload, { clientMsgId });
+      logger.warn(
+        `[${this.#connectionId}] Error setting client fields, using fallback`,
+        { err, clientMsgId },
+      );
     }
+
     logger.info(`[${this.#connectionId}] Publishing message`, {
-      topic: (payload as any).topic,
+      topic: payload.topic,
       bufferedAmount: this.#ws.bufferedAmount,
+      withAck,
+      requestId,
+      clientMsgId,
     });
     consola.info(
       `[PubSubConnection] [${this.#connectionId}] Publishing message`,
       {
         topic: payload.topic,
         bufferedAmount: this.#ws.bufferedAmount,
+        withAck,
       },
     );
 
     try {
       this.send({
         packetType: "publish",
+        ack: withAck,
+        requestId,
         topic: payload.topic,
         payload,
+        clientMsgId: clientMsgId!,
       });
     } catch (error) {
+      // Clean up ACK tracking on send failure
+      if (withAck && requestId) {
+        const pending = this.#pendingPublishes.get(requestId);
+        if (pending?.timeoutId) {
+          clearTimeout(pending.timeoutId);
+        }
+        this.#pendingPublishes.delete(requestId);
+      }
+
       logger.error(`[${this.#connectionId}] Error publishing message`, {
         error,
         topic: payload.topic,
@@ -758,6 +882,9 @@ export class PubSubConnection {
     // Stop heartbeat first
     this.#stopHeartbeat();
 
+    // Clean up pending ACK callbacks with error
+    this.#cleanupPendingPublishes("Connection closed");
+
     // Clear any pending timeouts and close WebSocket
     if (this.#ws) {
       try {
@@ -783,6 +910,171 @@ export class PubSubConnection {
     this.#clearCachedGrant();
 
     logger.info(`[${this.#connectionId}] Connection closed and cleaned up`);
+  }
+
+  /**
+   * Handle incoming ACK packets
+   */
+  #handleAckPacket(ackPacket: AckPacketType) {
+    logger.info(`[${this.#connectionId}] Handling ACK packet`, {
+      requestId: ackPacket.requestId,
+      path: ackPacket.type.path,
+    });
+
+    const requestId = ackPacket.requestId;
+    if (!requestId) {
+      logger.warn(`[${this.#connectionId}] ACK packet missing requestId`);
+      return;
+    }
+
+    const pending = this.#pendingPublishes.get(requestId);
+    if (!pending) {
+      logger.warn(`[${this.#connectionId}] No pending publish found for ACK`, {
+        requestId,
+      });
+      return;
+    }
+
+    // Clear timeout
+    if (pending.timeoutId) {
+      clearTimeout(pending.timeoutId);
+    }
+
+    // Remove from pending
+    this.#pendingPublishes.delete(requestId);
+
+    // Create response based on ACK type
+    let response: AckResponse;
+
+    if (ackPacket.type.path === "publish") {
+      if ("result" in ackPacket.type && ackPacket.type.result.ok) {
+        // Success ACK
+        response = {
+          success: true,
+          ack: ackPacket,
+          seq: ackPacket.type.seq,
+          serverMsgId: ackPacket.type.result.serverMsgId,
+          topic: ackPacket.type.topic!,
+        };
+      } else if ("result" in ackPacket.type && !ackPacket.type.result.ok) {
+        // Error ACK
+        response = {
+          success: false,
+          ack: ackPacket,
+          error: {
+            code: ackPacket.type.result.code,
+            message: ackPacket.type.result.message,
+          },
+          topic: ackPacket.type.topic!,
+        };
+      } else {
+        // Malformed ACK
+        response = {
+          success: false,
+          ack: ackPacket,
+          error: {
+            code: "MALFORMED_ACK",
+            message: "ACK packet has invalid structure",
+          },
+          topic: pending.topic,
+        };
+      }
+    } else {
+      // Non-publish ACK (subscription, etc.)
+      logger.info(`[${this.#connectionId}] Received non-publish ACK`, {
+        path: ackPacket.type.path,
+        requestId,
+      });
+      return; // These aren't tracked by publish operations
+    }
+
+    logger.info(`[${this.#connectionId}] Calling ACK callback`, {
+      requestId,
+      success: response.success,
+    });
+
+    try {
+      pending.callback(response);
+    } catch (error) {
+      logger.error(`[${this.#connectionId}] Error in ACK callback`, {
+        error,
+        requestId,
+      });
+    }
+  }
+
+  /**
+   * Handle ACK timeout
+   */
+  #handleAckTimeout(requestId: string) {
+    logger.warn(`[${this.#connectionId}] ACK timeout`, { requestId });
+
+    const pending = this.#pendingPublishes.get(requestId);
+    if (!pending) {
+      return; // Already handled
+    }
+
+    // Remove from pending
+    this.#pendingPublishes.delete(requestId);
+
+    // Create timeout error response
+    const response: AckResponse = {
+      success: false,
+      ack: {} as AckPacketType, // Empty ACK since we didn't receive one
+      error: {
+        code: "TIMEOUT",
+        message: `ACK not received within ${this.#ackTimeoutMs}ms`,
+      },
+      topic: pending.topic,
+    };
+
+    try {
+      pending.callback(response);
+    } catch (error) {
+      logger.error(`[${this.#connectionId}] Error in timeout callback`, {
+        error,
+        requestId,
+      });
+    }
+  }
+
+  /**
+   * Clean up all pending publishes (on disconnect, etc.)
+   */
+  #cleanupPendingPublishes(reason: string) {
+    logger.info(`[${this.#connectionId}] Cleaning up pending publishes`, {
+      count: this.#pendingPublishes.size,
+      reason,
+    });
+
+    for (const [requestId, pending] of this.#pendingPublishes) {
+      // Clear timeout
+      if (pending.timeoutId) {
+        clearTimeout(pending.timeoutId);
+      }
+
+      // Create error response
+      const response: AckResponse = {
+        success: false,
+        ack: {} as AckPacketType,
+        error: {
+          code: "CONNECTION_ERROR",
+          message: reason,
+        },
+        topic: pending.topic,
+      };
+
+      try {
+        pending.callback(response);
+      } catch (error) {
+        logger.error(`[${this.#connectionId}] Error in cleanup callback`, {
+          error,
+          requestId,
+        });
+      }
+    }
+
+    this.#pendingPublishes.clear();
   }
 
   // --- internals ---

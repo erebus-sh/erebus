@@ -3,7 +3,11 @@ import { Env } from "@/env";
 import { MessageBody } from "@repo/schemas/messageBody";
 import { monoNow } from "@/lib/monotonic";
 import { ErebusPubSubService } from "./ErebusPubSubService";
-import { MessageHandler, MessageBroadcastCoordinator } from "./MessageHandler";
+import {
+  MessageHandler,
+  MessageBroadcastCoordinator,
+  BroadcastResult,
+} from "./MessageHandler";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageBroadcaster } from "./MessageBroadcaster";
 import { MessageBuffer } from "./MessageBuffer";
@@ -196,6 +200,7 @@ export class ChannelV1
    * - Creates complete message metadata with timing instrumentation
    * - Broadcasts locally and to remote shards
    * - Manages background persistence operations
+   * - Returns sequence and server message ID for ACK responses
    */
   async broadcastToAllShardsAndUpdateState(
     payload: MessageBody,
@@ -205,7 +210,7 @@ export class ChannelV1
     channelName: string,
     tIngress: number,
     tEnqueued: number,
-  ): Promise<void> {
+  ): Promise<BroadcastResult> {
     const broadcastStartTime = monoNow();
 
     this.logDebug(
@@ -226,6 +231,9 @@ export class ChannelV1
         `subscribers: ${subscriberClientIds.length}, seq duration: ${seqDuration.toFixed(2)}ms`,
     );
 
+    // Generate server message ID for ACK responses
+    const serverMsgId = crypto.randomUUID();
+
     // Create complete message with timing instrumentation
     const wallClockIngressTime = Date.now() - (monoNow() - tIngress);
     const filledPayload: MessageBody = {
@@ -234,7 +242,7 @@ export class ChannelV1
       topic: topic,
       sentAt: new Date(wallClockIngressTime), // Wall clock time for human readability
       seq: seq,
-      id: crypto.randomUUID(),
+      id: serverMsgId, // Use server message ID as the message ID
       // Timing instrumentation for performance analysis
       t_ingress: tIngress,
       t_enqueued: tEnqueued,
@@ -297,6 +305,12 @@ export class ChannelV1
     this.logDebug(
       `[BROADCAST] Broadcast completed - duration: ${broadcastDuration.toFixed(2)}ms`,
     );
+
+    // Return sequence and server message ID for ACK responses
+    return {
+      seq,
+      serverMsgId,
+    };
   }
 
   /**
