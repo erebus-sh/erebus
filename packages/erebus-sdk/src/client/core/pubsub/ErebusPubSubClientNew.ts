@@ -198,7 +198,7 @@ export class ErebusPubSubClientNew {
     return this.#channel;
   }
 
-  private #publishInternal(
+  #publishInternal(
     topic: string,
     messageBody: string,
     withAck: boolean = false,
@@ -255,7 +255,7 @@ export class ErebusPubSubClientNew {
     });
   }
 
-  private #handleMessage(m: PacketEnvelope): void {
+  #handleMessage(m: PacketEnvelope): void {
     if (m.packetType !== "publish") {
       if (this.#debug) {
         consola.info(

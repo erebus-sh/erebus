@@ -2,8 +2,7 @@ import type {
   PacketEnvelope,
   AckPacketType,
 } from "@repo/schemas/packetEnvelope";
-import type { MessageBody } from "@repo/schemas/messageBody";
-import type { AckCallback, PendingPublish } from "../types";
+import type { PendingPublish } from "../types";
 
 /**
  * Basic connection states

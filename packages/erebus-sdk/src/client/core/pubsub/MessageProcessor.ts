@@ -78,7 +78,7 @@ export class MessageProcessor implements IMessageProcessor {
     }
   }
 
-  private async #handleAckPacket(ackPacket: AckPacketType): Promise<void> {
+  async #handleAckPacket(ackPacket: AckPacketType): Promise<void> {
     logger.info(`[${this.#connectionId}] Processing ACK packet`, {
       requestId: ackPacket.requestId,
       path: ackPacket.type.path,

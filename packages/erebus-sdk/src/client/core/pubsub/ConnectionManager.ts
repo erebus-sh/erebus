@@ -278,7 +278,7 @@ export class ConnectionManager implements IConnectionManager {
     });
   }
 
-  private async #createWebSocket(): Promise<WebSocket> {
+  async #createWebSocket(): Promise<WebSocket> {
     const connectUrl = new URL(this.#url);
     logger.info(`[${this.#connectionId}] Creating WebSocket connection`, {
       url: this.#url,
@@ -296,7 +296,7 @@ export class ConnectionManager implements IConnectionManager {
     return ws;
   }
 
-  private #setupWebSocketListeners(ws: WebSocket): void {
+  #setupWebSocketListeners(ws: WebSocket): void {
     ws.addEventListener(
       "open",
       () => {
@@ -339,7 +339,7 @@ export class ConnectionManager implements IConnectionManager {
     });
   }
 
-  private async #handleMessage(ev: MessageEvent): Promise<void> {
+  async #handleMessage(ev: MessageEvent): Promise<void> {
     this.#log("info", "ws message received");
 
     // Handle hex dump debugging
@@ -356,7 +356,9 @@ export class ConnectionManager implements IConnectionManager {
       }
 
       // Forward to message processor via callback
-      this.#onMessage({ rawData: dataStr } as any); // This will be handled by the message processor
+      this.#onMessage({ rawData: dataStr } as PacketEnvelope & {
+        rawData: string;
+      });
     } catch (error) {
       logger.error(`[${this.#connectionId}] Error handling message`, {
         error,
@@ -364,7 +366,7 @@ export class ConnectionManager implements IConnectionManager {
     }
   }
 
-  private #getHexDump(data: any): string {
+  #getHexDump(data: unknown): string {
     if (typeof data === "string") {
       return Buffer.from(data, "utf8").toString("hex");
     } else if (data instanceof ArrayBuffer) {
@@ -376,7 +378,7 @@ export class ConnectionManager implements IConnectionManager {
     return "";
   }
 
-  private async #convertToString(data: any): Promise<string> {
+  async #convertToString(data: unknown): Promise<string> {
     if (typeof data === "string") {
       return data;
     } else if (typeof data === "undefined" || data === null) {
@@ -412,7 +414,7 @@ export class ConnectionManager implements IConnectionManager {
     }
   }
 
-  private #reconnect(): void {
+  #reconnect(): void {
     if (this.#state === "closed" || this.#state === "connecting") {
       logger.info(
         `[${this.#connectionId}] Reconnect called but connection is ${this.#state}, ignoring`,

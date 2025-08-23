@@ -1,9 +1,12 @@
-// Main orchestrator
+// Main orchestrator (new modular version)
 export {
   PubSubConnection,
   BackpressureError,
   NotConnectedError,
 } from "./PubSubConnectionNew";
+
+// New modular client
+export { ErebusPubSubClientNew } from "./ErebusPubSubClientNew";
 
 // Individual managers (for advanced use cases)
 export { ConnectionManager } from "./ConnectionManager";
@@ -16,8 +19,6 @@ export { HeartbeatManager } from "./HeartbeatManager";
 // Interfaces and types
 export type * from "./interfaces";
 
-// For backward compatibility, also export the original classes
+// Legacy exports (will be deprecated)
 export { ErebusPubSubClient } from "./ErebusPubSub";
-
-// Legacy connection (will be deprecated)
 export { PubSubConnection as PubSubConnectionLegacy } from "./pubsubConnection";

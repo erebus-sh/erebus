@@ -1,5 +1,5 @@
 import type { AckPacketType } from "@repo/schemas/packetEnvelope";
-import type { AckCallback, PendingPublish, AckResponse } from "../types";
+import type { PendingPublish, AckResponse } from "../types";
 import type { IAckManager } from "./interfaces";
 import { logger } from "@/internal/logger/consola";
 
@@ -151,7 +151,7 @@ export class AckManager implements IAckManager {
     return this.#pendingPublishes.size;
   }
 
-  private #createAckResponse(
+  #createAckResponse(
     ackPacket: AckPacketType,
     pending: PendingPublish,
   ): AckResponse {
