@@ -7,7 +7,7 @@ import type {
   ConnectionState,
   SubscriptionStatus,
 } from "./interfaces";
-
+import { nanoid } from "nanoid";
 import {
   ConnectionManager,
   BackpressureError,
@@ -360,9 +360,7 @@ export class PubSubConnection {
 
       // Generate requestId for ACK tracking
       if (withAck && callback) {
-        requestId =
-          crypto?.randomUUID?.() ||
-          `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        requestId = `req_${Date.now()}_${nanoid()}`;
 
         // Set up ACK tracking
         const pending: PendingPublish = {
