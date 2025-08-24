@@ -58,7 +58,18 @@ export default function UsagePage() {
     }
   };
 
-  const canGoNext = Boolean(usageData?.continueCursor && !usageData?.isDone);
+  // canGoNext should be false if we've reached or passed the total count
+  const canGoNext = (() => {
+    if (
+      usageData?.totalCount !== undefined &&
+      usageData?.page &&
+      currentPageStart + usageData.page.length - 1 >= usageData.totalCount
+    ) {
+      return false;
+    }
+    return Boolean(usageData?.continueCursor && !usageData?.isDone);
+  })();
+
   const canGoPrevious = cursor !== null || cursorHistory.length > 0;
   if (!usageData || usageData.page.length === 0) {
     return (
