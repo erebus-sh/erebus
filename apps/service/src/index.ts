@@ -100,6 +100,11 @@ export default {
        * Use getChannelsForProjectId to get all the channels for the project id
        */
       switch (command.data.command) {
+        /**
+         * we usage limits hit, we pause it by call stub in every avaliable
+         * do instance, they are all stored in redis, so we can just grab them
+         * and loop on them
+         */
         case "pause_project_id":
           throw new Error("Not implemented");
         case "unpause_project_id":
