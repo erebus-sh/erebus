@@ -116,5 +116,18 @@ export type AckPublishOkType = z.infer<typeof AckPublishOk>;
 export type AckPublishErrType = z.infer<typeof AckPublishErr>;
 export type AckSubscriptionType = z.infer<typeof AckSubscription>;
 
+// Export schema objects for parsing
+export {
+  ConnectPacket,
+  SubscribePacket,
+  UnsubscribePacket,
+  PublishPacket,
+  AckPacket,
+  AckPublishOk,
+  AckPublishErr,
+  AckSubscription,
+  BaseAck,
+};
+
 // Export base ACK structure
 export type BaseAckType = z.infer<typeof BaseAck>;

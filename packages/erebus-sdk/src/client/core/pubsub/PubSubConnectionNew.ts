@@ -178,12 +178,11 @@ export class PubSubConnection {
     // Get grant token before opening connection
     const grantJWT = await this.#grantManager.getTokenWithCache(this.channel);
 
-    // Add grant to the connection URL
-    const connectUrl = new URL(this.#connectionManager.url);
-    connectUrl.searchParams.set("grant", grantJWT);
-
-    // Open connection
-    await this.#connectionManager.open(timeout);
+    // Open connection with grant and timeout
+    await this.#connectionManager.open({
+      grant: grantJWT,
+      timeout: timeout,
+    });
 
     // Send connect packet
     this.#connectionManager.send({ packetType: "connect", grantJWT });

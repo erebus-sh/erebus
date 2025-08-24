@@ -53,6 +53,14 @@ export interface ConnectionConfig {
 }
 
 /**
+ * Basic open options
+ */
+export interface OpenOptions {
+  timeout?: number;
+  grant: string;
+}
+
+/**
  * Connection management interface
  */
 export interface IConnectionManager {
@@ -66,7 +74,7 @@ export interface IConnectionManager {
   readonly bufferedAmount: number;
   readonly readyState: number | undefined;
 
-  open(timeout?: number): Promise<void>;
+  open(options: OpenOptions): Promise<void>;
   close(): void;
   send(packet: PacketEnvelope): void;
   sendRaw(data: string): void;

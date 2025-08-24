@@ -5,6 +5,7 @@ import type {
   ConnectionConfig,
   OnMessage,
   Logger,
+  OpenOptions,
 } from "./interfaces";
 import { encodeEnvelope } from "@/client/core/wire";
 import { logger } from "@/internal/logger/consola";
@@ -24,6 +25,7 @@ export class ConnectionManager implements IConnectionManager {
   #retry = 0;
   #state: ConnectionState = "idle";
   #connectionId: string;
+  #grant: string;
   #autoReconnect: boolean;
   #onMessage: OnMessage;
   #log: Logger;
@@ -44,6 +46,7 @@ export class ConnectionManager implements IConnectionManager {
 
     this.#url = config.url;
     this.#channel = config.channel;
+    this.#grant = ""; // Initialize empty, will be set when opening
     this.#onMessage = config.onMessage;
     this.#log = config.log ?? (() => {});
     this.#autoReconnect = config.autoReconnect ?? false;
@@ -91,8 +94,10 @@ export class ConnectionManager implements IConnectionManager {
     return this.#channel;
   }
 
-  async open(timeout?: number): Promise<void> {
-    logger.info(`[${this.#connectionId}] Opening connection`, { timeout });
+  async open(options: OpenOptions): Promise<void> {
+    logger.info(`[${this.#connectionId}] Opening connection`, {
+      timeout: options.timeout,
+    });
     this.#log("info", "connection.open called");
 
     // Prevent multiple simultaneous connection attempts
@@ -115,21 +120,24 @@ export class ConnectionManager implements IConnectionManager {
     logger.info(`[${this.#connectionId}] Setting state to connecting`);
     this.#state = "connecting";
 
-    const ws = await this.#createWebSocket();
+    // Store the grant for potential reconnections
+    this.#grant = options.grant;
+
+    const ws = await this.#createWebSocket(options.grant);
     this.#ws = ws;
     this.#setupWebSocketListeners(ws);
 
-    if (timeout) {
+    if (options.timeout) {
       logger.info(`[${this.#connectionId}] Setting connection timeout`, {
-        timeout,
+        timeout: options.timeout,
       });
       const timeoutId = setTimeout(() => {
         logger.error(`[${this.#connectionId}] Connection timeout reached`, {
-          timeout,
+          timeout: options.timeout,
         });
         ws.close();
         throw new Error("Connection timeout");
-      }, timeout);
+      }, options.timeout);
 
       await new Promise<void>((res) =>
         ws.addEventListener(
@@ -313,10 +321,12 @@ export class ConnectionManager implements IConnectionManager {
     });
   }
 
-  async #createWebSocket(): Promise<WebSocket> {
+  async #createWebSocket(grant: string): Promise<WebSocket> {
     const connectUrl = new URL(this.#url);
+    connectUrl.searchParams.set("grant", grant);
     logger.info(`[${this.#connectionId}] Creating WebSocket connection`, {
       url: this.#url,
+      grant: grant.substring(0, 10) + "...", // Log partial grant for debugging
     });
 
     const ws = new WebSocket(connectUrl.toString());
@@ -470,7 +480,7 @@ export class ConnectionManager implements IConnectionManager {
     this.#retry++;
     setTimeout(() => {
       logger.info(`[${this.#connectionId}] Executing scheduled reconnect`);
-      this.open().catch((error) => {
+      this.open({ grant: this.#grant, timeout: 5000 }).catch((error) => {
         logger.error(`[${this.#connectionId}] Reconnect failed`, { error });
         this.#state = "closed";
       });

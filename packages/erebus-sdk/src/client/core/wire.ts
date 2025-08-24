@@ -2,6 +2,9 @@ import { logger } from "@/internal/logger/consola";
 import {
   PacketEnvelopeSchema,
   type PacketEnvelope,
+  AckPublishOk,
+  AckPublishErr,
+  AckSubscription,
 } from "@repo/schemas/packetEnvelope";
 import { MessageBodySchema, type MessageBody } from "@repo/schemas/messageBody";
 
@@ -46,11 +49,17 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
     // Check if it's an ACK packet or message packet
     if (data.packetType === "ack") {
       logger.info("[parseServerFrame] validating ACK packet schema");
-      const parsed = PacketEnvelopeSchema.parse(data);
-      logger.info("[parseServerFrame] ACK packet validated", {
-        requestId: data.requestId,
-      });
-      return parsed;
+      // Handle ACK packets with custom parsing due to duplicate discriminator values
+      const parsed = parseAckPacket(data);
+      if (parsed) {
+        logger.info("[parseServerFrame] ACK packet validated", {
+          requestId: data.requestId,
+        });
+        return parsed;
+      } else {
+        logger.warn("[parseServerFrame] ACK packet parsing failed");
+        return null;
+      }
     } else {
       // Legacy message parsing for backward compatibility
       if (!data.topic || typeof data.topic !== "string") {
@@ -77,6 +86,66 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
       { error: err instanceof Error ? err.message : String(err) },
       raw,
     );
+    return null;
+  }
+}
+
+/**
+ * Parse ACK packets with manual handling to avoid discriminated union issues
+ */
+function parseAckPacket(data: any): PacketEnvelope | null {
+  try {
+    // Manual validation and parsing without relying on discriminated unions
+    if (data.packetType !== "ack") {
+      return null;
+    }
+
+    if (!data.type || typeof data.type !== "object") {
+      return null;
+    }
+
+    const ackType = data.type;
+    const path = ackType.path;
+
+    if (path === "subscribe" || path === "unsubscribe") {
+      // Handle subscription ACKs
+      const subscriptionAck = AckSubscription.parse(ackType);
+      return {
+        packetType: "ack",
+        requestId: data.requestId,
+        type: subscriptionAck,
+      };
+    } else if (path === "publish") {
+      // Handle publish ACKs by checking the result structure
+      if (
+        ackType.result &&
+        typeof ackType.result === "object" &&
+        "ok" in ackType.result
+      ) {
+        if (ackType.result.ok) {
+          // Success ACK
+          const successAck = AckPublishOk.parse(ackType);
+          return {
+            packetType: "ack",
+            requestId: data.requestId,
+            type: successAck,
+          };
+        } else {
+          // Error ACK
+          const errorAck = AckPublishErr.parse(ackType);
+          return {
+            packetType: "ack",
+            requestId: data.requestId,
+            type: errorAck,
+          };
+        }
+      }
+    }
+
+    logger.warn("[parseAckPacket] Unknown ACK type", { path });
+    return null;
+  } catch (error) {
+    logger.warn("[parseAckPacket] Failed to parse ACK packet", { error });
     return null;
   }
 }

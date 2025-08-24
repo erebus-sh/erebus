@@ -4,6 +4,7 @@ import { startAuthServer } from "@/server/app";
 import { ErebusService } from "@/service/Service";
 import { Access } from "@repo/schemas/grant";
 import type { MessageBody } from "@repo/schemas/messageBody";
+import type { AckResponse, AckSuccess, AckError } from "@/client/core/types";
 
 // Enhanced interface for proper latency tracking
 interface MessagePayloadWithLatency extends MessageBody {
@@ -26,7 +27,7 @@ beforeAll(async () => {
     const randomUserId = crypto.randomUUID();
     console.log("generated randomUserId", randomUserId);
     const service = new ErebusService({
-      secret_api_key: "dv-er-p14umx0nlo8d5vuam32y0fn_qe8tnzyynsbp9n__mgjf_yq6",
+      secret_api_key: "dv-er-6j1vd5n4hpwmipoynaeb59p913046h7_059_5srxof90c0ck",
       base_url: "http://localhost:3000", // Erebus service local server
     });
     const session = await service.prepareSession({ userId: randomUserId });
@@ -369,3 +370,287 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
   client2.close();
   console.log("Test completed successfully");
 }, 65000);
+
+test("ACK functionality: client publishes with ACK and receives proper acknowledgment", async () => {
+  // Generate unique topic name for this test run
+  const uniqueTopic = `ack_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const testMessage = `ACK test message: ${Math.random().toString(36).substring(2, 10)}`;
+
+  console.log(`Starting ACK functionality test with topic: ${uniqueTopic}`);
+
+  const client = await ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:6969",
+    wsBaseUrl: "ws://localhost:8787",
+  });
+  console.log("Client created for ACK test");
+
+  // Join the test channel and connect
+  client.joinChannel("test_channel");
+  await client.connect();
+  console.log("Client connected for ACK test");
+
+  // Subscribe to the topic
+  const receivedMessages: MessagePayloadWithLatency[] = [];
+  client.subscribe(uniqueTopic, (payload: MessageBody) => {
+    const receivedAt = Date.now();
+    const messageWithLatency: MessagePayloadWithLatency = {
+      ...payload,
+      receivedAt,
+      processingTime: receivedAt - payload.sentAt.getTime(),
+    };
+    receivedMessages.push(messageWithLatency);
+    console.log(
+      `Received message: ${payload.payload} with seq: ${payload.seq}`,
+    );
+  });
+  console.log("Client subscribed to topic for ACK test");
+
+  // Wait for subscription readiness
+  try {
+    await client.waitForSubscriptionReadiness(1000);
+    console.log("Subscription is ready for ACK test");
+  } catch (error) {
+    console.warn(
+      "Subscription readiness check failed, proceeding anyway:",
+      error,
+    );
+    await new Promise((r) => setTimeout(r, 200));
+  }
+
+  // Test ACK functionality
+  let ackReceived = false;
+  let ackSuccess = false;
+  let ackData: AckResponse | null = null;
+  let ackError: { code: string; message: string } | undefined = undefined;
+
+  const publishStartTime = Date.now();
+
+  // Publish with ACK
+  await client.publishWithAck({
+    topic: uniqueTopic,
+    messageBody: testMessage,
+    onAck: (ackResponse) => {
+      const ackEndTime = Date.now();
+      const ackLatency = ackEndTime - publishStartTime;
+
+      if (ackResponse.success) {
+        console.log(`Success ACK received after ${ackLatency}ms:`, {
+          success: ackResponse.success,
+          topic: ackResponse.topic,
+          seq: ackResponse.seq,
+          serverMsgId: ackResponse.serverMsgId,
+        });
+      } else {
+        console.log(`Error ACK received after ${ackLatency}ms:`, {
+          success: ackResponse.success,
+          topic: ackResponse.topic,
+          error: ackResponse.error,
+        });
+      }
+
+      ackReceived = true;
+      ackSuccess = ackResponse.success;
+      ackData = ackResponse;
+
+      if (!ackResponse.success && ackResponse.error) {
+        ackError = ackResponse.error;
+      }
+    },
+    timeoutMs: 10000, // 10 second timeout
+  });
+
+  // Wait for ACK to be received
+  console.log("Waiting for ACK response...");
+  const maxWaitMs = 15000; // 15 second max wait
+  const startWait = Date.now();
+
+  while (!ackReceived && Date.now() - startWait < maxWaitMs) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  // Verify ACK was received
+  expect(ackReceived).toBe(true);
+  expect(ackSuccess).toBe(true);
+  expect(ackData).toBeDefined();
+
+  if (ackData) {
+    if ((ackData as AckResponse).success) {
+      const successAck = ackData as AckSuccess;
+      expect(successAck.ack).toBeDefined();
+      expect(successAck.topic).toBe(uniqueTopic);
+      expect(successAck.seq).toBeDefined();
+      expect(successAck.serverMsgId).toBeDefined();
+    } else {
+      throw new Error("Expected success ACK but received error ACK");
+    }
+  }
+
+  expect(ackError).toBeUndefined();
+
+  // Verify ACK packet structure matches expected format
+  if (ackData && (ackData as AckResponse).success) {
+    const successAck = ackData as AckSuccess;
+    expect(successAck.ack.packetType).toBe("ack");
+    expect(successAck.ack.type.path).toBe("publish");
+    expect(successAck.ack.type.topic).toBe(uniqueTopic);
+    expect(successAck.ack.type.result.ok).toBe(true);
+
+    // Verify result properties exist and are correct type
+    const result = successAck.ack.type.result as {
+      ok: true;
+      serverMsgId: string;
+      t_ingress: number;
+    };
+    if (result.ok) {
+      expect(result.serverMsgId).toBeDefined();
+      expect(typeof result.serverMsgId).toBe("string");
+      expect(result.t_ingress).toBeDefined();
+      expect(typeof result.t_ingress).toBe("number");
+    }
+  }
+
+  // Note: In pub/sub systems, publishers typically don't receive their own messages
+  // This is the expected behavior, so we don't wait for the message to be received by the publisher
+  console.log(
+    "Note: Publishers don't receive their own messages in pub/sub systems",
+  );
+
+  // The test passes if we got the ACK successfully, which we already verified above
+  // If we wanted to test message delivery, we would need a separate subscriber client
+
+  console.log("ACK test completed successfully - ACK received correctly");
+
+  // Clean up
+  client.unsubscribe(uniqueTopic);
+  await new Promise((r) => setTimeout(r, 100));
+  client.close();
+}, 30000);
+
+test("ACK error handling: client publishes to unauthorized topic and receives error ACK", async () => {
+  // Generate unique topic name for this test run
+  const unauthorizedTopic = `unauthorized_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const testMessage = `Unauthorized test message: ${Math.random().toString(36).substring(2, 10)}`;
+
+  console.log(
+    `Starting ACK error handling test with unauthorized topic: ${unauthorizedTopic}`,
+  );
+
+  const client = await ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:6969",
+    wsBaseUrl: "ws://localhost:8787",
+  });
+  console.log("Client created for ACK error test");
+
+  // Join the test channel and connect
+  client.joinChannel("test_channel");
+  await client.connect();
+  console.log("Client connected for ACK error test");
+
+  // Note: We don't subscribe to the unauthorized topic, so publish should fail
+
+  // Test ACK error functionality
+  let ackReceived = false;
+  let ackSuccess = false;
+  let ackData: AckResponse | null = null;
+  let ackError: { code: string; message: string } | undefined = undefined;
+
+  const publishStartTime = Date.now();
+
+  // Publish with ACK to unauthorized topic (should fail)
+  await client.publishWithAck({
+    topic: unauthorizedTopic,
+    messageBody: testMessage,
+    onAck: (ackResponse) => {
+      const ackEndTime = Date.now();
+      const ackLatency = ackEndTime - publishStartTime;
+
+      if (ackResponse.success) {
+        console.log(`Unexpected success ACK received after ${ackLatency}ms:`, {
+          success: ackResponse.success,
+          topic: ackResponse.topic,
+        });
+      } else {
+        console.log(`Error ACK received after ${ackLatency}ms:`, {
+          success: ackResponse.success,
+          topic: ackResponse.topic,
+          error: ackResponse.error,
+        });
+      }
+
+      ackReceived = true;
+      ackSuccess = ackResponse.success;
+      ackData = ackResponse;
+
+      if (!ackResponse.success && ackResponse.error) {
+        ackError = ackResponse.error;
+      }
+    },
+    timeoutMs: 10000, // 10 second timeout
+  });
+
+  // Wait for ACK to be received
+  console.log("Waiting for error ACK response...");
+  const maxWaitMs = 15000; // 15 second max wait
+  const startWait = Date.now();
+
+  while (!ackReceived && Date.now() - startWait < maxWaitMs) {
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  // Verify ACK was received
+  expect(ackReceived).toBe(true);
+  expect(ackSuccess).toBe(false); // Should be false for error
+  expect(ackData).toBeDefined();
+  expect(ackError).toBeDefined();
+
+  // Use direct property check for error ACK
+  if (ackData && !(ackData as AckResponse).success) {
+    const errorAck = ackData as AckError;
+    expect(errorAck.ack).toBeDefined();
+    expect(errorAck.topic).toBe(unauthorizedTopic);
+
+    // Verify error ACK packet structure matches expected format
+    expect(errorAck.ack.packetType).toBe("ack");
+    expect(errorAck.ack.type.path).toBe("publish");
+    expect(errorAck.ack.type.topic).toBe(unauthorizedTopic);
+    expect(errorAck.ack.type.result.ok).toBe(false);
+
+    // Verify error result properties using type assertion
+    const result = errorAck.ack.type.result as {
+      ok: false;
+      code: string;
+      message: string;
+    };
+    expect(result.code).toBeDefined();
+    expect(typeof result.code).toBe("string");
+    expect(result.message).toBeDefined();
+    expect(typeof result.message).toBe("string");
+  } else if (ackData) {
+    throw new Error("Expected error ACK but received success ACK");
+  }
+
+  // Verify error details
+  if (ackError) {
+    const error = ackError as { code: string; message: string };
+    expect(error.code).toBeDefined();
+    expect(error.message).toBeDefined();
+    expect(typeof error.code).toBe("string");
+    expect(typeof error.message).toBe("string");
+  }
+
+  console.log("ACK error handling test completed successfully");
+  if (ackError && ackData && !(ackData as AckResponse).success) {
+    const errorAck = ackData as AckError;
+    const error = ackError as { code: string; message: string };
+    console.log("Error ACK details:", {
+      topic: errorAck.topic,
+      errorCode: error.code,
+      errorMessage: error.message,
+    });
+  }
+
+  // Clean up
+  client.close();
+}, 30000);
