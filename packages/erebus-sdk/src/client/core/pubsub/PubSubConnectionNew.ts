@@ -38,7 +38,7 @@ export class PubSubConnection {
   #connectionId: string;
 
   constructor(config: ConnectionConfig) {
-    this.#connectionId = `conn_${Math.random().toString(36).substring(2, 8)}`;
+    this.#connectionId = `conn_${Math.random().toString(36).slice(2, 8)}`;
     logger.info(`[${this.#connectionId}] PubSubConnection constructor called`, {
       url: config.url,
       heartbeatMs: config.heartbeatMs ?? 25_000,
@@ -333,7 +333,7 @@ export class PubSubConnection {
     }
 
     // Generate client correlation fields
-    let clientMsgId: string = `fallback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    let clientMsgId: string = `fallback_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
     let requestId: string | undefined;
 
     try {
@@ -352,7 +352,7 @@ export class PubSubConnection {
         ) {
           clientMsgId = crypto.randomUUID();
         } else {
-          clientMsgId = `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          clientMsgId = `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
         }
         Object.assign(payload, { clientMsgId });
       }

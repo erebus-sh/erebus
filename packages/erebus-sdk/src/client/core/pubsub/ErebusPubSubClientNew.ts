@@ -475,7 +475,7 @@ export class ErebusPubSubClientNew {
     const clientMsgId =
       typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
         ? crypto.randomUUID()
-        : `msg_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        : `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
     const actualMessageBody: MessageBody = {
       id: "TO_BE_SAT",
