@@ -18,6 +18,7 @@ export const getUsage = query({
     page: Omit<Doc<"usage">, "apiKeyId">[];
     continueCursor?: string;
     isDone: boolean;
+    totalCount: number;
   }> => {
     const { projectSlug, startTime, endTime, paginationOpts } = args;
     const user = await ctx.runQuery(api.users.query.getMe);
@@ -54,10 +55,30 @@ export const getUsage = query({
 
     const results = await dbQuery.paginate(paginationOpts);
 
+    // Get total count for the same query conditions
+    let countQuery = ctx.db
+      .query("usage")
+      .withIndex("by_project", (q) => q.eq("projectId", project._id));
+
+    if (startTime) {
+      countQuery = countQuery.filter((q) =>
+        q.gte(q.field("timestamp"), startTime),
+      );
+    }
+    if (endTime) {
+      countQuery = countQuery.filter((q) =>
+        q.lte(q.field("timestamp"), endTime),
+      );
+    }
+
+    const allRecords = await countQuery.collect();
+    const totalCount = allRecords.length;
+
     // Omit the apiKeyId field from each result in the page
     return {
       ...results,
       page: results.page.map(({ apiKeyId, ...rest }: Doc<"usage">) => rest),
+      totalCount,
     };
   },
 });

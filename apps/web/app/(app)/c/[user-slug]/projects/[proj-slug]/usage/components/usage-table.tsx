@@ -45,6 +45,8 @@ export interface UsageTableProps {
   canGoNext: boolean;
   canGoPrevious: boolean;
   isLoading?: boolean;
+  totalCount?: number;
+  currentPageStart?: number;
 }
 
 export const columns: ColumnDef<Doc<"usage">>[] = [
@@ -179,6 +181,8 @@ export function UsageTable({
   canGoNext,
   canGoPrevious,
   isLoading = false,
+  totalCount,
+  currentPageStart = 1,
 }: UsageTableProps) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -296,8 +300,18 @@ export function UsageTable({
       </div>
       <div className="flex items-center justify-end space-x-2 py-4">
         <div className="text-muted-foreground flex-1 text-sm">
-          {table.getFilteredSelectedRowModel().rows.length} of{" "}
-          {table.getFilteredRowModel().rows.length} event(s) selected.
+          {totalCount !== undefined ? (
+            <>
+              Showing {currentPageStart}-
+              {Math.min(currentPageStart + data.length - 1, totalCount)} of{" "}
+              {totalCount} result{totalCount !== 1 ? "s" : ""}
+            </>
+          ) : (
+            <>
+              {table.getFilteredSelectedRowModel().rows.length} of{" "}
+              {table.getFilteredRowModel().rows.length} event(s) selected.
+            </>
+          )}
         </div>
         <div className="space-x-2">
           <Button

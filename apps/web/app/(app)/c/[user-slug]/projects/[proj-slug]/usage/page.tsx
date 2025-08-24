@@ -7,13 +7,23 @@ import { useParams } from "next/navigation";
 import Spinner from "@/components/spinner";
 import SidesLayout from "../components/sides-layout";
 import { ChartBar } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function UsagePage() {
   const params = useParams();
   const projectSlug = params["proj-slug"] as string;
   const [cursor, setCursor] = useState<string | null>(null);
-  const [cursorHistory, setCursorHistory] = useState<string[]>([]);
+  const [cursorHistory, setCursorHistory] = useState<(string | null)[]>([]);
+
+  // Reset state when project changes
+  useEffect(() => {
+    setCursor(null);
+    setCursorHistory([]);
+  }, [projectSlug]);
+
+  // Calculate current page position based on navigation state
+  const currentPageNumber = cursorHistory.length + 1;
+  const currentPageStart = (currentPageNumber - 1) * 6 + 1;
 
   const {
     data: usageData,
@@ -22,24 +32,28 @@ export default function UsagePage() {
   } = useQueryWithState(api.usage.query.getUsage, {
     projectSlug,
     paginationOpts: {
-      numItems: 10,
+      numItems: 6,
       cursor,
     },
   });
 
   const handleNextPage = () => {
     if (usageData?.continueCursor) {
-      setCursorHistory((prev) => [...prev, ...(cursor ? [cursor] : [])]);
+      // Always store the current cursor (or null for first page) before moving to next page
+      setCursorHistory((prev) => [...prev, cursor]);
       setCursor(usageData.continueCursor);
     }
   };
 
   const handlePreviousPage = () => {
     if (cursorHistory.length > 0) {
+      // Get the previous cursor from history
       const previousCursor = cursorHistory[cursorHistory.length - 1];
       setCursor(previousCursor);
+      // Remove the last cursor from history
       setCursorHistory((prev) => prev.slice(0, -1));
     } else {
+      // Go back to first page
       setCursor(null);
     }
   };
@@ -95,6 +109,8 @@ export default function UsagePage() {
             canGoNext={canGoNext}
             canGoPrevious={canGoPrevious}
             isLoading={isPending}
+            totalCount={usageData.totalCount}
+            currentPageStart={currentPageStart}
           />
         </>
       )}
