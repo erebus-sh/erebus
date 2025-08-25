@@ -11,7 +11,6 @@ export const usage = defineTable({
   projectId: v.id("projects"),
   apiKeyId: v.optional(v.id("api_keys")),
   event: eventType,
-  count: v.number(),
   payloadLength: v.optional(v.number()), // For message events
   timestamp: v.number(),
 })

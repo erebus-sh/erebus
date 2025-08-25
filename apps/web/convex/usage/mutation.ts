@@ -30,7 +30,6 @@ export const trackUsage = mutation({
           .insert("usage", {
             projectId,
             event,
-            count: 1,
             payloadLength: payloadLength || 0,
             apiKeyId,
             timestamp,

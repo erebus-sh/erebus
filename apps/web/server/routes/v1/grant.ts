@@ -300,7 +300,7 @@ export const grantRoute = new Hono().post(
     const normalizedTopics = normalizeTopics(topics);
 
     /**
-     * Get the keyId from the database
+     * Get the keyId of the api key from the database
      */
     let keyId: string;
     try {
