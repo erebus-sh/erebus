@@ -32,6 +32,7 @@ export interface MessageBroadcastCoordinator {
     senderClientId: string,
     topic: string,
     projectId: string,
+    keyId: string,
     channelName: string,
     tIngress: number,
     tEnqueued: number,
@@ -229,7 +230,11 @@ export class MessageHandler extends BaseService {
       );
 
       // Enqueue usage tracking for successful connection
-      await this.enqueueUsageEvent("websocket.connect", attachment.project_id);
+      await this.enqueueUsageEvent(
+        "websocket.connect",
+        attachment.project_id,
+        attachment.key_id,
+      );
     } catch (error) {
       this.logError(`[WS_CONNECT] JWT verification failed: ${error}`);
       this.closeWebSocketWithError(
@@ -279,7 +284,7 @@ export class MessageHandler extends BaseService {
     const topic = envelope.topic;
     const channelName = grant.data.channel;
     const projectId = grant.data.project_id;
-
+    const keyId = grant.data.key_id;
     this.logDebug(
       `[WS_SUBSCRIBE] Subscribe request - clientId: ${clientId}, ` +
         `topic: ${topic}, channel: ${channelName}`,
@@ -331,7 +336,7 @@ export class MessageHandler extends BaseService {
       this.logDebug(`[WS_SUBSCRIBE] Subscribe ACK sent for topic: ${topic}`);
 
       // Enqueue usage tracking for successful subscription
-      await this.enqueueUsageEvent("websocket.subscribe", projectId);
+      await this.enqueueUsageEvent("websocket.subscribe", projectId, keyId);
 
       // Retrieve and deliver missed messages
       await this.deliverMissedMessages(ws, grant.data, topic);
@@ -457,6 +462,7 @@ export class MessageHandler extends BaseService {
     const topic = envelope.payload.topic;
     const channelName = grant.data.channel;
     const projectId = grant.data.project_id;
+    const keyId = grant.data.key_id;
     const payload = envelope.payload;
     const needsAck = envelope.ack === true;
     const clientMsgId = envelope.clientMsgId;
@@ -535,6 +541,7 @@ export class MessageHandler extends BaseService {
           clientId,
           topic,
           projectId,
+          keyId,
           channelName,
           tIngress,
           tEnqueued,
@@ -718,6 +725,7 @@ export class MessageHandler extends BaseService {
   private async enqueueUsageEvent(
     event: "websocket.connect" | "websocket.subscribe",
     projectId: string,
+    keyId: string,
   ): Promise<void> {
     const usageEnvelope: QueueEnvelope = {
       packetType: "usage",
@@ -725,6 +733,7 @@ export class MessageHandler extends BaseService {
         event,
         data: {
           projectId,
+          keyId,
           payloadLength: 0, // No payload for connect/subscribe events
         },
       },

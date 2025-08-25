@@ -8,6 +8,7 @@ export const UsageEventSchema = z.object({
   ]),
   data: z.object({
     projectId: z.string(),
+    keyId: z.string(),
     payloadLength: z.number(),
   }),
 });

@@ -69,10 +69,10 @@ export class MessageBroadcaster extends BaseService {
       senderClientId,
       subscriberClientIds,
       projectId,
+      keyId,
       channelName,
       topic,
       seq,
-      tIngress,
     } = params;
 
     const publishStartTime = monoNow();
@@ -136,6 +136,7 @@ export class MessageBroadcaster extends BaseService {
     await this.runBackgroundTasks(
       messageBody,
       projectId,
+      keyId,
       channelName,
       topic,
       seq,
@@ -419,6 +420,7 @@ export class MessageBroadcaster extends BaseService {
   private async runBackgroundTasks(
     messageBody: MessageBody,
     projectId: string,
+    keyId: string,
     channelName: string,
     topic: string,
     seq: string,
@@ -432,6 +434,7 @@ export class MessageBroadcaster extends BaseService {
         event: "websocket.message",
         data: {
           projectId,
+          keyId,
           payloadLength: messageBody.payload.length,
         },
       },

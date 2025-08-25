@@ -167,6 +167,8 @@ export interface PublishMessageParams {
   subscriberClientIds: string[];
   /** Project identifier */
   projectId: string;
+  /** Api Key identifier */
+  keyId: string;
   /** Channel name */
   channelName: string;
   /** Topic name */

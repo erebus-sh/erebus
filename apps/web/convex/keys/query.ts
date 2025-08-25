@@ -60,3 +60,39 @@ export const getKeyByProjectSlug = query({
     return keys;
   },
 });
+
+export const getKeyIdByKey = query({
+  args: {
+    secret_key: v.string(),
+  },
+  handler: async (ctx, args): Promise<string> => {
+    const { secret_key } = args;
+    const key = await ctx.db
+      .query("api_keys")
+      .withIndex("by_secret_key", (q) => q.eq("key", secret_key))
+      .first();
+    if (!key) {
+      throw new ConvexError(
+        "API key not found. Please check that you have provided a valid secret key.",
+      );
+    }
+    if (key.status === "disabled") {
+      throw new ConvexError(
+        "API key is disabled. Please contact your administrator or generate a new key.",
+      );
+    }
+    if (key.status === "revoked") {
+      throw new ConvexError(
+        "API key has been revoked. This key can no longer be used. Please use a valid, active key.",
+      );
+    }
+    if (key.revokedAt) {
+      throw new ConvexError(
+        "API key is invalid: this key was revoked at " +
+          new Date(key.revokedAt).toLocaleString() +
+          ". Please use a valid, active key.",
+      );
+    }
+    return key._id;
+  },
+});

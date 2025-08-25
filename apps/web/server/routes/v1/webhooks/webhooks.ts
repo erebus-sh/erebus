@@ -52,6 +52,7 @@ export const webhooksRoute = new Hono()
           projectId: event.data.projectId as Id<"projects">,
           event: event.event,
           payloadLength: event.data.payloadLength,
+          apiKeyId: event.data.keyId as Id<"api_keys">,
         })),
       });
 

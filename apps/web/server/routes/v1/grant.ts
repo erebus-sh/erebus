@@ -299,9 +299,36 @@ export const grantRoute = new Hono().post(
     // Normalize topics for the final grant (deduplicate and sort)
     const normalizedTopics = normalizeTopics(topics);
 
+    /**
+     * Get the keyId from the database
+     */
+    let keyId: string;
+    try {
+      keyId = await fetchQuery(api.keys.query.getKeyIdByKey, {
+        secret_key,
+      });
+    } catch (error: unknown) {
+      if (error instanceof ConvexError) {
+        return c.json(
+          {
+            error: `Access denied: ${error.message}. Please check your credentials and try again.`,
+          },
+          401,
+        );
+      }
+      return c.json(
+        {
+          error:
+            "An unexpected server error occurred while processing your grant request. Please try again later or contact support.",
+        },
+        500,
+      );
+    }
+
     // Create grant with consistent time units (seconds)
     const grant: Grant = {
       project_id: projectId,
+      key_id: keyId,
       channel,
       topics: normalizedTopics,
       userId,

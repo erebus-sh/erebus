@@ -21,6 +21,7 @@ export type GrantScope = z.infer<typeof GrantScopeEnum>;
 export const GrantSchema = z.object({
   // Project data
   project_id: z.string(),
+  key_id: z.string(),
 
   // Channel data
   channel: z.string(),

@@ -10,7 +10,7 @@ export const schemaPayload = v.array(
       v.literal("websocket.message"),
     ),
     payloadLength: v.optional(v.number()),
-    apiKeyId: v.optional(v.id("api_keys")),
+    apiKeyId: v.id("api_keys"),
   }),
 );
 
