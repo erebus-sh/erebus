@@ -4,7 +4,6 @@ import {
   PacketEnvelopeSchema,
 } from "@repo/schemas/packetEnvelope";
 import { MessageBody } from "@repo/schemas/messageBody";
-import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
 import { verify } from "@/lib/jwt";
 import { monoNow } from "@/lib/monotonic";
 import { WsErrors } from "@/enums/wserrors";
@@ -716,38 +715,6 @@ export class MessageHandler extends BaseService {
       }
     } catch (error) {
       this.logError(`[CLOSE_WS] Error closing WebSocket: ${error}`);
-    }
-  }
-
-  /**
-   * Enqueue usage tracking event to the queue.
-   */
-  private async enqueueUsageEvent(
-    event: "websocket.connect" | "websocket.subscribe",
-    projectId: string,
-    keyId: string,
-  ): Promise<void> {
-    const usageEnvelope: QueueEnvelope = {
-      packetType: "usage",
-      payload: {
-        event,
-        data: {
-          projectId,
-          keyId,
-          payloadLength: 0, // No payload for connect/subscribe events
-        },
-      },
-    };
-
-    try {
-      await this.env.EREBUS_QUEUE.send(usageEnvelope);
-      this.logDebug(
-        `[USAGE_ENQUEUE] Enqueued ${event} event for project ${projectId}`,
-      );
-    } catch (error) {
-      this.logError(
-        `[USAGE_ENQUEUE] Failed to enqueue ${event} event: ${error}`,
-      );
     }
   }
 

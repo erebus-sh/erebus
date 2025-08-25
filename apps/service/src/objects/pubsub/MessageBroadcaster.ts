@@ -426,20 +426,6 @@ export class MessageBroadcaster extends BaseService {
     seq: string,
     subscriberClientIds: string[],
   ): Promise<void> {
-    // Enqueue usage tracking webhook
-    // TODO: for now we only have "usage" and "websocket.message" events, but later we will have more events
-    const usageEnvelope: QueueEnvelope = {
-      packetType: "usage",
-      payload: {
-        event: "websocket.message",
-        data: {
-          projectId,
-          keyId,
-          payloadLength: messageBody.payload.length,
-        },
-      },
-    };
-
     await Promise.all([
       // Buffer the message for persistence
       this.bufferMessage(messageBody, projectId, channelName, topic, seq),
@@ -452,9 +438,12 @@ export class MessageBroadcaster extends BaseService {
         seq,
       ),
       // Enqueue usage tracking for webhooks
-      this.env.EREBUS_QUEUE.send(usageEnvelope, {
-        contentType: "json",
-      }),
+      this.enqueueUsageEvent(
+        "websocket.message",
+        projectId,
+        keyId,
+        messageBody.payload.length,
+      ),
     ]).catch((error) => {
       this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });

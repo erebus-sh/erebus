@@ -1,6 +1,7 @@
 import { ServiceContext } from "./types";
 import { Env } from "@/env";
 import { AckPacketType } from "@repo/schemas/packetEnvelope";
+import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
 
 /**
  * Base class for all PubSub services providing common functionality.
@@ -267,5 +268,43 @@ export abstract class BaseService {
         },
       },
     };
+  }
+
+  /**
+   * Enqueue usage tracking event to the queue.
+   *
+   * @param event - The usage event type
+   * @param projectId - Project identifier
+   * @param keyId - API key identifier
+   * @param payloadLength - Length of the payload (defaults to 0)
+   */
+  protected async enqueueUsageEvent(
+    event: "websocket.connect" | "websocket.subscribe" | "websocket.message",
+    projectId: string,
+    keyId: string,
+    payloadLength: number = 0,
+  ): Promise<void> {
+    const usageEnvelope: QueueEnvelope = {
+      packetType: "usage",
+      payload: {
+        event,
+        data: {
+          projectId,
+          keyId,
+          payloadLength,
+        },
+      },
+    };
+
+    try {
+      await this.env.EREBUS_QUEUE.send(usageEnvelope);
+      this.logDebug(
+        `[USAGE_ENQUEUE] Enqueued ${event} event for project ${projectId}`,
+      );
+    } catch (error) {
+      this.logError(
+        `[USAGE_ENQUEUE] Failed to enqueue ${event} event: ${error}`,
+      );
+    }
   }
 }

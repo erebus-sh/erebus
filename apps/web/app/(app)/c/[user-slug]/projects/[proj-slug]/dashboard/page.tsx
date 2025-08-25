@@ -1,9 +1,9 @@
 "use client";
 
-import React from "react";
+import { useState, useMemo } from "react";
 import { DashboardChartLineInteractive } from "@/components/console/chart-line-interactive";
 import SidesLayout from "../components/sides-layout";
-import { useQueryWithState } from "@/utils/query";
+import { useQueryWithStateCache } from "@/utils/query";
 import { api } from "@/convex/_generated/api";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,8 +20,8 @@ import { Calendar } from "lucide-react";
 export default function DashboardPage() {
   const params = useParams();
   const projectSlug = params["proj-slug"] as string;
-  const [granularity, setGranularity] = React.useState<"day" | "hour">("day");
-  const [dateRange, setDateRange] = React.useState<{
+  const [granularity, setGranularity] = useState<"day" | "hour">("day");
+  const [dateRange, setDateRange] = useState<{
     start: number;
     end: number;
   }>(() => {
@@ -31,11 +31,10 @@ export default function DashboardPage() {
       end: now,
     };
   });
-  const [selectedPreset, setSelectedPreset] =
-    React.useState<string>("Last 30 days");
+  const [selectedPreset, setSelectedPreset] = useState<string>("Last 30 days");
 
   // Date range presets
-  const dateRangePresets = React.useMemo(() => {
+  const dateRangePresets = useMemo(() => {
     const now = Date.now();
     const presets = [
       {
@@ -66,7 +65,7 @@ export default function DashboardPage() {
     return presets;
   }, []);
 
-  const { data, isPending, error } = useQueryWithState(
+  const { data, isPending, error } = useQueryWithStateCache(
     api.analytics.query.getAnalytics,
     {
       projectSlug: projectSlug,
