@@ -1,6 +1,6 @@
 "use client";
 
-import type { Doc } from "@/convex/_generated/dataModel";
+import type { Doc, Id } from "@/convex/_generated/dataModel";
 import {
   Card,
   CardHeader,
@@ -23,6 +23,9 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
 import clsx from "clsx";
+import { toast } from "sonner";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 // --- Reusable IconLabel component ---
 function IconLabel({
@@ -59,10 +62,16 @@ export default function ProjectCard({
 
   if (!userSlug) return null;
 
-  // Placeholder delete handler
-  const handleDelete = (projectId: string) => {
-    // TODO: Implement delete logic
-    alert(`Delete project ${projectId} (not implemented)`);
+  const deleteProject = useMutation(api.projects.mutation.deleteProject);
+
+  const handleDelete = async (projectId: string) => {
+    try {
+      await deleteProject({ projectId: projectId as Id<"projects"> });
+      toast.success("Project deleted successfully");
+    } catch (error: any) {
+      // Handle ConvexError with toast
+      toast.error(error.message || "Failed to delete project");
+    }
   };
 
   return (

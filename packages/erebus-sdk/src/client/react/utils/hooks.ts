@@ -4,6 +4,7 @@ import { useChannelState } from "@/client/react/store/channelState";
 import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
 import type { AnySchema, CreateErebusOptions } from "./types";
 import { z } from "zod";
+import type { AckResponse } from "@/client/core/types";
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
   options?: CreateErebusOptions,
@@ -305,6 +306,79 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
       [channel],
     );
 
+    const publishWithAck = useCallback(
+      (
+        topic: string,
+        payload: ChannelPayload,
+        ackCallback?: (ack: AckResponse) => void,
+      ) => {
+        console.log(
+          `[useChannel:publishWithAck] Publishing to topic "${topic}" on channel "${channel}" with payload:`,
+          payload,
+        );
+
+        const pubsub = store.getState().pubsub;
+        if (!pubsub) {
+          console.error(
+            `[useChannel:publishWithAck] Pubsub not initialized for channel "${channel}"`,
+          );
+          throw new Error("ErebusClient: Pubsub not initialized");
+        }
+
+        // Check if connection is writable using both channel state and actual connection state
+        const cs = useChannelState.getState();
+        if (!cs.isWritable || !pubsub.isWritable) {
+          console.error(
+            `[useChannel:publishWithAck] Connection not writable for channel "${channel}"`,
+            {
+              channelStateWritable: cs.isWritable,
+              actualConnectionWritable: pubsub.isWritable,
+              connectionState: pubsub.connectionState,
+            },
+          );
+          throw new Error("ErebusClient: Connection not writable");
+        }
+
+        const stringifiedPayload = JSON.stringify(payload);
+        if (!stringifiedPayload) {
+          console.error(
+            `[useChannel:publishWithAck] Payload is empty for channel "${channel}"`,
+          );
+          throw new Error("ErebusClient: Payload is empty");
+        }
+
+        console.log(
+          `[useChannel:publishWithAck] Publishing message to topic "${topic}" on channel "${channel}":`,
+          stringifiedPayload,
+        );
+
+        // Update activity and set being sent state
+        const cs2 = useChannelState.getState();
+        cs2.setBeingSent(true);
+        cs2.updateActivity();
+
+        try {
+          pubsub.publishWithAck({
+            topic,
+            messageBody: stringifiedPayload,
+            onAck: (ack) => {
+              console.log(
+                `[useChannel:publishWithAck] Received ack for topic "${topic}" on channel "${channel}":`,
+                ack,
+              );
+              ackCallback?.(ack);
+            },
+          });
+          console.log(
+            `[useChannel:publishWithAck] Successfully published to topic "${topic}" on channel "${channel}"`,
+          );
+        } finally {
+          useChannelState.getState().setBeingSent(false);
+        }
+      },
+      [channel],
+    );
+
     const unsubscribe = useCallback(
       (topic: string) => {
         console.log(
@@ -446,10 +520,11 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
     const status = channelState.status;
 
     console.log(
-      `[useChannel] Returning publish, subscribe, and reactive status for channel "${channel}"`,
+      `[useChannel] Returning publish, publishWithAck, subscribe, unsubscribe, and reactive status for channel "${channel}"`,
     );
     return {
       publish,
+      publishWithAck,
       unsubscribe,
       subscribe,
       status, // This is the new reactive status object that eliminates polling

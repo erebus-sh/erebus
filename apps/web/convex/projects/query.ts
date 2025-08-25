@@ -2,11 +2,11 @@ import { api } from "../_generated/api";
 import { query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
 import { ConvexError, v } from "convex/values";
+import { getAuthenticatedUserForQuery } from "../lib/guard";
 
 export const getProjects = query({
   handler: async (ctx): Promise<Doc<"projects">[]> => {
-    const user = await ctx.runQuery(api.users.query.getMe);
-    if (!user || !user._id) throw new ConvexError("User not found");
+    const user = await getAuthenticatedUserForQuery(ctx);
 
     // Limit the number of projects to 50 for safety
     const projects: Doc<"projects">[] = await ctx.db

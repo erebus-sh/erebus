@@ -1,5 +1,6 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
+import { getValidatedActiveKeyById } from "../lib/guard";
 
 export const schemaPayload = v.array(
   v.object({
@@ -20,6 +21,11 @@ export const trackUsage = mutation({
   },
   handler: async (ctx, args) => {
     const { payload } = args;
+
+    // Validate all API keys are active before tracking usage
+    for (const item of payload) {
+      await getValidatedActiveKeyById(ctx, item.apiKeyId);
+    }
 
     const timestamp = Date.now();
 

@@ -1,8 +1,11 @@
-import { api } from "../_generated/api";
 import { query } from "../_generated/server";
-import { ConvexError, v } from "convex/values";
+import { v } from "convex/values";
 import { paginationOptsValidator } from "convex/server";
 import type { Doc } from "../_generated/dataModel";
+import {
+  getValidatedProjectBySlugWithOwnershipForQuery,
+  getValidatedProjectWithOwnershipForQuery,
+} from "../lib/guard";
 
 export const getUsage = query({
   args: {
@@ -21,26 +24,10 @@ export const getUsage = query({
     totalCount: number;
   }> => {
     const { projectSlug, startTime, endTime, paginationOpts } = args;
-    const user = await ctx.runQuery(api.users.query.getMe);
-    if (!user || !user._id) throw new ConvexError("User not found");
-
-    const project: Doc<"projects"> | null = await ctx.runQuery(
-      api.projects.query.getProjectBySlug,
-      {
-        slug: projectSlug,
-      },
+    const { project } = await getValidatedProjectBySlugWithOwnershipForQuery(
+      ctx,
+      projectSlug,
     );
-
-    // Strict auth: Only allow access if the user owns the project with the given projectId
-    if (!project)
-      throw new ConvexError(
-        "Project not found or access denied or not owned by the user",
-      );
-
-    if (project.userId !== user._id)
-      throw new ConvexError(
-        "Project not found or access denied or not owned by the user",
-      );
 
     let dbQuery = ctx.db
       .query("usage")
@@ -88,5 +75,23 @@ export const getUsage = query({
       page: results.page.map(({ apiKeyId, ...rest }: Doc<"usage">) => rest),
       totalCount,
     };
+  },
+});
+
+export const hasUsage = query({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const { projectId } = args;
+    await getValidatedProjectWithOwnershipForQuery(ctx, projectId);
+
+    // Check if there's any usage for this project
+    const usage = await ctx.db
+      .query("usage")
+      .withIndex("by_project", (q) => q.eq("projectId", projectId))
+      .first();
+
+    return usage !== null;
   },
 });
