@@ -1,7 +1,13 @@
 "use client";
 
-import * as React from "react";
-import { CartesianGrid, Line, LineChart, XAxis } from "recharts";
+import React, {
+  useState,
+  useMemo,
+  useCallback,
+  Component,
+  ErrorInfo,
+} from "react";
+import { CartesianGrid, Line, LineChart, XAxis, YAxis } from "recharts";
 
 import {
   Card,
@@ -16,6 +22,18 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
+
+import type {
+  DashboardChartLineInteractiveProps,
+  ChartKey,
+  SinglePointDotProps,
+  ErrorBoundaryProps,
+  ErrorBoundaryState,
+  Granularity,
+} from "@/lib/chart/types";
+import { sanitizeAnalyticsData } from "@/lib/chart/sanitizers";
+import { formatChartTick, formatTooltipLabel } from "@/lib/chart/formatters";
+import { processChartData, calculateTotals } from "@/lib/chart/utils";
 
 export const description = "An interactive line chart";
 
@@ -34,91 +52,21 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-interface AnalyticsData {
-  data: Array<{
-    date: string;
-    connect: number;
-    subscribe: number;
-    message: number;
-  }>;
-  totalConnects: number;
-  totalSubscribes: number;
-  totalMessages: number;
-}
-
-interface DashboardChartLineInteractiveProps {
-  analyticsData?: AnalyticsData;
-  isLoading?: boolean;
-}
-
-// Helper function to check if a value is a valid number (not NaN, not Infinity)
-const isValidNumber = (value: any): value is number => {
-  return typeof value === "number" && !isNaN(value) && isFinite(value);
-};
-
-// Helper function to sanitize a number value
-const sanitizeNumber = (value: any, fallback: number = 0): number => {
-  return isValidNumber(value) ? value : fallback;
-};
-
-// Helper function to sanitize date string
-const sanitizeDate = (dateStr: any): string => {
-  if (typeof dateStr !== "string") return new Date().toISOString();
-
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return new Date().toISOString();
-
-  return dateStr;
-};
-
-// Helper function to sanitize analytics data
-const sanitizeAnalyticsData = (data?: AnalyticsData): AnalyticsData | null => {
-  if (!data) return null;
-
-  try {
-    const sanitizedData: AnalyticsData = {
-      totalConnects: sanitizeNumber(data.totalConnects),
-      totalSubscribes: sanitizeNumber(data.totalSubscribes),
-      totalMessages: sanitizeNumber(data.totalMessages),
-      data: [],
-    };
-
-    if (Array.isArray(data.data)) {
-      sanitizedData.data = data.data
-        .map((item) => ({
-          date: sanitizeDate(item.date),
-          connect: sanitizeNumber(item.connect),
-          subscribe: sanitizeNumber(item.subscribe),
-          message: sanitizeNumber(item.message),
-        }))
-        .filter((item) => {
-          // Filter out items with completely invalid data
-          return item.connect >= 0 && item.subscribe >= 0 && item.message >= 0;
-        });
-    }
-
-    return sanitizedData;
-  } catch (error) {
-    console.warn("Failed to sanitize analytics data:", error);
-    return null;
-  }
-};
-
 // Error boundary wrapper for chart rendering
-class ChartErrorBoundary extends React.Component<
-  { children: React.ReactNode; onError: () => void },
-  { hasError: boolean }
+class ChartErrorBoundary extends Component<
+  ErrorBoundaryProps,
+  ErrorBoundaryState
 > {
-  constructor(props: { children: React.ReactNode; onError: () => void }) {
+  constructor(props: ErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(_: Error) {
+  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.warn("Chart rendering error:", error, errorInfo);
     this.props.onError();
   }
@@ -149,47 +97,79 @@ class ChartErrorBoundary extends React.Component<
 export function DashboardChartLineInteractive({
   analyticsData,
   isLoading = false,
+  onGranularityChange,
+  onDateRangeChange,
 }: DashboardChartLineInteractiveProps) {
-  const [activeChart, setActiveChart] =
-    React.useState<keyof typeof chartConfig>("connect");
-  const [hasError, setHasError] = React.useState(false);
+  const [activeChart, setActiveChart] = useState<ChartKey>("connect");
+  const [hasError, setHasError] = useState(false);
+
+  const currentGranularity: Granularity = analyticsData?.granularity || "day";
 
   // Sanitize the analytics data
-  const sanitizedData = React.useMemo(() => {
-    return sanitizeAnalyticsData(analyticsData);
+  const sanitizedData = useMemo(() => {
+    const result = sanitizeAnalyticsData(analyticsData);
+    console.log("Chart data processing:", {
+      originalData: analyticsData,
+      sanitizedData: result,
+      hasData: result?.data && result?.data?.length > 0,
+      sampleData: result?.data?.slice(0, 5),
+      nonZeroData: result?.data?.filter(
+        (d) => d.connect > 0 || d.subscribe > 0 || d.message > 0,
+      ),
+      userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      currentLocalTime: new Date().toLocaleString(),
+    });
+    return result;
   }, [analyticsData]);
 
-  const total = React.useMemo(() => {
-    if (!sanitizedData) {
-      return {
-        connect: 0,
-        subscribe: 0,
-        message: 0,
-      };
-    }
-    return {
-      connect: sanitizedData.totalConnects,
-      subscribe: sanitizedData.totalSubscribes,
-      message: sanitizedData.totalMessages,
-    };
-  }, [sanitizedData]);
+  const total = useMemo(() => calculateTotals(sanitizedData), [sanitizedData]);
 
   const chartData = sanitizedData?.data || [];
   const hasSingleDataPoint = chartData.length === 1;
   const hasValidData = chartData.length > 0;
 
+  // Process chart data for rendering
+  const renderData = useMemo(() => {
+    if (!sanitizedData) return [];
+    return processChartData(chartData, sanitizedData);
+  }, [chartData, sanitizedData]);
+
+  // Custom dot that hides for synthetic points used to pad single-point series.
+  const SinglePointDot = useCallback(
+    (props: SinglePointDotProps): React.ReactElement<SVGElement> => {
+      const { payload, cx, cy, index } = props;
+      if (payload?.__synthetic) {
+        // Return an empty SVG group with a key to avoid React key warnings.
+        return <g key={index} />;
+      }
+      return (
+        <circle
+          key={index}
+          cx={cx}
+          cy={cy}
+          r={5}
+          stroke={`var(--color-${activeChart})`}
+          strokeWidth={3}
+          fill="hsl(var(--background))"
+          className="drop-shadow-sm transition-all duration-200"
+        />
+      );
+    },
+    [activeChart],
+  );
+
   // Handle error state
   if (hasError) {
     return (
-      <Card className="py-4 sm:py-0">
+      <Card className="py-4 sm:py-0 border-destructive/20">
         <CardContent className="flex items-center justify-center h-[300px]">
-          <div className="text-center">
-            <div className="text-muted-foreground mb-2">
+          <div className="text-center space-y-3">
+            <div className="text-muted-foreground">
               Failed to load analytics data
             </div>
             <button
               onClick={() => setHasError(false)}
-              className="text-sm text-primary hover:underline"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
             >
               Try again
             </button>
@@ -203,7 +183,12 @@ export function DashboardChartLineInteractive({
     return (
       <Card className="py-4 sm:py-0">
         <CardContent className="flex items-center justify-center h-[300px]">
-          <div className="text-muted-foreground">Loading analytics data...</div>
+          <div className="text-center space-y-2">
+            <div className="inline-block animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent"></div>
+            <div className="text-muted-foreground text-sm">
+              Loading analytics data...
+            </div>
+          </div>
         </CardContent>
       </Card>
     );
@@ -213,31 +198,91 @@ export function DashboardChartLineInteractive({
   if (!hasValidData) {
     return (
       <Card className="py-4 sm:py-0">
-        <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
-          <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-            <CardTitle>Analytics Overview</CardTitle>
-            <CardDescription>
-              WebSocket connections, subscriptions, and messages over time
-            </CardDescription>
+        <CardHeader className="flex flex-col items-stretch border-b !p-0">
+          <div className="flex flex-col sm:flex-row">
+            <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-4">
+              <CardTitle>Analytics Overview</CardTitle>
+              <CardDescription>
+                WebSocket connections, subscriptions, and messages over time
+              </CardDescription>
+            </div>
+
+            {/* Granularity Toggle */}
+            {onGranularityChange && (
+              <div className="flex items-center gap-2 px-6 py-4 border-l border-border/50">
+                <span className="text-sm text-muted-foreground font-medium">
+                  View:
+                </span>
+                <div className="flex rounded-md border border-border overflow-hidden">
+                  {(["day", "hour"] as const).map((granularity) => (
+                    <button
+                      key={granularity}
+                      onClick={() => onGranularityChange(granularity)}
+                      className={`
+                        px-3 py-1.5 text-sm font-medium transition-colors
+                        ${
+                          currentGranularity === granularity
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                        }
+                        ${granularity === "day" ? "" : "border-l border-border"}
+                      `}
+                    >
+                      {granularity === "day" ? "Daily" : "Hourly"}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-          <div className="flex">
+          <div className="flex overflow-hidden rounded-lg border shadow-sm mx-6 mb-4">
             {["connect", "subscribe", "message"].map((key, idx, arr) => {
               const chart = key as keyof typeof chartConfig;
-              let roundedClass = "";
-              if (idx === arr.length - 1) {
-                roundedClass = "rounded-tr-md";
-              }
+              const isActive = activeChart === chart;
+              const isFirst = idx === 0;
+              const isLast = idx === arr.length - 1;
+
               return (
                 <button
                   key={chart}
-                  data-active={activeChart === chart}
-                  className={`data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6 ${roundedClass}`}
+                  data-active={isActive}
+                  className={`
+                    relative flex flex-1 flex-col justify-center gap-1.5 px-6 py-4 text-left
+                    transition-all duration-200 ease-in-out
+                    hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring/50
+                    ${
+                      isActive
+                        ? "bg-muted/60 text-foreground shadow-sm"
+                        : "text-muted-foreground hover:text-foreground"
+                    }
+                    ${!isFirst ? "border-l border-border/50" : ""}
+                    ${isFirst ? "rounded-l-lg" : ""}
+                    ${isLast ? "rounded-r-lg" : ""}
+                    group
+                  `}
                   onClick={() => setActiveChart(chart)}
                 >
-                  <span className="text-muted-foreground text-xs">
+                  {/* Active indicator bar */}
+                  <div
+                    className={`
+                    absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r transition-all duration-200
+                    ${
+                      isActive
+                        ? "from-transparent via-primary to-transparent opacity-100"
+                        : "opacity-0 group-hover:opacity-50"
+                    }
+                  `}
+                  />
+
+                  <span className="text-xs font-medium tracking-wide uppercase">
                     {chartConfig[chart].label}
                   </span>
-                  <span className="text-lg leading-none font-bold sm:text-3xl">
+                  <span
+                    className={`
+                    text-lg leading-none font-bold sm:text-3xl transition-colors duration-200
+                    ${isActive ? "text-primary" : "text-foreground"}
+                  `}
+                  >
                     0
                   </span>
                 </button>
@@ -256,34 +301,91 @@ export function DashboardChartLineInteractive({
 
   return (
     <Card className="py-4 sm:py-0">
-      <CardHeader className="flex flex-col items-stretch border-b !p-0 sm:flex-row">
-        <div className="flex flex-1 flex-col justify-center gap-1 px-6 pb-3 sm:pb-0">
-          <CardTitle>Analytics Overview</CardTitle>
-          <CardDescription>
-            WebSocket connections, subscriptions, and messages over time
-          </CardDescription>
+      <CardHeader className="flex flex-col items-stretch border-b !p-0">
+        <div className="flex flex-col sm:flex-row">
+          <div className="flex flex-1 flex-col justify-center gap-1 px-6 py-4">
+            <CardTitle>Analytics Overview</CardTitle>
+            <CardDescription>
+              WebSocket connections, subscriptions, and messages over time
+            </CardDescription>
+          </div>
+
+          {/* Granularity Toggle */}
+          {onGranularityChange && (
+            <div className="flex items-center gap-2 px-6 py-4 border-l border-border/50">
+              <span className="text-sm text-muted-foreground font-medium">
+                View:
+              </span>
+              <div className="flex rounded-md border border-border overflow-hidden">
+                {(["day", "hour"] as const).map((granularity) => (
+                  <button
+                    key={granularity}
+                    onClick={() => onGranularityChange(granularity)}
+                    className={`
+                      px-3 py-1.5 text-sm font-medium transition-colors
+                      ${
+                        currentGranularity === granularity
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-background text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }
+                      ${granularity === "day" ? "" : "border-l border-border"}
+                    `}
+                  >
+                    {granularity === "day" ? "Daily" : "Hourly"}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="flex">
+        <div className="flex overflow-hidden rounded-lg border shadow-sm mx-6 mb-4">
           {["connect", "subscribe", "message"].map((key, idx, arr) => {
             const chart = key as keyof typeof chartConfig;
-            // If this is the last item, add 'rounded-r-md' (right rounded corners)
-            // and for the first item, add 'rounded-l-md' (left rounded corners)
-            // If only one item, round both sides
-            let roundedClass = "";
-            if (idx === arr.length - 1) {
-              roundedClass = "rounded-tr-md";
-            }
+            const isActive = activeChart === chart;
+            const isFirst = idx === 0;
+            const isLast = idx === arr.length - 1;
+
             return (
               <button
                 key={chart}
-                data-active={activeChart === chart}
-                className={`data-[active=true]:bg-muted/50 flex flex-1 flex-col justify-center gap-1 border-t px-6 py-4 text-left even:border-l sm:border-t-0 sm:border-l sm:px-8 sm:py-6 ${roundedClass}`}
+                data-active={isActive}
+                className={`
+                  relative flex flex-1 flex-col justify-center gap-1.5 px-6 py-4 text-left
+                  transition-all duration-200 ease-in-out
+                  hover:bg-muted/30 focus:outline-none focus:ring-2 focus:ring-ring/50
+                  ${
+                    isActive
+                      ? "bg-muted/60 text-foreground shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  }
+                  ${!isFirst ? "border-l border-border/50" : ""}
+                  ${isFirst ? "rounded-l-lg" : ""}
+                  ${isLast ? "rounded-r-lg" : ""}
+                  group
+                `}
                 onClick={() => setActiveChart(chart)}
               >
-                <span className="text-muted-foreground text-xs">
+                {/* Active indicator bar */}
+                <div
+                  className={`
+                  absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r transition-all duration-200
+                  ${
+                    isActive
+                      ? "from-transparent via-primary to-transparent opacity-100"
+                      : "opacity-0 group-hover:opacity-50"
+                  }
+                `}
+                />
+
+                <span className="text-xs font-medium tracking-wide uppercase">
                   {chartConfig[chart].label}
                 </span>
-                <span className="text-lg leading-none font-bold sm:text-3xl">
+                <span
+                  className={`
+                  text-lg leading-none font-bold sm:text-3xl transition-colors duration-200
+                  ${isActive ? "text-primary" : "text-foreground"}
+                `}
+                >
                   {total[key as keyof typeof total].toLocaleString()}
                 </span>
               </button>
@@ -299,71 +401,83 @@ export function DashboardChartLineInteractive({
           >
             <LineChart
               accessibilityLayer
-              data={chartData}
+              data={renderData}
               margin={{
                 left: 12,
                 right: 12,
+                top: 8,
+                bottom: 8,
               }}
             >
-              <CartesianGrid vertical={false} />
+              <CartesianGrid
+                vertical={false}
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.3}
+                strokeDasharray="3 3"
+              />
               <XAxis
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
+                tickMargin={12}
+                minTickGap={32}
+                type="category"
+                tick={{
+                  fontSize: 12,
+                  fill: "hsl(var(--muted-foreground))",
+                  fontWeight: 500,
+                }}
+                tickFormatter={(value) =>
+                  formatChartTick({ value, granularity: currentGranularity })
+                }
+              />
+              <YAxis
+                tickLine={false}
+                axisLine={false}
                 tickMargin={8}
-                minTickGap={hasSingleDataPoint ? 0 : 32}
-                domain={hasSingleDataPoint ? ["dataMin", "dataMax"] : undefined}
-                type={hasSingleDataPoint ? "number" : "category"}
-                tickFormatter={(value) => {
-                  try {
-                    const date = new Date(value);
-                    if (isNaN(date.getTime())) return "";
-                    return date.toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    });
-                  } catch (error) {
-                    console.warn("Date formatting error:", error);
-                    return "";
-                  }
+                domain={[0, "dataMax + 1"]}
+                allowDecimals={false}
+                tick={{
+                  fontSize: 12,
+                  fill: "hsl(var(--muted-foreground))",
+                  fontWeight: 500,
                 }}
               />
               <ChartTooltip
                 content={
                   <ChartTooltipContent
-                    className="w-[150px]"
+                    className="w-[180px] border border-border/50 bg-background/95 backdrop-blur-sm shadow-lg"
                     nameKey="views"
-                    labelFormatter={(value) => {
-                      try {
-                        const date = new Date(value);
-                        if (isNaN(date.getTime())) return "Invalid date";
-                        return date.toLocaleDateString("en-US", {
-                          month: "short",
-                          day: "numeric",
-                          year: "numeric",
-                        });
-                      } catch (error) {
-                        console.warn("Tooltip date formatting error:", error);
-                        return "Invalid date";
-                      }
-                    }}
+                    labelFormatter={(value) =>
+                      formatTooltipLabel({
+                        value,
+                        granularity: currentGranularity,
+                      })
+                    }
                   />
                 }
+                cursor={{
+                  stroke: "hsl(var(--border))",
+                  strokeWidth: 1,
+                  strokeOpacity: 0.5,
+                }}
               />
               <Line
                 dataKey={activeChart}
                 type="monotone"
                 stroke={`var(--color-${activeChart})`}
-                strokeWidth={2}
-                dot={
-                  hasSingleDataPoint
-                    ? {
-                        fill: `var(--color-${activeChart})`,
-                        strokeWidth: 2,
-                        r: 4,
-                      }
-                    : false
-                }
+                strokeWidth={3}
+                dot={hasSingleDataPoint ? SinglePointDot : false}
+                activeDot={{
+                  r: 5,
+                  stroke: `var(--color-${activeChart})`,
+                  strokeWidth: 2,
+                  fill: "hsl(var(--background))",
+                  className: "drop-shadow-sm",
+                }}
+                style={{
+                  filter: `drop-shadow(0 2px 4px var(--color-${activeChart})20)`,
+                }}
               />
             </LineChart>
           </ChartContainer>
