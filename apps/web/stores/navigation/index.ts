@@ -14,8 +14,7 @@ interface NavStackState {
   resetStack: () => void;
 }
 
-function logNav(tag: string, ...args: any[]) {
-  // eslint-disable-next-line no-console
+function logNav(tag: string, ...args: unknown[]) {
   console.log(`[NAV-STACK][${tag}]`, ...args);
 }
 
