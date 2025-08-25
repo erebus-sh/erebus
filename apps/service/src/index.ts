@@ -6,6 +6,7 @@ import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
 import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
 import { UsageWebhook } from "./services/webhooks/usage";
+import { UsagePayload } from "@repo/schemas/webhooks/usageRequest";
 
 export default {
   /**
@@ -180,6 +181,9 @@ export default {
    * @param env
    */
   async queue(batch: MessageBatch, env: Env): Promise<void> {
+    // Collect all usage events
+    const usageEvents: UsagePayload[] = [];
+
     for (const msg of batch.messages) {
       const envelope = QueueEnvelopeSchema.safeParse(msg.body);
       if (!envelope.success) {
@@ -189,23 +193,25 @@ export default {
 
       switch (queueEnvelope.packetType) {
         case "usage":
-          // Send usage webhook to the server
-          const usageWebhook = new UsageWebhook(env.WEBHOOK_BASE_URL, env);
-          await usageWebhook.send({
-            event: queueEnvelope.payload.event,
-            data: {
-              projectId: queueEnvelope.payload.data.projectId,
-              payloadLength: queueEnvelope.payload.data.payloadLength,
-            },
-          });
-          console.log(
-            `[QUEUE] Sent usage webhook for project ${queueEnvelope.payload.data.projectId}: ${queueEnvelope.payload.data.payloadLength} bytes`,
-          );
+          // queueEnvelope.payload is an array of usage events
+          for (const event of queueEnvelope.payload) {
+            usageEvents.push(event as UsagePayload);
+          }
           break;
         default:
           throw new Error("Unsupported queue envelope type");
       }
       msg.ack();
+    }
+
+    if (usageEvents.length > 0) {
+      const usageWebhook = new UsageWebhook(env.WEBHOOK_BASE_URL, env);
+      await usageWebhook.send(usageEvents);
+      for (const event of usageEvents) {
+        console.log(
+          `[QUEUE] Sent usage webhook for project ${event.data.projectId}: ${event.data.payloadLength} bytes`,
+        );
+      }
     }
   },
 } satisfies ExportedHandler<Env>;

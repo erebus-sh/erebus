@@ -36,7 +36,7 @@ export class UsageWebhook {
     this.secret = env.WEBHOOK_SECRET;
   }
 
-  async send(payload: UsagePayload): Promise<void> {
+  async send(payloads: UsagePayload[]): Promise<void> {
     // Strictly check that the path is correct before sending
     if (
       !isValidUsageWebhookPath(this.usagePath) ||
@@ -47,11 +47,11 @@ export class UsageWebhook {
       );
     }
 
-    const hmac = await generateHmac(JSON.stringify(payload), this.secret);
+    const hmac = await generateHmac(JSON.stringify(payloads), this.secret);
 
     await this.client.api.v1.webhooks.usage.$post(
       {
-        json: payload,
+        json: payloads,
       },
       {
         headers: {

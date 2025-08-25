@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { zValidator } from "@hono/zod-validator";
-import { UsagePayloadSchema } from "@repo/schemas/webhooks/usageRequest";
+import { UsageEventSchema } from "@repo/schemas/webhooks/usageRequest";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { verifyHmac } from "@repo/shared/utils/hmac";
+import { Id } from "@/convex/_generated/dataModel";
+import { z } from "zod";
 
 export const webhooksRoute = new Hono()
   .use(async (c, next) => {
@@ -39,25 +40,25 @@ export const webhooksRoute = new Hono()
     );
     await next();
   })
-  .post("/usage", zValidator("json", UsagePayloadSchema), async (c) => {
+  .post("/usage", zValidator("json", z.array(UsageEventSchema)), async (c) => {
     const body = await c.req.valid("json");
     console.log("Received usage webhook:", body);
 
-    const { event, data } = body;
-
     try {
-      // Track usage in Convex database
+      // Process each usage event in the array
+      // Transform the incoming usage events to match the Convex mutation schema
       await fetchMutation(api.usage.mutation.trackUsage, {
-        projectId: data.projectId as Id<"projects">,
-        event,
-        payloadLength: data.payloadLength || 0,
+        payload: body.map((event) => ({
+          projectId: event.data.projectId as Id<"projects">,
+          event: event.event,
+          payloadLength: event.data.payloadLength,
+        })),
       });
 
       // Return success response
       return c.json({
         success: true,
-        message: `Usage event ${event} processed successfully`,
-        projectId: data.projectId,
+        message: `Processed ${body.length} usage events successfully`,
       });
     } catch (error) {
       console.error("Error processing usage webhook:", error);

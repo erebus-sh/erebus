@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const UsagePayloadSchema = z.object({
+export const UsageEventSchema = z.object({
   event: z.enum([
     "websocket.connect",
     "websocket.message",
@@ -11,4 +11,6 @@ export const UsagePayloadSchema = z.object({
     payloadLength: z.number(),
   }),
 });
-export type UsagePayload = z.infer<typeof UsagePayloadSchema>;
+
+export type UsagePayload = z.infer<typeof UsageEventSchema>;
+export type UsageEvent = z.infer<typeof UsageEventSchema>;

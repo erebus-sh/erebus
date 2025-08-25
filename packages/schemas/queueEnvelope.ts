@@ -1,10 +1,10 @@
 import { z } from "zod";
-import { UsagePayloadSchema } from "./webhooks/usageRequest";
+import { UsageEventSchema } from "./webhooks/usageRequest";
 
 export const QueueEnvelopeSchema = z.discriminatedUnion("packetType", [
   z.object({
     packetType: z.literal("usage"),
-    payload: UsagePayloadSchema,
+    payload: z.array(UsageEventSchema),
   }),
 ]);
 export type QueueEnvelope = z.infer<typeof QueueEnvelopeSchema>;
