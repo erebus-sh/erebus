@@ -10,6 +10,7 @@ import {
   Wifi,
   ChevronLeft,
   Info,
+  LayoutDashboard,
 } from "lucide-react";
 import { useSidebarStore } from "../store/sidebar";
 import { useCallback } from "react";
@@ -32,6 +33,12 @@ interface SidebarItem {
 }
 
 const sidebarItems = [
+  {
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    shortLabel: "Dashboard",
+    href: "/dashboard",
+  },
   {
     label: "Usage",
     icon: BarChart3,

@@ -27,7 +27,7 @@ beforeAll(async () => {
     const randomUserId = crypto.randomUUID();
     console.log("generated randomUserId", randomUserId);
     const service = new ErebusService({
-      secret_api_key: "dv-er-6j1vd5n4hpwmipoynaeb59p913046h7_059_5srxof90c0ck",
+      secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
       base_url: "http://localhost:3000", // Erebus service local server
     });
     const session = await service.prepareSession({ userId: randomUserId });

@@ -19,11 +19,15 @@ export function ConvexAuthClientProvider({
   );
 }
 
+const expiration = 20 * 60 * 1000; // 20 minutes
+
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <ConvexProvider client={convex}>
       <ConvexAuthClientProvider>
-        <ConvexQueryCacheProvider>{children}</ConvexQueryCacheProvider>
+        <ConvexQueryCacheProvider expiration={expiration}>
+          {children}
+        </ConvexQueryCacheProvider>
       </ConvexAuthClientProvider>
     </ConvexProvider>
   );

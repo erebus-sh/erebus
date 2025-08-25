@@ -26,6 +26,7 @@ import clsx from "clsx";
 import { toast } from "sonner";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { ConvexError } from "convex/values";
 
 // --- Reusable IconLabel component ---
 function IconLabel({
@@ -68,9 +69,14 @@ export default function ProjectCard({
     try {
       await deleteProject({ projectId: projectId as Id<"projects"> });
       toast.success("Project deleted successfully");
-    } catch (error: any) {
-      // Handle ConvexError with toast
-      toast.error(error.message || "Failed to delete project");
+    } catch (error: unknown) {
+      if (error instanceof ConvexError) {
+        toast.error(
+          "This project cannot be deleted because it has usage data.",
+        );
+        return;
+      }
+      toast.error("Failed to delete project");
     }
   };
 

@@ -60,7 +60,7 @@ export const deleteProject = mutation({
 
     if (hasUsage) {
       throw new ConvexError(
-        "Cannot delete project with existing usage. Please delete all usage data first.",
+        "This project cannot be deleted because it has usage data.",
       );
     }
 

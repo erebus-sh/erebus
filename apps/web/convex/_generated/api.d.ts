@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as analytics_query from "../analytics/query.js";
 import type * as auth from "../auth.js";
 import type * as console_mutation from "../console/mutation.js";
 import type * as helper_action from "../helper/action.js";
@@ -44,6 +45,7 @@ import type * as utils_shuffle from "../utils/shuffle.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  "analytics/query": typeof analytics_query;
   auth: typeof auth;
   "console/mutation": typeof console_mutation;
   "helper/action": typeof helper_action;
