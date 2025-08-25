@@ -44,7 +44,8 @@ export const getUsage = query({
 
     let dbQuery = ctx.db
       .query("usage")
-      .withIndex("by_project", (q) => q.eq("projectId", project._id));
+      .withIndex("by_project", (q) => q.eq("projectId", project._id))
+      .order("desc"); // from newest to oldest
 
     if (startTime) {
       dbQuery = dbQuery.filter((q) => q.gte(q.field("timestamp"), startTime));
@@ -71,6 +72,13 @@ export const getUsage = query({
       );
     }
 
+    /**
+     * TODO:
+     * This is completely not efficient, but it's a good start (kinda of, can't scale)
+     *
+     * we must use an aggregate query to get the total count
+     * https://www.convex.dev/components/aggregate
+     */
     const allRecords = await countQuery.collect();
     const totalCount = allRecords.length;
 

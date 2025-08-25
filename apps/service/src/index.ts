@@ -190,7 +190,7 @@ export default {
       switch (queueEnvelope.packetType) {
         case "usage":
           // Send usage webhook to the server
-          const usageWebhook = new UsageWebhook(env.WEBHOOK_BASE_URL);
+          const usageWebhook = new UsageWebhook(env.WEBHOOK_BASE_URL, env);
           await usageWebhook.send({
             event: queueEnvelope.payload.event,
             data: {

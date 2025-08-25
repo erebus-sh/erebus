@@ -10,4 +10,5 @@ export interface Env {
   UPSTASH_REDIS_REST_TOKEN: string;
   ROOT_API_KEY: string;
   WEBHOOK_BASE_URL: string;
+  WEBHOOK_SECRET: string;
 }

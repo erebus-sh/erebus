@@ -1,5 +1,7 @@
 import { createRpcClient } from "@repo/web/server/rpc";
 import { UsagePayload } from "@repo/schemas/webhooks/usageRequest";
+import { generateHmac } from "@repo/shared/utils/hmac";
+import { Env } from "@/env";
 
 function isValidBaseUrl(url: string): boolean {
   try {
@@ -22,14 +24,16 @@ function isValidUsageWebhookPath(path: string): boolean {
 export class UsageWebhook {
   private readonly client: ReturnType<typeof createRpcClient>;
   private readonly usagePath = "/api/v1/webhooks/usage";
+  private readonly secret: string;
 
-  constructor(baseUrl: string) {
+  constructor(baseUrl: string, env: Env) {
     if (!isValidBaseUrl(baseUrl)) {
       throw new Error(
         `Invalid baseUrl for UsageWebhook: "${baseUrl}". Must be absolute, http(s), and not contain path/query/hash.`,
       );
     }
     this.client = createRpcClient(baseUrl);
+    this.secret = env.WEBHOOK_SECRET;
   }
 
   async send(payload: UsagePayload): Promise<void> {
@@ -42,8 +46,18 @@ export class UsageWebhook {
         "UsageWebhook: Invalid usage webhook path or client method not found.",
       );
     }
-    await this.client.api.v1.webhooks.usage.$post({
-      json: payload,
-    });
+
+    const hmac = await generateHmac(JSON.stringify(payload), this.secret);
+
+    await this.client.api.v1.webhooks.usage.$post(
+      {
+        json: payload,
+      },
+      {
+        headers: {
+          "X-Erebus-Hmac": hmac,
+        },
+      },
+    );
   }
 }
