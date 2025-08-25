@@ -1,12 +1,12 @@
 {
-  "name": "@repo/erebus-core",
+  "name": "@repo/erebus-sdk",
   "module": "index.ts",
   "type": "module",
   "scripts": {
     "clean": "rm -rf dist",
-    "build:js": "bun run build.config.ts",
-    "build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "build": "bun run clean && bun run build:js && bun run build:types",
+    "publish:build:js": "bun run build.config.ts",
+    "publish:build:types": "tsc --emitDeclarationOnly --outDir dist",
+    "publish:build": "bun run clean && bun run publish:build:js && bun run publish:build:types",
     "format": "bunx prettier . --write",
     "prepublishOnly": "bun run build",
     "test": "vitest run",

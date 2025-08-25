@@ -1,5 +1,5 @@
 {
-  "name": "service",
+  "name": "@repo/service",
   "version": "0.0.0",
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.60",

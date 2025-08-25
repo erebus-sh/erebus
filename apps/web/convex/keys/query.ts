@@ -55,7 +55,7 @@ export const getKeyByProjectSlug = query({
     const keys = await ctx.db
       .query("api_keys")
       .withIndex("by_projectId", (q) => q.eq("projectId", project._id))
-      .order("desc", (q) => q.field("createdAt"))
+      .order("desc")
       .collect();
     return keys;
   },
