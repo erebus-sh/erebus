@@ -193,10 +193,7 @@ export default {
 
       switch (queueEnvelope.packetType) {
         case "usage":
-          // queueEnvelope.payload is an array of usage events
-          for (const event of queueEnvelope.payload) {
-            usageEvents.push(event as UsagePayload);
-          }
+          usageEvents.push(queueEnvelope.payload);
           break;
         default:
           throw new Error("Unsupported queue envelope type");
