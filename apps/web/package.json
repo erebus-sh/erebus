@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auth/core": "0.37.0",
+    "@convex-dev/aggregate": "^0.1.23",
     "@convex-dev/auth": "^0.0.87",
     "@edge-runtime/vm": "^5.0.0",
     "@hono/zod-validator": "^0.7.2",
