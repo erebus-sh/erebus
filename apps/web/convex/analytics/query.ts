@@ -2,6 +2,7 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getValidatedProjectBySlugWithOwnershipForQuery } from "../lib/guard";
 import { usageByEventTimeAggregate } from "../aggregaters/usageAggregater";
+import { formatISO } from "date-fns";
 
 /**
  * Enhanced analytics query to get analytics for a project with support for
@@ -153,17 +154,21 @@ export const getAnalytics = query({
       granularity === "hour" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
     const timeBuckets: Array<{ start: number; end: number; key: string }> = [];
 
+    // Align a timestamp to the start of the bucket in UTC (mathematically using epoch ms)
+    const alignToBucketStartUtc = (ts: number): number => {
+      const bucketSize = periodMs;
+      return ts - (ts % bucketSize);
+    };
+
     // Generate time buckets for the entire range
-    for (
-      let time = defaultStartTime;
-      time <= defaultEndTime;
-      time += periodMs
-    ) {
+    const alignedStart = alignToBucketStartUtc(defaultStartTime);
+    for (let time = alignedStart; time <= defaultEndTime; time += periodMs) {
       const bucketEnd = Math.min(time + periodMs - 1, defaultEndTime);
       timeBuckets.push({
         start: time,
         end: bucketEnd,
-        key: formatTimeKey(time, granularity),
+        // Use ISO string in UTC for consistent client parsing
+        key: formatISO(new Date(time)),
       });
     }
 
@@ -230,27 +235,7 @@ export const getAnalytics = query({
       "Time bucket counts processed using aggregates",
     );
 
-    // Helper function to format timestamp based on granularity in UTC
-    function formatTimeKey(
-      timestamp: number,
-      granularity: "day" | "hour",
-    ): string {
-      const date = new Date(timestamp);
-      if (granularity === "hour") {
-        // YYYY-MM-DD HH:00 format in UTC
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(date.getUTCDate()).padStart(2, "0");
-        const hour = String(date.getUTCHours()).padStart(2, "0");
-        return `${year}-${month}-${day} ${hour}:00`;
-      } else {
-        // YYYY-MM-DD format in UTC
-        const year = date.getUTCFullYear();
-        const month = String(date.getUTCMonth() + 1).padStart(2, "0");
-        const day = String(date.getUTCDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
-      }
-    }
+    // Removed legacy formatter; using ISO strings via date-fns above
 
     // Sort the data chronologically
     const chartData = bucketCounts.sort((a, b) => a.date.localeCompare(b.date));

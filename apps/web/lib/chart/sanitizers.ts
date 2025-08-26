@@ -1,4 +1,5 @@
 import type { AnalyticsData, ChartDataPoint } from "./types";
+import { parseISO, isValid as isValidDate } from "date-fns";
 
 /**
  * Checks if a value is a valid number (not NaN, not Infinity)
@@ -19,13 +20,10 @@ export const sanitizeNumber = (value: unknown, fallback = 0): number => {
  */
 export const sanitizeDate = (dateStr: unknown): string => {
   if (typeof dateStr !== "string") return new Date().toISOString();
-
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return new Date().toISOString();
-
-  // Return the original string as-is, assuming server dates are already in desired format
-  // The conversion to local timezone will happen in the formatters
-  return dateStr;
+  const parsed = parseISO(dateStr);
+  if (!isValidDate(parsed)) return new Date().toISOString();
+  // Normalize to ISO string to ensure consistent downstream parsing
+  return parsed.toISOString();
 };
 
 /**
@@ -70,9 +68,8 @@ export const sanitizeAnalyticsData = (
           );
         })
         .sort((a, b) => {
-          // Sort by date to ensure proper ordering
           try {
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
+            return parseISO(a.date).getTime() - parseISO(b.date).getTime();
           } catch {
             return 0;
           }

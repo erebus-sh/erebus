@@ -1,5 +1,6 @@
 import type { AnalyticsData, ChartDataPoint, Granularity } from "./types";
 import { createSyntheticDateString, convertToLocalDate } from "./formatters";
+import { isValid as isValidDate } from "date-fns";
 
 /**
  * Creates synthetic data points for single data point scenarios
@@ -8,18 +9,13 @@ export const createSyntheticDataPoints = (
   originalPoint: ChartDataPoint,
   granularity: Granularity,
 ): ChartDataPoint[] => {
-  let baseDate: Date;
+  // Expect ISO string from server and parse to Date (local rendering later)
+  const baseDate = convertToLocalDate(originalPoint.date);
 
-  // Handle both date formats and ensure local timezone
-  if (originalPoint.date.includes(" ") && granularity === "hour") {
-    // Format: "2025-08-25 14:00" - treat as local time
-    const [datePart, timePart] = originalPoint.date.split(" ");
-    const [year, month, day] = datePart.split("-").map(Number);
-    const [hour] = timePart.split(":").map(Number);
-    baseDate = new Date(year, month - 1, day, hour, 0, 0);
-  } else {
-    // Use our conversion function to ensure local timezone
-    baseDate = convertToLocalDate(originalPoint.date);
+  // Validate that we got a valid date
+  if (!isValidDate(baseDate)) {
+    console.warn("Invalid base date for synthetic points:", originalPoint.date);
+    return [originalPoint]; // Return original point if date is invalid
   }
 
   const periodMs =
@@ -64,13 +60,11 @@ export const processChartData = (
     nonZeroCount === 0 &&
     (total.connect > 0 || total.subscribe > 0 || total.message > 0)
   ) {
-    // Create a single data point for "today" with the totals in local timezone
-    const now = convertToLocalDate(Date.now());
-    const today = createSyntheticDateString(now, sanitizedData.granularity);
-
+    const now = new Date();
+    const bucketIso = createSyntheticDateString(now, sanitizedData.granularity);
     return [
       {
-        date: today,
+        date: bucketIso,
         connect: total.connect,
         subscribe: total.subscribe,
         message: total.message,
@@ -115,6 +109,11 @@ export const getCurrentLocalDate = (): Date => {
  * Formats a relative time description (e.g., "2 hours ago", "in 3 days")
  */
 export const formatRelativeTime = (timestamp: number): string => {
+  // Validate timestamp
+  if (!isValidDate(new Date(timestamp))) {
+    return "invalid time";
+  }
+
   const now = Date.now();
   const diff = timestamp - now;
   const absDiff = Math.abs(diff);
@@ -148,6 +147,8 @@ export const formatRelativeTime = (timestamp: number): string => {
  */
 export const isToday = (timestamp: number): boolean => {
   const date = new Date(timestamp);
+  if (!isValidDate(date)) return false;
+
   const today = new Date();
   return date.toDateString() === today.toDateString();
 };
@@ -157,6 +158,8 @@ export const isToday = (timestamp: number): boolean => {
  */
 export const isYesterday = (timestamp: number): boolean => {
   const date = new Date(timestamp);
+  if (!isValidDate(date)) return false;
+
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
   return date.toDateString() === yesterday.toDateString();

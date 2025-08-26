@@ -3,32 +3,17 @@ import type {
   ChartTickFormatterProps,
   ChartTooltipLabelFormatterProps,
 } from "./types";
+import { parseISO, format, isValid as isValidDate } from "date-fns";
 
 /**
- * Converts a date string or timestamp to the user's local timezone
+ * Parses a date string/timestamp to a Date. Expects ISO UTC strings from server.
  */
 export const convertToLocalDate = (dateInput: string | number): Date => {
-  // If it's a string, try to parse it considering it might be in server timezone
-  if (typeof dateInput === "string") {
-    // Handle our custom format: "YYYY-MM-DD" or "YYYY-MM-DD HH:MM"
-    if (dateInput.includes(" ") || dateInput.includes("-")) {
-      // For date strings, assume they represent local dates and parse accordingly
-      return new Date(
-        dateInput + (dateInput.includes(" ") ? ":00" : "T00:00:00"),
-      );
-    }
+  if (typeof dateInput === "number") {
     return new Date(dateInput);
   }
-
-  // For timestamps, create Date object (automatically converts to local timezone)
-  const localDate = new Date(dateInput);
-  console.log("convertToLocalDate:", {
-    input: dateInput,
-    inputUTC: new Date(dateInput).toISOString(),
-    outputLocal: localDate.toLocaleString(),
-    userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-  });
-  return localDate;
+  const parsed = parseISO(dateInput);
+  return isValidDate(parsed) ? parsed : new Date(NaN);
 };
 
 /**
@@ -41,17 +26,9 @@ export const formatChartDate = (
   const date =
     dateInput instanceof Date ? dateInput : convertToLocalDate(dateInput);
 
-  if (granularity === "hour") {
-    return date.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      hour12: true,
-    });
-  } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-    });
-  }
+  if (!isValidDate(date)) return "";
+
+  return granularity === "hour" ? format(date, "p") : format(date, "MMM d");
 };
 
 /**
@@ -63,27 +40,11 @@ export const formatTooltipDate = (
 ): string => {
   const date =
     dateInput instanceof Date ? dateInput : convertToLocalDate(dateInput);
+  if (!isValidDate(date)) return "Invalid date";
 
-  if (granularity === "hour") {
-    return (
-      date.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-        year: "numeric",
-      }) +
-      " at " +
-      date.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        hour12: true,
-      })
-    );
-  } else {
-    return date.toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
+  return granularity === "hour"
+    ? `${format(date, "MMM d, yyyy")} at ${format(date, "p")}`
+    : format(date, "MMM d, yyyy");
 };
 
 /**
@@ -92,39 +53,16 @@ export const formatTooltipDate = (
  */
 export const parseChartDateValue = (
   value: string | number,
-  granularity: Granularity,
+  _granularity: Granularity,
 ): Date | null => {
   try {
     if (typeof value === "number") {
-      // Timestamps are already UTC, convert to local time
-      return convertToLocalDate(value);
+      return new Date(value);
     }
-
-    if (typeof value === "string") {
-      // Handle both ISO strings and our custom format
-      if (value.includes(" ") && granularity === "hour") {
-        // Format: "2025-08-25 14:00" - this is UTC time from server, convert to local
-        const [datePart, timePart] = value.split(" ");
-        const [year, month, day] = datePart.split("-").map(Number);
-        const [hour] = timePart.split(":").map(Number);
-
-        // Create UTC date and then convert to local time
-        const utcDate = new Date(Date.UTC(year, month - 1, day, hour, 0, 0));
-        return convertToLocalDate(utcDate.getTime());
-      } else if (value.includes("-") && !value.includes("T")) {
-        // Format: "2025-08-25" - date only, assume UTC and convert to local
-        const [year, month, day] = value.split("-").map(Number);
-        const utcDate = new Date(Date.UTC(year, month - 1, day));
-        return convertToLocalDate(utcDate.getTime());
-      } else {
-        // Standard date formats - use our conversion function
-        return convertToLocalDate(value);
-      }
-    }
-
-    return null;
+    const parsed = parseISO(value);
+    return isValidDate(parsed) ? parsed : null;
   } catch (error) {
-    console.warn("Date parsing error:", error, { value, granularity });
+    console.warn("Date parsing error:", error, { value });
     return null;
   }
 };
@@ -162,21 +100,12 @@ export const createSyntheticDateString = (
   date: Date,
   granularity: Granularity,
 ): string => {
-  // Date object is already in local time, no conversion needed
-  const localDate = date;
-
-  if (granularity === "hour") {
-    const year = localDate.getFullYear();
-    const month = String(localDate.getMonth() + 1).padStart(2, "0");
-    const day = String(localDate.getDate()).padStart(2, "0");
-    const hour = String(localDate.getHours()).padStart(2, "0");
-    return `${year}-${month}-${day} ${hour}:00`;
-  } else {
-    const year = localDate.getFullYear();
-    const month = String(localDate.getMonth() + 1).padStart(2, "0");
-    const day = String(localDate.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  }
+  // Return ISO UTC at bucket start so the client consistently parses then formats locally
+  const periodMs =
+    granularity === "hour" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+  const ms = date.getTime();
+  const startMs = ms - (ms % periodMs);
+  return new Date(startMs).toISOString();
 };
 
 /**

@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { DashboardChartLineInteractive } from "@/components/console/chart-line-interactive";
 import SidesLayout from "../components/sides-layout";
-import { useQueryWithStateCache } from "@/utils/query";
+import { useQueryWithState } from "@/utils/query";
 import { api } from "@/convex/_generated/api";
 import { useParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +65,7 @@ export default function DashboardPage() {
     return presets;
   }, []);
 
-  const { data, isPending, error } = useQueryWithStateCache(
+  const { data, isPending, error } = useQueryWithState(
     api.analytics.query.getAnalytics,
     {
       projectSlug: projectSlug,
