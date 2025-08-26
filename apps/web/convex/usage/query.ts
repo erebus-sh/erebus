@@ -6,6 +6,10 @@ import {
   getValidatedProjectBySlugWithOwnershipForQuery,
   getValidatedProjectWithOwnershipForQuery,
 } from "../lib/guard";
+import {
+  usageAggregate,
+  usageByTimeAggregate,
+} from "../aggregaters/usageAggregater";
 
 export const getUsage = query({
   args: {
@@ -29,6 +33,8 @@ export const getUsage = query({
       projectSlug,
     );
 
+    // For pagination, we still need to query the database to get the actual records
+    // But we use aggregates for efficient counting
     let dbQuery = ctx.db
       .query("usage")
       .withIndex("by_project", (q) => q.eq("projectId", project._id))
@@ -43,31 +49,40 @@ export const getUsage = query({
 
     const results = await dbQuery.paginate(paginationOpts);
 
-    // Get total count for the same query conditions
-    let countQuery = ctx.db
-      .query("usage")
-      .withIndex("by_project", (q) => q.eq("projectId", project._id));
+    // Use aggregates for efficient total count - this is the critical optimization
+    let totalCount: number;
 
-    if (startTime) {
-      countQuery = countQuery.filter((q) =>
-        q.gte(q.field("timestamp"), startTime),
-      );
+    if (startTime && endTime) {
+      // Count within time range using time-based aggregate
+      totalCount = await usageByTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          lower: { key: startTime, inclusive: true },
+          upper: { key: endTime, inclusive: true },
+        },
+      });
+    } else if (startTime) {
+      // Count from start time onwards using time-based aggregate
+      totalCount = await usageByTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          lower: { key: startTime, inclusive: true },
+        },
+      });
+    } else if (endTime) {
+      // Count up to end time using time-based aggregate
+      totalCount = await usageByTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          upper: { key: endTime, inclusive: true },
+        },
+      });
+    } else {
+      // Total count for project using main aggregate
+      totalCount = await usageAggregate.count(ctx, {
+        namespace: project._id,
+      });
     }
-    if (endTime) {
-      countQuery = countQuery.filter((q) =>
-        q.lte(q.field("timestamp"), endTime),
-      );
-    }
-
-    /**
-     * TODO:
-     * This is completely not efficient, but it's a good start (kinda of, can't scale)
-     *
-     * we must use an aggregate query to get the total count
-     * https://www.convex.dev/components/aggregate
-     */
-    const allRecords = await countQuery.collect();
-    const totalCount = allRecords.length;
 
     // Omit the apiKeyId field from each result in the page
     return {
@@ -86,12 +101,11 @@ export const hasUsage = query({
     const { projectId } = args;
     await getValidatedProjectWithOwnershipForQuery(ctx, projectId);
 
-    // Check if there's any usage for this project
-    const usage = await ctx.db
-      .query("usage")
-      .withIndex("by_project", (q) => q.eq("projectId", projectId))
-      .first();
+    // Use aggregate for efficient existence check - no database query needed
+    const count = await usageAggregate.count(ctx, {
+      namespace: projectId,
+    });
 
-    return usage !== null;
+    return count > 0;
   },
 });

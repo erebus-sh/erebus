@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { getValidatedProjectBySlugWithOwnershipForQuery } from "../lib/guard";
+import { usageByEventTimeAggregate } from "../aggregaters/usageAggregater";
 
 /**
  * Enhanced analytics query to get analytics for a project with support for
  * both daily and hourly granularity, with normalized data (filling gaps).
+ * Fully optimized for millions of records using aggregates.
  */
 export const getAnalytics = query({
   args: {
@@ -81,26 +83,158 @@ export const getAnalytics = query({
       "Using time range for analytics query",
     );
 
-    // Get usage data for the project within the time range
+    // Use aggregates for ALL counting operations - no database queries for millions of records
     console.log(
       {
-        tag: "analytics:getAnalytics:dbQuery",
+        tag: "analytics:getAnalytics:aggregateQuery",
         projectId: project._id,
         defaultStartTime,
         defaultEndTime,
       },
-      "Querying usage data from database",
+      "Querying aggregates for efficient counting - no database queries",
     );
 
-    const dbQuery = ctx.db
-      .query("usage")
-      .withIndex("by_project", (q) => q.eq("projectId", project._id))
-      .filter((q) => q.gte(q.field("timestamp"), defaultStartTime))
-      .filter((q) => q.lte(q.field("timestamp"), defaultEndTime));
+    // Get total counts for each event type using event-time aggregate
+    const [totalConnects, totalSubscribes, totalMessages] = await Promise.all([
+      usageByEventTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          lower: {
+            key: ["websocket.connect", defaultStartTime],
+            inclusive: true,
+          },
+          upper: {
+            key: ["websocket.connect", defaultEndTime],
+            inclusive: true,
+          },
+        },
+      }),
+      usageByEventTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          lower: {
+            key: ["websocket.subscribe", defaultStartTime],
+            inclusive: true,
+          },
+          upper: {
+            key: ["websocket.subscribe", defaultEndTime],
+            inclusive: true,
+          },
+        },
+      }),
+      usageByEventTimeAggregate.count(ctx, {
+        namespace: project._id,
+        bounds: {
+          lower: {
+            key: ["websocket.message", defaultStartTime],
+            inclusive: true,
+          },
+          upper: {
+            key: ["websocket.message", defaultEndTime],
+            inclusive: true,
+          },
+        },
+      }),
+    ]);
+
+    console.log(
+      {
+        tag: "analytics:getAnalytics:aggregateCounts",
+        totalConnects,
+        totalSubscribes,
+        totalMessages,
+      },
+      "Aggregate counts retrieved",
+    );
+
+    // For time-based grouping, we need to use the time aggregate with specific time buckets
+    // This avoids querying millions of records from the database
+    const periodMs =
+      granularity === "hour" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const timeBuckets: Array<{ start: number; end: number; key: string }> = [];
+
+    // Generate time buckets for the entire range
+    for (
+      let time = defaultStartTime;
+      time <= defaultEndTime;
+      time += periodMs
+    ) {
+      const bucketEnd = Math.min(time + periodMs - 1, defaultEndTime);
+      timeBuckets.push({
+        start: time,
+        end: bucketEnd,
+        key: formatTimeKey(time, granularity),
+      });
+    }
+
+    // Get counts for each time bucket using aggregates
+    const bucketCounts = await Promise.all(
+      timeBuckets.map(async (bucket) => {
+        const [connects, subscribes, messages] = await Promise.all([
+          usageByEventTimeAggregate.count(ctx, {
+            namespace: project._id,
+            bounds: {
+              lower: {
+                key: ["websocket.connect", bucket.start],
+                inclusive: true,
+              },
+              upper: {
+                key: ["websocket.connect", bucket.end],
+                inclusive: true,
+              },
+            },
+          }),
+          usageByEventTimeAggregate.count(ctx, {
+            namespace: project._id,
+            bounds: {
+              lower: {
+                key: ["websocket.subscribe", bucket.start],
+                inclusive: true,
+              },
+              upper: {
+                key: ["websocket.subscribe", bucket.end],
+                inclusive: true,
+              },
+            },
+          }),
+          usageByEventTimeAggregate.count(ctx, {
+            namespace: project._id,
+            bounds: {
+              lower: {
+                key: ["websocket.message", bucket.start],
+                inclusive: true,
+              },
+              upper: {
+                key: ["websocket.message", bucket.end],
+                inclusive: true,
+              },
+            },
+          }),
+        ]);
+
+        return {
+          date: bucket.key,
+          connect: connects,
+          subscribe: subscribes,
+          message: messages,
+        };
+      }),
+    );
+
+    console.log(
+      {
+        tag: "analytics:getAnalytics:timeBucketsProcessed",
+        bucketCount: bucketCounts.length,
+        sampleBuckets: bucketCounts.slice(0, 3),
+      },
+      "Time bucket counts processed using aggregates",
+    );
 
     // Helper function to format timestamp based on granularity in UTC
-    // IMPORTANT: Uses UTC methods to ensure consistent date formatting regardless of server timezone
-    const formatKey = (timestamp: number): string => {
+    function formatTimeKey(
+      timestamp: number,
+      granularity: "day" | "hour",
+    ): string {
       const date = new Date(timestamp);
       if (granularity === "hour") {
         // YYYY-MM-DD HH:00 format in UTC
@@ -116,91 +250,10 @@ export const getAnalytics = query({
         const day = String(date.getUTCDate()).padStart(2, "0");
         return `${year}-${month}-${day}`;
       }
-    };
-
-    const usageRecords = await dbQuery.collect();
-    console.log(
-      {
-        tag: "analytics:getAnalytics:recordsFound",
-        count: usageRecords.length,
-        sampleRecords: usageRecords.slice(0, 3).map((r) => ({
-          timestamp: r.timestamp,
-          event: r.event,
-          utcDate: new Date(r.timestamp).toISOString(),
-          formattedKey: formatKey(r.timestamp),
-        })),
-      },
-      "Usage records retrieved from database",
-    );
-
-    // Group by time period and event type
-    const analyticsData: Record<
-      string,
-      { connect: number; subscribe: number; message: number }
-    > = {};
-
-    for (const record of usageRecords) {
-      const key = formatKey(record.timestamp);
-
-      if (!analyticsData[key]) {
-        analyticsData[key] = { connect: 0, subscribe: 0, message: 0 };
-      }
-
-      switch (record.event) {
-        case "websocket.connect":
-          analyticsData[key].connect++;
-          break;
-        case "websocket.subscribe":
-          analyticsData[key].subscribe++;
-          break;
-        case "websocket.message":
-          analyticsData[key].message++;
-          break;
-      }
     }
 
-    // Generate all time periods in the range to normalize data (fill gaps)
-    const normalizedData: Record<
-      string,
-      { connect: number; subscribe: number; message: number }
-    > = {};
-
-    const periodMs =
-      granularity === "hour" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
-
-    for (
-      let time = defaultStartTime;
-      time <= defaultEndTime;
-      time += periodMs
-    ) {
-      const key = formatKey(time);
-      normalizedData[key] = analyticsData[key] || {
-        connect: 0,
-        subscribe: 0,
-        message: 0,
-      };
-    }
-
-    console.log(
-      {
-        tag: "analytics:getAnalytics:dataProcessed",
-        rawDataCount: Object.keys(analyticsData).length,
-        normalizedDataCount: Object.keys(normalizedData).length,
-        sampleRawData: Object.entries(analyticsData).slice(0, 3),
-        sampleNormalizedData: Object.entries(normalizedData).slice(0, 5),
-      },
-      "Data processing complete",
-    );
-
-    // Convert to array format compatible with the chart
-    const chartData = Object.entries(normalizedData)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, counts]) => ({
-        date,
-        connect: counts.connect,
-        subscribe: counts.subscribe,
-        message: counts.message,
-      }));
+    // Sort the data chronologically
+    const chartData = bucketCounts.sort((a, b) => a.date.localeCompare(b.date));
 
     console.log(
       {
@@ -208,29 +261,19 @@ export const getAnalytics = query({
         chartDataLength: chartData.length,
         sampleChartData: chartData.slice(0, 3),
         totalCounts: {
-          connects: usageRecords.filter((r) => r.event === "websocket.connect")
-            .length,
-          subscribes: usageRecords.filter(
-            (r) => r.event === "websocket.subscribe",
-          ).length,
-          messages: usageRecords.filter((r) => r.event === "websocket.message")
-            .length,
+          connects: totalConnects,
+          subscribes: totalSubscribes,
+          messages: totalMessages,
         },
       },
-      "Final analytics result",
+      "Final analytics result - 100% aggregate-based, no database queries",
     );
 
     return {
       data: chartData,
-      totalConnects: usageRecords.filter(
-        (r: { event: string }) => r.event === "websocket.connect",
-      ).length,
-      totalSubscribes: usageRecords.filter(
-        (r: { event: string }) => r.event === "websocket.subscribe",
-      ).length,
-      totalMessages: usageRecords.filter(
-        (r: { event: string }) => r.event === "websocket.message",
-      ).length,
+      totalConnects,
+      totalSubscribes,
+      totalMessages,
       granularity,
       timeRange: {
         start: defaultStartTime,

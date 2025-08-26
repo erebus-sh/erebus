@@ -1,6 +1,14 @@
 import { mutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getValidatedActiveKeyById } from "../lib/guard";
+import {
+  usageAggregate,
+  usageByEventAggregate,
+  usageByTimeAggregate,
+  usageByApiKeyAggregate,
+  usageByPayloadAggregate,
+  usageByEventTimeAggregate,
+} from "../aggregaters/usageAggregater";
 
 export const schemaPayload = v.array(
   v.object({
@@ -48,6 +56,37 @@ export const trackUsage = mutation({
             apiKeyId,
             index: idx,
           })),
+      ),
+    );
+
+    // Update aggregates for each inserted record
+    await Promise.all(
+      insertedIds.map(
+        async ({ id, projectId, event, payloadLength, apiKeyId }) => {
+          // Get the full document for aggregate insertion
+          const doc = await ctx.db.get(id);
+          if (!doc) return;
+
+          // Insert into main usage aggregate
+          await usageAggregate.insert(ctx, doc);
+
+          // Insert into event-based aggregate
+          await usageByEventAggregate.insert(ctx, doc);
+
+          // Insert into time-based aggregate
+          await usageByTimeAggregate.insert(ctx, doc);
+
+          // Insert into event-time aggregate
+          await usageByEventTimeAggregate.insert(ctx, doc);
+
+          // Insert into API key based aggregate
+          await usageByApiKeyAggregate.insert(ctx, doc);
+
+          // Insert into payload length aggregate (only for message events)
+          if (event === "websocket.message" && payloadLength) {
+            await usageByPayloadAggregate.insert(ctx, doc);
+          }
+        },
       ),
     );
 
