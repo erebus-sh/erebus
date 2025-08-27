@@ -192,7 +192,7 @@ export abstract class BaseService {
   ): AckPacketType {
     return {
       packetType: "ack",
-      requestId,
+      clientMsgId,
       type: {
         type: "ack",
         path: "publish",
@@ -226,7 +226,7 @@ export abstract class BaseService {
   ): AckPacketType {
     return {
       packetType: "ack",
-      requestId,
+      clientMsgId,
       type: {
         type: "ack",
         path: "publish",
@@ -254,13 +254,13 @@ export abstract class BaseService {
   ): AckPacketType {
     return {
       packetType: "ack",
-      requestId,
+      clientMsgId: requestId,
       type: {
         type: "ack",
         path,
         seq: crypto.randomUUID(),
         serverAssignedId: crypto.randomUUID(),
-        clientMsgId: crypto.randomUUID(),
+        clientMsgId: requestId || crypto.randomUUID(),
         topic,
         result: {
           ok: true,

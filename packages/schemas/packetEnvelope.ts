@@ -88,7 +88,7 @@ const AckTypeSchema = z.discriminatedUnion("path", [
 
 const AckPacket = z.object({
   packetType: z.literal("ack"),
-  requestId: RequestId, // echo whatever the client sent (or null/undefined)
+  clientMsgId: RequestId, // echo whatever the client sent (or null/undefined)
   type: AckTypeSchema,
 });
 

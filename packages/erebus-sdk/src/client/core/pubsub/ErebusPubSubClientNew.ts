@@ -176,7 +176,7 @@ export class ErebusPubSubClientNew {
   }: {
     topic: string;
     messageBody: string;
-  }): Promise<void> {
+  }): Promise<string> {
     return this.#publishInternal(topic, messageBody, false);
   }
 
@@ -190,7 +190,7 @@ export class ErebusPubSubClientNew {
     messageBody: string;
     onAck: AckCallback;
     timeoutMs?: number;
-  }): Promise<void> {
+  }): Promise<string> {
     return this.#publishInternal(topic, messageBody, true, onAck, timeoutMs);
   }
 
@@ -450,7 +450,7 @@ export class ErebusPubSubClientNew {
     withAck: boolean = false,
     onAck?: AckCallback,
     timeoutMs?: number,
-  ): Promise<void> {
+  ): Promise<string> {
     // Validation logic here (same as original)
     if (!this.#stateManager.channel) {
       throw new Error(
@@ -488,14 +488,14 @@ export class ErebusPubSubClientNew {
       clientPublishTs: Date.now(),
     };
 
-    return new Promise<void>((resolve, reject) => {
+    return new Promise<string>((resolve, reject) => {
       try {
         if (withAck && onAck && timeoutMs) {
           this.#conn.publishWithAck(actualMessageBody, onAck, timeoutMs);
         } else {
           this.#conn.publish(actualMessageBody);
         }
-        resolve();
+        resolve(clientMsgId);
       } catch (error) {
         reject(error);
       }

@@ -1,10 +1,218 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useErebusStore } from "@/client/react/store/erebus";
 import { useChannelState } from "@/client/react/store/channelState";
 import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
 import type { AnySchema, CreateErebusOptions } from "./types";
 import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
+
+// Primitive hook for managing messages with status tracking
+export function useMessagesState() {
+  const [messages, setMessages] = useState<
+    {
+      id: string;
+      content: string;
+      status: "sending" | "sent" | "error" | "timeout";
+      clientMsgId?: string;
+    }[]
+  >([]);
+
+  const addMessage = useCallback(
+    (
+      content: string,
+      status: "sending" | "sent" | "error" | "timeout" = "sending",
+    ) => {
+      const messageId = Date.now().toString();
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: messageId,
+          content,
+          status,
+        },
+      ]);
+      return messageId;
+    },
+    [],
+  );
+
+  const updateMessageStatus = useCallback(
+    (messageId: string, status: "sending" | "sent" | "error" | "timeout") => {
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === messageId ? { ...msg, status } : msg)),
+      );
+    },
+    [],
+  );
+
+  const updateMessageClientId = useCallback(
+    (messageId: string, clientMsgId: string) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === messageId ? { ...msg, clientMsgId } : msg,
+        ),
+      );
+    },
+    [],
+  );
+
+  const clearMessages = useCallback(() => {
+    setMessages([]);
+  }, []);
+
+  return {
+    messages,
+    addMessage,
+    updateMessageStatus,
+    updateMessageClientId,
+    clearMessages,
+  };
+}
+
+// Primitive hook for automatic subscription management based on connection status
+export function useAutoSubscribe(
+  subscribe: (topic: string) => Promise<(() => void) | void>,
+  unsubscribe: (topic: string) => void,
+  topic: string,
+  isReady: boolean,
+  currentStatus: "subscribed" | "unsubscribed" | "pending" | undefined,
+) {
+  useEffect(() => {
+    let isSubscribed = false;
+
+    async function manageSubscription() {
+      if (!isReady) {
+        console.log("Connection not ready, skipping subscription");
+        return;
+      }
+
+      if (currentStatus !== "unsubscribed") {
+        console.log("Already subscribed or pending, skipping subscription");
+        return;
+      }
+
+      console.log("Auto-subscribing to topic:", topic);
+      try {
+        await subscribe(topic);
+        isSubscribed = true;
+      } catch (error) {
+        console.error("Failed to auto-subscribe:", error);
+      }
+    }
+
+    manageSubscription();
+
+    return () => {
+      if (isSubscribed && typeof unsubscribe === "function") {
+        console.log("Auto-unsubscribing from topic:", topic);
+        unsubscribe(topic);
+      }
+    };
+  }, [isReady, currentStatus, subscribe, unsubscribe, topic]);
+}
+
+// Primitive hook for publishing messages with status tracking
+export function useMessagePublisher(
+  publishWithAck: (
+    topic: string,
+    payload: any,
+    ackCallback?: (ack: AckResponse) => void,
+  ) => Promise<{ clientMsgId: string; status: "sent" | "error" | "timeout" }>,
+  addMessage: (
+    content: string,
+    status?: "sending" | "sent" | "error" | "timeout",
+  ) => string,
+  updateMessageStatus: (
+    messageId: string,
+    status: "sending" | "sent" | "error" | "timeout",
+  ) => void,
+  updateMessageClientId: (messageId: string, clientMsgId: string) => void,
+) {
+  const publishMessage = useCallback(
+    async (topic: string, payload: any, messageContent: string) => {
+      console.log("Publishing message to topic:", topic);
+
+      // Add message with "sending" status
+      const messageId = addMessage(messageContent);
+
+      const startTime = Date.now();
+      try {
+        const result = await publishWithAck(topic, payload, (ack) => {
+          const endTime = Date.now();
+          const ms = endTime - startTime;
+          console.log(
+            "Received ack with clientMsgId",
+            ack.ack.clientMsgId,
+            `(${ms} ms elapsed)`,
+          );
+        });
+
+        console.log(
+          "Published message with clientMsgId",
+          result.clientMsgId,
+          "initial status:",
+          result.status,
+        );
+
+        // Update message with clientMsgId for tracking
+        updateMessageClientId(messageId, result.clientMsgId);
+
+        return result;
+      } catch (error) {
+        console.error("Failed to publish message:", error);
+        updateMessageStatus(messageId, "error");
+        throw error;
+      }
+    },
+    [publishWithAck, addMessage, updateMessageStatus, updateMessageClientId],
+  );
+
+  return { publishMessage };
+}
+
+// Primitive hook for syncing message statuses from messagesMap
+export function useMessagesStatusSync(
+  messages: Array<{
+    id: string;
+    content: string;
+    status: "sending" | "sent" | "error" | "timeout";
+    clientMsgId?: string;
+  }>,
+  messagesMap: Record<
+    string,
+    { clientMsgId: string; status: "sent" | "error" | "timeout" }
+  >,
+  updateMessageStatus: (
+    messageId: string,
+    status: "sending" | "sent" | "error" | "timeout",
+  ) => void,
+) {
+  useEffect(() => {
+    messages.forEach((msg) => {
+      if (msg.clientMsgId && messagesMap[msg.clientMsgId]) {
+        const mapEntry = messagesMap[msg.clientMsgId];
+        if (mapEntry) {
+          const mapStatus = mapEntry.status;
+          // Map the status from messagesMap to our UI status
+          const uiStatus =
+            mapStatus === "sent"
+              ? "sent"
+              : mapStatus === "error"
+                ? "error"
+                : mapStatus === "timeout"
+                  ? "timeout"
+                  : msg.status;
+          if (uiStatus !== msg.status) {
+            console.log(
+              `Updating message ${msg.id} status from ${msg.status} to ${uiStatus}`,
+            );
+            updateMessageStatus(msg.id, uiStatus);
+          }
+        }
+      }
+    });
+  }, [messages, messagesMap, updateMessageStatus]);
+}
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
   _schemas: S,
@@ -15,6 +223,16 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
       `[useChannel] Hook called for channel "${channel}" with options:`,
       options,
     );
+
+    const [messagesMap, setMessagesMap] = useState<
+      Record<
+        string,
+        {
+          clientMsgId: string;
+          status: "sent" | "error" | "timeout";
+        }
+      >
+    >({});
 
     const { wsUrl, authUrl } = options ?? {};
     const store = useErebusStore;
@@ -308,11 +526,15 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
     );
 
     const publishWithAck = useCallback(
-      (
+      async (
         topic: string,
         payload: ChannelPayload,
         ackCallback?: (ack: AckResponse) => void,
-      ) => {
+        timeoutMs: number = 5000,
+      ): Promise<{
+        clientMsgId: string;
+        status: "sent" | "error" | "timeout";
+      }> => {
         console.log(
           `[useChannel:publishWithAck] Publishing to topic "${topic}" on channel "${channel}" with payload:`,
           payload,
@@ -358,8 +580,12 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
         cs2.setBeingSent(true);
         cs2.updateActivity();
 
+        // Declare timeout ref outside try block so it's accessible in callback
+        const timeoutRef = { current: null as NodeJS.Timeout | null };
+        let clientMsgId: string;
+
         try {
-          pubsub.publishWithAck({
+          clientMsgId = await pubsub.publishWithAck({
             topic,
             messageBody: stringifiedPayload,
             onAck: (ack) => {
@@ -367,12 +593,80 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
                 `[useChannel:publishWithAck] Received ack for topic "${topic}" on channel "${channel}":`,
                 ack,
               );
+
+              // Update message status based on ack
+              const status = ack.success ? "sent" : "error";
+              setMessagesMap((prev) => ({
+                ...prev,
+                [clientMsgId]: {
+                  clientMsgId,
+                  status,
+                },
+              }));
+
+              // Clear timeout since we got a response
+              if (timeoutRef.current) {
+                clearTimeout(timeoutRef.current);
+                timeoutRef.current = null;
+              }
+
+              // Remove from map after a short delay to allow UI to show final status
+              setTimeout(() => {
+                setMessagesMap((prev) => {
+                  const newMap = { ...prev };
+                  delete newMap[clientMsgId];
+                  return newMap;
+                });
+              }, 100);
+
               ackCallback?.(ack);
             },
           });
+
           console.log(
-            `[useChannel:publishWithAck] Successfully published to topic "${topic}" on channel "${channel}"`,
+            `[useChannel:publishWithAck] Successfully published to topic "${topic}" on channel "${channel}" with clientMsgId:`,
+            clientMsgId,
           );
+
+          // Store message in map with initial "sent" status
+          setMessagesMap((prev) => ({
+            ...prev,
+            [clientMsgId]: {
+              clientMsgId,
+              status: "sent",
+            },
+          }));
+
+          // Set up timeout to handle cases where ack never arrives
+          timeoutRef.current = setTimeout(() => {
+            console.warn(
+              `[useChannel:publishWithAck] Timeout waiting for ack on topic "${topic}" for clientMsgId "${clientMsgId}" after ${timeoutMs}ms`,
+            );
+
+            // Update status to timeout
+            setMessagesMap((prev) => ({
+              ...prev,
+              [clientMsgId]: {
+                clientMsgId,
+                status: "timeout",
+              },
+            }));
+
+            // Remove from map after showing timeout status
+            setTimeout(() => {
+              setMessagesMap((prev) => {
+                const newMap = { ...prev };
+                delete newMap[clientMsgId];
+                return newMap;
+              });
+            }, 2000); // Keep timeout status visible for 2 seconds
+          }, timeoutMs);
+
+          // Return the result with current status
+          return {
+            clientMsgId,
+            status: "sent" as const,
+          };
         } finally {
           useChannelState.getState().setBeingSent(false);
         }
@@ -527,7 +821,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
     const status = channelState.status;
 
     console.log(
-      `[useChannel] Returning publish, publishWithAck, subscribe, unsubscribe, and reactive status for channel "${channel}"`,
+      `[useChannel] Returning publish, publishWithAck, subscribe, unsubscribe, reactive status, and messagesMap for channel "${channel}"`,
     );
     return {
       publish,
@@ -535,6 +829,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
       unsubscribe,
       subscribe,
       status, // This is the new reactive status object that eliminates polling
+      messagesMap, // Map of message statuses for tracking publishWithAck results
     };
   };
 }

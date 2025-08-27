@@ -53,7 +53,7 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
       const parsed = parseAckPacket(data);
       if (parsed) {
         logger.info("[parseServerFrame] ACK packet validated", {
-          requestId: data.requestId,
+          clientMsgId: data.clientMsgId,
         });
         return parsed;
       } else {
@@ -112,7 +112,7 @@ function parseAckPacket(data: any): PacketEnvelope | null {
       const subscriptionAck = AckSubscription.parse(ackType);
       return {
         packetType: "ack",
-        requestId: data.requestId,
+        clientMsgId: data.clientMsgId,
         type: subscriptionAck,
       };
     } else if (path === "publish") {
@@ -127,7 +127,7 @@ function parseAckPacket(data: any): PacketEnvelope | null {
           const successAck = AckPublishOk.parse(ackType);
           return {
             packetType: "ack",
-            requestId: data.requestId,
+            clientMsgId: data.clientMsgId,
             type: successAck,
           };
         } else {
@@ -135,7 +135,7 @@ function parseAckPacket(data: any): PacketEnvelope | null {
           const errorAck = AckPublishErr.parse(ackType);
           return {
             packetType: "ack",
-            requestId: data.requestId,
+            clientMsgId: data.clientMsgId,
             type: errorAck,
           };
         }

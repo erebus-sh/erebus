@@ -8,6 +8,7 @@ import { logger } from "@/internal/logger/consola";
  */
 export class AckManager implements IAckManager {
   #pendingPublishes = new Map<string, PendingPublish>();
+  #clientMsgIdToRequestId = new Map<string, string>();
   #connectionId: string;
 
   constructor(connectionId: string) {
@@ -23,6 +24,7 @@ export class AckManager implements IAckManager {
     });
 
     this.#pendingPublishes.set(requestId, pending);
+    this.#clientMsgIdToRequestId.set(pending.clientMsgId, requestId);
 
     // Set up timeout if specified
     if (pending.timeoutId) {
@@ -35,13 +37,24 @@ export class AckManager implements IAckManager {
 
   handleAck(ackPacket: AckPacketType): void {
     logger.info(`[${this.#connectionId}] Handling ACK packet`, {
-      requestId: ackPacket.requestId,
+      clientMsgId: ackPacket.clientMsgId,
       path: ackPacket.type.path,
     });
 
-    const requestId = ackPacket.requestId;
+    const clientMsgId = ackPacket.clientMsgId;
+    if (!clientMsgId) {
+      logger.warn(`[${this.#connectionId}] ACK packet missing clientMsgId`);
+      return;
+    }
+
+    const requestId = this.#clientMsgIdToRequestId.get(clientMsgId);
     if (!requestId) {
-      logger.warn(`[${this.#connectionId}] ACK packet missing requestId`);
+      logger.warn(
+        `[${this.#connectionId}] No requestId found for clientMsgId`,
+        {
+          clientMsgId,
+        },
+      );
       return;
     }
 
@@ -49,6 +62,7 @@ export class AckManager implements IAckManager {
     if (!pending) {
       logger.warn(`[${this.#connectionId}] No pending publish found for ACK`, {
         requestId,
+        clientMsgId,
       });
       return;
     }
@@ -60,12 +74,14 @@ export class AckManager implements IAckManager {
 
     // Remove from pending
     this.#pendingPublishes.delete(requestId);
+    this.#clientMsgIdToRequestId.delete(clientMsgId);
 
     // Create response based on ACK type
     const response = this.#createAckResponse(ackPacket, pending);
 
     logger.info(`[${this.#connectionId}] Calling ACK callback`, {
       requestId,
+      clientMsgId,
       success: response.success,
     });
 
@@ -75,6 +91,7 @@ export class AckManager implements IAckManager {
       logger.error(`[${this.#connectionId}] Error in ACK callback`, {
         error,
         requestId,
+        clientMsgId,
       });
     }
   }
@@ -89,6 +106,7 @@ export class AckManager implements IAckManager {
 
     // Remove from pending
     this.#pendingPublishes.delete(requestId);
+    this.#clientMsgIdToRequestId.delete(pending.clientMsgId);
 
     // Create timeout error response
     const response: AckResponse = {
@@ -140,11 +158,13 @@ export class AckManager implements IAckManager {
         logger.error(`[${this.#connectionId}] Error in cleanup callback`, {
           error,
           requestId,
+          clientMsgId: pending.clientMsgId,
         });
       }
     }
 
     this.#pendingPublishes.clear();
+    this.#clientMsgIdToRequestId.clear();
   }
 
   getPendingCount(): number {
@@ -192,7 +212,7 @@ export class AckManager implements IAckManager {
       // Non-publish ACK (subscription, etc.)
       logger.info(`[${this.#connectionId}] Received non-publish ACK`, {
         path: ackPacket.type.path,
-        requestId: ackPacket.requestId,
+        clientMsgId: ackPacket.clientMsgId,
       });
 
       // Return a generic error for non-publish ACKs that somehow got tracked

@@ -276,15 +276,16 @@ export class PubSubConnection {
   }
 
   publish(payload: MessageBody): void {
-    this.#publishInternal(payload, false);
+    // Ignore the returned clientMsgId for regular publish (no ACK)
+    void this.#publishInternal(payload, false);
   }
 
   publishWithAck(
     payload: MessageBody,
     callback: AckCallback,
     timeoutMs: number = this.#ackTimeoutMs,
-  ): void {
-    this.#publishInternal(payload, true, callback, timeoutMs);
+  ): Promise<string> {
+    return this.#publishInternal(payload, true, callback, timeoutMs);
   }
 
   isSubscribed(topic: string): boolean {
@@ -306,7 +307,7 @@ export class PubSubConnection {
     withAck: boolean = false,
     callback?: AckCallback,
     timeoutMs?: number,
-  ): void {
+  ): Promise<string> {
     logger.info(`[${this.#connectionId}] Publish called`, {
       topic: payload.topic,
       withAck,
@@ -428,6 +429,8 @@ export class PubSubConnection {
       });
       throw error;
     }
+
+    return Promise.resolve(clientMsgId!);
   }
 
   #sendHeartbeat(): void {
