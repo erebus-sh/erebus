@@ -19,8 +19,8 @@ export function createErebus<S extends Record<string, AnySchema>>(
   const parse = createParse(schemas);
   const validateMessage = createValidateMessage(schemas);
 
-  // Create the useChannel hook with the options
-  const useChannel = createUseChannel(options);
+  // Create the useChannel hook with the schemas and options
+  const useChannel = createUseChannel(schemas, options);
 
   // Create empty messages function
   const createEmptyMessagesFn = () => createEmptyMessages(schemas);

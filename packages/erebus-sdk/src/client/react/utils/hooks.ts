@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
+  _schemas: S,
   options?: CreateErebusOptions,
 ) {
   return function useChannel<C extends keyof S & string>(channel: C) {
