@@ -4,7 +4,7 @@ import {
   createValidateMessage,
   createEmptyMessages,
 } from "./helpers";
-import { createUseChannel } from "./hooks";
+import { createUseChannel } from "./createUseChannel";
 
 export function createErebus<S extends Record<string, AnySchema>>(
   schemas: S,
