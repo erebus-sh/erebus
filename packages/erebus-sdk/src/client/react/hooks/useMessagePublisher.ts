@@ -18,9 +18,12 @@ export function useMessagePublisher(
   ) => void,
   updateMessageClientId: (messageId: string, clientMsgId: string) => void,
 ) {
-  const publishMessage = useCallback(
+  const publishAck = useCallback(
     async (topic: string, payload: any, messageContent: string) => {
-      console.log("Publishing message to topic:", topic);
+      console.log(
+        "Publishing message with ack and UI tracking to topic:",
+        topic,
+      );
 
       // Add message with "sending" status
       const messageId = addMessage(messageContent);
@@ -57,5 +60,5 @@ export function useMessagePublisher(
     [publishWithAck, addMessage, updateMessageStatus, updateMessageClientId],
   );
 
-  return { publishMessage };
+  return { publishAck };
 }
