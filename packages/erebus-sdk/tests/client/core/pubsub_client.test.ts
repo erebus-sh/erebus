@@ -499,14 +499,13 @@ test("ACK functionality: client publishes with ACK and receives proper acknowled
     // Verify result properties exist and are correct type
     const result = successAck.ack.type.result as {
       ok: true;
-      serverMsgId: string;
       t_ingress: number;
     };
     if (result.ok) {
-      expect(result.serverMsgId).toBeDefined();
-      expect(typeof result.serverMsgId).toBe("string");
       expect(result.t_ingress).toBeDefined();
       expect(typeof result.t_ingress).toBe("number");
+      expect(result.ok).toBeDefined();
+      expect(typeof result.ok).toBe("boolean");
     }
   }
 

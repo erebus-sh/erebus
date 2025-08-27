@@ -182,7 +182,7 @@ export class AckManager implements IAckManager {
           success: true,
           ack: ackPacket,
           seq: ackPacket.type.seq,
-          serverMsgId: ackPacket.type.result.serverMsgId,
+          serverMsgId: ackPacket.type.serverAssignedId,
           topic: ackPacket.type.topic!,
         };
       } else if ("result" in ackPacket.type && !ackPacket.type.result.ok) {

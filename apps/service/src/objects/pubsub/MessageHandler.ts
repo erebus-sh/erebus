@@ -492,7 +492,6 @@ export class MessageHandler extends BaseService {
       // Send error ACK if requested
       if (needsAck) {
         const errorAck = this.createPublishErrorAck(
-          envelope.requestId,
           topic,
           clientMsgId,
           "FORBIDDEN",
@@ -517,7 +516,6 @@ export class MessageHandler extends BaseService {
       // Send error ACK if requested
       if (needsAck) {
         const errorAck = this.createPublishErrorAck(
-          envelope.requestId,
           topic,
           clientMsgId,
           "FORBIDDEN",
@@ -549,7 +547,6 @@ export class MessageHandler extends BaseService {
       // Send success ACK if requested
       if (needsAck) {
         const successAck = this.createPublishSuccessAck(
-          envelope.requestId,
           topic,
           broadcastResult.serverMsgId,
           clientMsgId,
@@ -577,7 +574,6 @@ export class MessageHandler extends BaseService {
       // Send error ACK if requested
       if (needsAck) {
         const errorAck = this.createPublishErrorAck(
-          envelope.requestId,
           topic,
           clientMsgId,
           "INTERNAL",

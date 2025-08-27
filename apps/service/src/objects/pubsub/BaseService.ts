@@ -183,7 +183,6 @@ export abstract class BaseService {
    * Create a publish success ACK.
    */
   protected createPublishSuccessAck(
-    requestId: string | undefined,
     topic: string,
     serverMsgId: string,
     clientMsgId: string,
@@ -202,7 +201,6 @@ export abstract class BaseService {
         topic,
         result: {
           ok: true,
-          serverMsgId,
           t_ingress: tIngress,
         },
       },
@@ -213,7 +211,6 @@ export abstract class BaseService {
    * Create a publish error ACK.
    */
   protected createPublishErrorAck(
-    requestId: string | undefined,
     topic: string,
     clientMsgId: string,
     code:

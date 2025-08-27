@@ -47,7 +47,6 @@ const AckPublishOk = BaseAck.extend({
   topic: z.string().min(1),
   result: z.object({
     ok: z.literal(true),
-    serverMsgId: z.string().min(1),
     t_ingress: z.number(), // ms epoch
   }),
 });
