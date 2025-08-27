@@ -172,7 +172,7 @@ export abstract class BaseService {
     try {
       if (ws.readyState === WebSocket.READY_STATE_OPEN) {
         ws.send(JSON.stringify(ackPacket));
-        this.logDebug(`[SEND_ACK] ACK sent for path: ${ackPacket.type.path}`);
+        this.logDebug(`[SEND_ACK] ACK sent for path: ${ackPacket.result.path}`);
       }
     } catch (error) {
       this.logError(`[SEND_ACK] Failed to send ACK: ${error}`);
@@ -192,7 +192,7 @@ export abstract class BaseService {
     return {
       packetType: "ack",
       clientMsgId,
-      type: {
+      result: {
         type: "ack",
         path: "publish",
         seq,
@@ -224,7 +224,7 @@ export abstract class BaseService {
     return {
       packetType: "ack",
       clientMsgId,
-      type: {
+      result: {
         type: "ack",
         path: "publish",
         seq: "0",
@@ -252,7 +252,7 @@ export abstract class BaseService {
     return {
       packetType: "ack",
       clientMsgId: requestId,
-      type: {
+      result: {
         type: "ack",
         path,
         seq: crypto.randomUUID(),

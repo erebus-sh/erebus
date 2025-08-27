@@ -100,43 +100,43 @@ function parseAckPacket(data: any): PacketEnvelope | null {
       return null;
     }
 
-    if (!data.type || typeof data.type !== "object") {
+    if (!data.result || typeof data.result !== "object") {
       return null;
     }
 
-    const ackType = data.type;
-    const path = ackType.path;
+    const ackResult = data.result;
+    const path = ackResult.path;
 
     if (path === "subscribe" || path === "unsubscribe") {
       // Handle subscription ACKs
-      const subscriptionAck = AckSubscription.parse(ackType);
+      const subscriptionAck = AckSubscription.parse(ackResult);
       return {
         packetType: "ack",
         clientMsgId: data.clientMsgId,
-        type: subscriptionAck,
+        result: subscriptionAck,
       };
     } else if (path === "publish") {
       // Handle publish ACKs by checking the result structure
       if (
-        ackType.result &&
-        typeof ackType.result === "object" &&
-        "ok" in ackType.result
+        ackResult.result &&
+        typeof ackResult.result === "object" &&
+        "ok" in ackResult.result
       ) {
-        if (ackType.result.ok) {
+        if (ackResult.result.ok) {
           // Success ACK
-          const successAck = AckPublishOk.parse(ackType);
+          const successAck = AckPublishOk.parse(ackResult);
           return {
             packetType: "ack",
             clientMsgId: data.clientMsgId,
-            type: successAck,
+            result: successAck,
           };
         } else {
           // Error ACK
-          const errorAck = AckPublishErr.parse(ackType);
+          const errorAck = AckPublishErr.parse(ackResult);
           return {
             packetType: "ack",
             clientMsgId: data.clientMsgId,
-            type: errorAck,
+            result: errorAck,
           };
         }
       }

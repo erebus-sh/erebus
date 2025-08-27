@@ -81,7 +81,7 @@ export class MessageProcessor implements IMessageProcessor {
   async #handleAckPacket(ackPacket: AckPacketType): Promise<void> {
     logger.info(`[${this.#connectionId}] Processing ACK packet`, {
       clientMsgId: ackPacket.clientMsgId,
-      path: ackPacket.type.path,
+      path: ackPacket.result.path,
     });
 
     // Route ACK to the ACK manager for processing

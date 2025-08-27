@@ -38,7 +38,7 @@ export class AckManager implements IAckManager {
   handleAck(ackPacket: AckPacketType): void {
     logger.info(`[${this.#connectionId}] Handling ACK packet`, {
       clientMsgId: ackPacket.clientMsgId,
-      path: ackPacket.type.path,
+      path: ackPacket.result.path,
     });
 
     const clientMsgId = ackPacket.clientMsgId;
@@ -175,26 +175,26 @@ export class AckManager implements IAckManager {
     ackPacket: AckPacketType,
     pending: PendingPublish,
   ): AckResponse {
-    if (ackPacket.type.path === "publish") {
-      if ("result" in ackPacket.type && ackPacket.type.result.ok) {
+    if (ackPacket.result.path === "publish") {
+      if ("result" in ackPacket.result && ackPacket.result.result.ok) {
         // Success ACK
         return {
           success: true,
           ack: ackPacket,
-          seq: ackPacket.type.seq,
-          serverMsgId: ackPacket.type.serverAssignedId,
-          topic: ackPacket.type.topic!,
+          seq: ackPacket.result.seq,
+          serverMsgId: ackPacket.result.serverAssignedId,
+          topic: ackPacket.result.topic!,
         };
-      } else if ("result" in ackPacket.type && !ackPacket.type.result.ok) {
+      } else if ("result" in ackPacket.result && !ackPacket.result.result.ok) {
         // Error ACK
         return {
           success: false,
           ack: ackPacket,
           error: {
-            code: ackPacket.type.result.code,
-            message: ackPacket.type.result.message,
+            code: ackPacket.result.result.code,
+            message: ackPacket.result.result.message,
           },
-          topic: ackPacket.type.topic!,
+          topic: ackPacket.result.topic!,
         };
       } else {
         // Malformed ACK
@@ -211,7 +211,7 @@ export class AckManager implements IAckManager {
     } else {
       // Non-publish ACK (subscription, etc.)
       logger.info(`[${this.#connectionId}] Received non-publish ACK`, {
-        path: ackPacket.type.path,
+        path: ackPacket.result.path,
         clientMsgId: ackPacket.clientMsgId,
       });
 

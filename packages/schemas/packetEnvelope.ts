@@ -79,7 +79,7 @@ const AckSubscription = BaseAck.extend({
 });
 
 /** Master ACK union discriminated by path */
-const AckTypeSchema = z.discriminatedUnion("path", [
+const AckResultSchema = z.discriminatedUnion("path", [
   AckPublishOk,
   AckPublishErr,
   AckSubscription,
@@ -88,7 +88,7 @@ const AckTypeSchema = z.discriminatedUnion("path", [
 const AckPacket = z.object({
   packetType: z.literal("ack"),
   clientMsgId: RequestId, // echo whatever the client sent (or null/undefined)
-  type: AckTypeSchema,
+  result: AckResultSchema,
 });
 
 /** Master envelope */
@@ -110,7 +110,7 @@ export type PublishPacketType = z.infer<typeof PublishPacket>;
 export type AckPacketType = z.infer<typeof AckPacket>;
 
 // Export ACK types
-export type AckType = z.infer<typeof AckTypeSchema>;
+export type AckType = z.infer<typeof AckResultSchema>;
 export type AckPublishOkType = z.infer<typeof AckPublishOk>;
 export type AckPublishErrType = z.infer<typeof AckPublishErr>;
 export type AckSubscriptionType = z.infer<typeof AckSubscription>;

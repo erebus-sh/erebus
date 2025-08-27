@@ -492,12 +492,12 @@ test("ACK functionality: client publishes with ACK and receives proper acknowled
   if (ackData && (ackData as AckResponse).success) {
     const successAck = ackData as AckSuccess;
     expect(successAck.ack.packetType).toBe("ack");
-    expect(successAck.ack.type.path).toBe("publish");
-    expect(successAck.ack.type.topic).toBe(uniqueTopic);
-    expect(successAck.ack.type.result.ok).toBe(true);
+    expect(successAck.ack.result.path).toBe("publish");
+    expect(successAck.ack.result.topic).toBe(uniqueTopic);
+    expect(successAck.ack.result.result.ok).toBe(true);
 
     // Verify result properties exist and are correct type
-    const result = successAck.ack.type.result as {
+    const result = successAck.ack.result.result as {
       ok: true;
       t_ingress: number;
     };
@@ -612,12 +612,12 @@ test("ACK error handling: client publishes to unauthorized topic and receives er
 
     // Verify error ACK packet structure matches expected format
     expect(errorAck.ack.packetType).toBe("ack");
-    expect(errorAck.ack.type.path).toBe("publish");
-    expect(errorAck.ack.type.topic).toBe(unauthorizedTopic);
-    expect(errorAck.ack.type.result.ok).toBe(false);
+    expect(errorAck.ack.result.path).toBe("publish");
+    expect(errorAck.ack.result.topic).toBe(unauthorizedTopic);
+    expect(errorAck.ack.result.result.ok).toBe(false);
 
     // Verify error result properties using type assertion
-    const result = errorAck.ack.type.result as {
+    const result = errorAck.ack.result.result as {
       ok: false;
       code: string;
       message: string;
