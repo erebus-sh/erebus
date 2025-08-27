@@ -400,7 +400,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
     const subscribe = useCallback(
       async (
         topic: string,
-        callback: (data: {
+        callback?: (data: {
           id: string;
           topic: string;
           senderId: string;
@@ -501,7 +501,13 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
             `[useChannel:subscribe:callback] Calling callback for topic "${topic}" on channel "${channel}" with data:`,
             callbackData,
           );
-          callback(callbackData);
+          if (callback) {
+            callback(callbackData);
+          } else {
+            console.log(
+              `[useChannel:subscribe:callback] No callback provided for topic "${topic}" on channel "${channel}"`,
+            );
+          }
         });
 
         // Mark as subscribed after successful subscription (idempotent)
