@@ -1,6 +1,6 @@
 {
   "name": "erebus-sdk",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "module": "index.ts",
   "type": "module",
   "scripts": {

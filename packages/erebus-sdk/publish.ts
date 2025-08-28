@@ -155,8 +155,16 @@ class ErebusPublisher {
             // Remove scripts that won't work in dist directory
             delete packageJson.scripts;
             delete packageJson.devDependencies;
-            // Ensure only the current directory is included in files
-            packageJson.files = ["."];
+            // Explicitly include all necessary files and directories
+            packageJson.files = [
+              "client",
+              "server",
+              "service",
+              "types",
+              "package.json",
+              "README.md",
+              "LICENSE.md",
+            ];
 
             // Fix exports paths to be relative to dist directory
             if (packageJson.exports) {
