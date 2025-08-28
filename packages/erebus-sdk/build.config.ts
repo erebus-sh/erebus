@@ -1,6 +1,6 @@
 import { build } from "bun";
 import fg from "fast-glob";
-const files = await fg("src/client/react/**/*.{ts,tsx}");
+const files = await fg("src/**/*.{ts,tsx}");
 
 await build({
   entrypoints: [...files],
