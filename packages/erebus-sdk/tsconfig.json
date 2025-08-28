@@ -16,6 +16,8 @@
     // Emit for type declarations
     "declaration": true,
     "declarationDir": "./dist/types",
+    "declarationMap": true,
+    "emitDeclarationOnly": false, // Allow both JS and declaration emission
     "noEmit": false, // true for apps, false if you need .d.ts
 
     // Best practices

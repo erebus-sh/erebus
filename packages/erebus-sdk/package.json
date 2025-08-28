@@ -4,9 +4,12 @@
   "type": "module",
   "scripts": {
     "clean": "rm -rf dist",
-    "publish:build:js": "bun run build.config.ts",
-    "publish:build:types": "tsc --emitDeclarationOnly --outDir dist",
-    "publish:build": "bun run clean && bun run publish:build:js && bun run publish:build:types",
+    "clean:types": "rm -rf dist/types",
+    "build:js": "bun run build.config.ts",
+    "build:types": "tsc --project tsconfig.json --emitDeclarationOnly",
+    "build:types:check": "tsc --project tsconfig.json --noEmit",
+    "build": "bun run clean && bun run build:js && bun run build:types",
+    "build:dev": "bun run build:js",
     "format": "bunx prettier . --write",
     "prepublishOnly": "bun run build",
     "test": "vitest run",
@@ -38,9 +41,139 @@
     "test_projects"
   ],
   "exports": {
+    ".": {
+      "import": "./dist/src/index.js",
+      "types": "./dist/types/src/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/src/client/core/Erebus.js",
+      "types": "./dist/types/src/client/core/Erebus.d.ts"
+    },
+    "./client/pubsub": {
+      "import": "./dist/client/src/client/core/pubsub/ErebusPubSubClientNew.js",
+      "types": "./dist/types/src/client/core/pubsub/ErebusPubSubClientNew.d.ts"
+    },
+    "./client/pubsub/connection": {
+      "import": "./dist/client/src/client/core/pubsub/PubSubConnectionNew.js",
+      "types": "./dist/types/src/client/core/pubsub/PubSubConnectionNew.d.ts"
+    },
+    "./client/pubsub/managers": {
+      "import": "./dist/client/src/client/core/pubsub/ConnectionManager.js",
+      "types": "./dist/types/src/client/core/pubsub/ConnectionManager.d.ts"
+    },
+    "./client/pubsub/managers/ack": {
+      "import": "./dist/client/src/client/core/pubsub/AckManager.js",
+      "types": "./dist/types/src/client/core/pubsub/AckManager.d.ts"
+    },
+    "./client/pubsub/managers/subscription": {
+      "import": "./dist/client/src/client/core/pubsub/SubscriptionManager.js",
+      "types": "./dist/types/src/client/core/pubsub/SubscriptionManager.d.ts"
+    },
+    "./client/pubsub/managers/message": {
+      "import": "./dist/client/src/client/core/pubsub/MessageProcessor.js",
+      "types": "./dist/types/src/client/core/pubsub/MessageProcessor.d.ts"
+    },
+    "./client/pubsub/managers/grant": {
+      "import": "./dist/client/src/client/core/pubsub/GrantManager.js",
+      "types": "./dist/types/src/client/core/pubsub/GrantManager.d.ts"
+    },
+    "./client/pubsub/managers/heartbeat": {
+      "import": "./dist/client/src/client/core/pubsub/HeartbeatManager.js",
+      "types": "./dist/types/src/client/core/pubsub/HeartbeatManager.d.ts"
+    },
+    "./client/pubsub/managers/state": {
+      "import": "./dist/client/src/client/core/pubsub/StateManager.js",
+      "types": "./dist/types/src/client/core/pubsub/StateManager.d.ts"
+    },
+    "./client/errors": {
+      "import": "./dist/client/src/client/core/errors.js",
+      "types": "./dist/types/src/client/core/errors.d.ts"
+    },
+    "./client/types": {
+      "types": "./dist/types/src/client/core/types.d.ts"
+    },
+    "./client/utils": {
+      "import": "./dist/client/src/client/core/utils.js",
+      "types": "./dist/types/src/client/core/utils.d.ts"
+    },
+    "./react": {
+      "import": "./dist/client/src/client/react/index.js",
+      "types": "./dist/types/src/client/react/index.d.ts"
+    },
     "./react/createErebus": {
-      "import": "./dist/src/client/react/utils/createErebus.js",
+      "import": "./dist/client/src/client/react/utils/createErebus.js",
       "types": "./dist/types/src/client/react/utils/createErebus.d.ts"
+    },
+    "./react/hooks": {
+      "import": "./dist/client/src/client/react/hooks/index.js",
+      "types": "./dist/types/src/client/react/hooks/index.d.ts"
+    },
+    "./react/hooks/useMessagesState": {
+      "import": "./dist/client/src/client/react/hooks/useMessagesState.js",
+      "types": "./dist/types/src/client/react/hooks/useMessagesState.d.ts"
+    },
+    "./react/hooks/useAutoSubscribe": {
+      "import": "./dist/client/src/client/react/hooks/useAutoSubscribe.js",
+      "types": "./dist/types/src/client/react/hooks/useAutoSubscribe.d.ts"
+    },
+    "./react/hooks/useMessagePublisher": {
+      "import": "./dist/client/src/client/react/hooks/useMessagePublisher.js",
+      "types": "./dist/types/src/client/react/hooks/useMessagePublisher.d.ts"
+    },
+    "./react/hooks/useMessagesStatusSync": {
+      "import": "./dist/client/src/client/react/hooks/useMessagesStatusSync.js",
+      "types": "./dist/types/src/client/react/hooks/useMessagesStatusSync.d.ts"
+    },
+    "./react/store": {
+      "import": "./dist/client/src/client/react/store/erebus.js",
+      "types": "./dist/types/src/client/react/store/erebus.d.ts"
+    },
+    "./react/utils": {
+      "import": "./dist/client/src/client/react/utils/index.js",
+      "types": "./dist/types/src/client/react/utils/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/src/server/app.js",
+      "types": "./dist/types/src/server/app.d.ts"
+    },
+    "./server/app": {
+      "import": "./dist/server/src/server/app.js",
+      "types": "./dist/types/src/server/app.d.ts"
+    },
+    "./server/rpc": {
+      "import": "./dist/server/src/server/rpc.js",
+      "types": "./dist/types/src/server/rpc.d.ts"
+    },
+    "./server/adapter/next": {
+      "import": "./dist/server/src/server/adapter/next/createRouteHandler.js",
+      "types": "./dist/types/src/server/adapter/next/createRouteHandler.d.ts"
+    },
+    "./service": {
+      "import": "./dist/server/src/service/Service.js",
+      "types": "./dist/types/src/service/Service.d.ts"
+    },
+    "./service/baseClient": {
+      "import": "./dist/server/src/service/baseClient.js",
+      "types": "./dist/types/src/service/baseClient.d.ts"
+    },
+    "./service/session": {
+      "import": "./dist/server/src/service/session.js",
+      "types": "./dist/types/src/service/session.d.ts"
+    },
+    "./service/types": {
+      "types": "./dist/types/src/service/types.d.ts"
+    },
+    "./internal/jwt": {
+      "import": "./dist/server/src/internal/lib/jwt.js",
+      "types": "./dist/types/src/internal/lib/jwt.d.ts"
+    },
+    "./internal/constants": {
+      "import": "./dist/server/src/internal/constants.js",
+      "types": "./dist/types/src/internal/constants.d.ts"
+    },
+    "./internal/enums/wserrors": {
+      "import": "./dist/server/src/internal/enums/wserrors.js",
+      "types": "./dist/types/src/internal/enums/wserrors.d.ts"
     }
   },
   "files": [
