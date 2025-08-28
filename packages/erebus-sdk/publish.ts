@@ -94,7 +94,7 @@ class ErebusPublisher {
     const buildStart = Date.now();
 
     try {
-      execSync("bun run build", {
+      execSync("bun run build:sdk", {
         stdio: this.options.verbose ? "inherit" : "pipe",
       });
       const buildTime = ((Date.now() - buildStart) / 1000).toFixed(2);
@@ -188,9 +188,9 @@ class ErebusPublisher {
 
             // Ensure root entry fields are relative to dist/ after copy
             // We publish from dist/, so these should point to built artifacts within dist
-            packageJson.main = "./server/src/index.js";
-            packageJson.module = "./server/src/index.js";
-            packageJson.types = "./types/src/index.d.ts";
+            packageJson.main = "./index.cjs";
+            packageJson.module = "./index.mjs";
+            packageJson.types = "./index.d.ts";
 
             // Remove stale values if present in copied file
             if (packageJson.module === "index.ts") delete packageJson.module;
@@ -238,10 +238,12 @@ class ErebusPublisher {
 
     // Validate representative build artifacts exist
     const artifacts = [
-      "server/src/index.js",
-      "types/src/index.d.ts",
-      "client/src/client/react/index.js",
-      "types/src/client/react/index.d.ts",
+      "index.js",
+      "index.d.ts",
+      "client/core/Erebus.js",
+      "client/react/index.js",
+      "server/app.js",
+      "service/Service.js",
     ];
     for (const p of artifacts) {
       const fp = join(distPath, p);
@@ -392,7 +394,7 @@ ${chalk.bold("Options:")}
   -h, --help         Show this help message
 
 ${chalk.bold("Examples:")}
-  bun run publish                    # Normal publish
+  bun run publish                    # Normal publish (uses build:sdk)
   bun run publish --dry-run          # Test without publishing
   bun run publish --verbose          # Detailed output
   bun run publish --skip-build       # Skip build step

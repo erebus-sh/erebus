@@ -1,88 +1,97 @@
-import fg from "fast-glob";
-import { readFileSync } from "fs";
+import { defineConfig } from "tsup";
 
-// Read dependencies and peerDependencies from package.json to mark as external
-const pkg = JSON.parse(
-  readFileSync(new URL("./package.json", import.meta.url), "utf8"),
-);
-const externalDeps = [
-  ...Object.keys(pkg.dependencies || {}),
-  ...Object.keys(pkg.peerDependencies || {}),
-];
+export default defineConfig({
+  entry: [
+    // Main entry
+    "./src/index.ts",
 
-// Find all TypeScript and TSX files in src, but exclude test and story files
-const files = await fg([
-  "src/**/*.{ts,tsx}",
-  "!src/**/*.test.{ts,tsx}",
-  "!src/**/*.spec.{ts,tsx}",
-  "!src/**/*.stories.{ts,tsx}",
-]);
+    // Client entries
+    "./src/client/core/Erebus.ts",
+    "./src/client/core/pubsub/ErebusPubSubClientNew.ts",
+    "./src/client/core/pubsub/PubSubConnectionNew.ts",
+    "./src/client/core/pubsub/ConnectionManager.ts",
+    "./src/client/core/pubsub/AckManager.ts",
+    "./src/client/core/pubsub/SubscriptionManager.ts",
+    "./src/client/core/pubsub/MessageProcessor.ts",
+    "./src/client/core/pubsub/GrantManager.ts",
+    "./src/client/core/pubsub/HeartbeatManager.ts",
+    "./src/client/core/pubsub/StateManager.ts",
+    "./src/client/core/errors.ts",
+    "./src/client/core/types.ts",
+    "./src/client/core/utils.ts",
 
-// Separate browser/client, node/server, and service entrypoints for optimal output
-const clientFiles = files.filter((f) => f.includes("client/"));
-const serviceFiles = files.filter((f) => f.includes("service/"));
-const serverFiles = files.filter(
-  (f) => !f.includes("client/") && !f.includes("service/"),
-);
+    // React entries
+    "./src/client/react/index.ts",
+    "./src/client/react/utils/createErebus.ts",
+    "./src/client/react/hooks/index.ts",
+    "./src/client/react/hooks/useMessagesState.ts",
+    "./src/client/react/hooks/useAutoSubscribe.ts",
+    "./src/client/react/hooks/useMessagePublisher.ts",
+    "./src/client/react/hooks/useMessagesStatusSync.ts",
+    "./src/client/react/store/erebus.ts",
+    "./src/client/react/utils/index.ts",
 
-// Build for browser (client code)
-const clientBuild = await Bun.build({
-  entrypoints: clientFiles,
-  outdir: "./dist/client",
-  format: "esm",
-  target: "browser",
-  minify: {
-    syntax: true,
-    whitespace: true,
-    identifiers: true,
+    // Server entries
+    "./src/server/app.ts",
+    "./src/server/rpc.ts",
+    "./src/server/adapter/next/createRouteHandler.ts",
+
+    // Service entries
+    "./src/service/Service.ts",
+    "./src/service/baseClient.ts",
+    "./src/service/session.ts",
+    "./src/service/error.ts",
+    "./src/service/patterns.ts",
+
+    // Internal entries
+    "./src/internal/lib/jwt.ts",
+    "./src/internal/constants.ts",
+    "./src/internal/enums/wserrors.ts",
+  ],
+  format: ["esm", "cjs"],
+  dts: true,
+  external: [
+    // Dependencies
+    "@hono/node-server",
+    "@hono/zod-validator",
+    "consola",
+    "hono",
+    "jose",
+    "ky",
+    "nanoid",
+    "unbuild",
+    "zod",
+    // Peer dependencies
+    "typescript",
+    "react",
+    "zustand",
+  ],
+  splitting: false,
+  sourcemap: true,
+  clean: true,
+  minify: true,
+  treeshake: true,
+  // Path aliases for @/* to ./src/*
+  esbuildOptions(options) {
+    options.alias = {
+      "@/*": "./src/*",
+    };
   },
-  sourcemap: "linked",
-  external: externalDeps,
-  packages: "external",
-  banner: "// Erebus SDK Client - Built with Bun",
-});
-
-// Build for node (service code)
-const serviceBuild = await Bun.build({
-  entrypoints: serviceFiles,
-  outdir: "./dist/service",
-  format: "esm",
-  target: "node",
-  minify: {
-    syntax: true,
-    whitespace: true,
-    identifiers: true,
-  },
-  sourcemap: "linked",
-  external: externalDeps,
-  packages: "external",
-  banner: "// Erebus SDK Service - Built with Bun",
-});
-
-// Build for node (server code)
-const serverBuild = await Bun.build({
-  entrypoints: serverFiles,
-  outdir: "./dist/server",
-  format: "esm",
-  target: "node",
-  minify: {
-    syntax: true,
-    whitespace: true,
-    identifiers: true,
-  },
-  sourcemap: "linked",
-  external: externalDeps,
-  packages: "external",
-  banner: "// Erebus SDK Server - Built with Bun",
-});
-
-// Handle build errors
-for (const build of [clientBuild, serviceBuild, serverBuild]) {
-  if (!build.success) {
-    console.error("Build failed:");
-    for (const log of build.logs) {
-      console.error(log);
+  // Generate TypeScript declaration maps after build
+  onSuccess: async () => {
+    const { execSync } = await import("child_process");
+    try {
+      execSync("tsc --emitDeclarationOnly --declaration", {
+        stdio: "inherit",
+        cwd: process.cwd(),
+      });
+      console.log("✅ TypeScript declaration maps generated successfully");
+    } catch (error) {
+      console.error(
+        "❌ Failed to generate TypeScript declaration maps:",
+        error,
+      );
+      process.exit(1);
     }
-    process.exit(1);
-  }
-}
+  },
+});
