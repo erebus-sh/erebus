@@ -1,6 +1,6 @@
 {
-  "name": "@repo/erebus-sdk",
-  "version": "0.0.1",
+  "name": "erebus-sdk",
+  "version": "0.0.6",
   "module": "index.ts",
   "type": "module",
   "scripts": {
@@ -22,7 +22,8 @@
     "chalk": "^5.3.0",
     "jsdom": "^26.1.0",
     "prettier": "3.6.2",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "@testing-library/react": "^16.3.0"
   },
   "peerDependencies": {
     "typescript": "^5",
@@ -32,7 +33,6 @@
   "dependencies": {
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
-    "@testing-library/react": "^16.3.0",
     "consola": "^3.4.2",
     "hono": "^4.9.1",
     "jose": "^6.0.12",
@@ -189,5 +189,14 @@
   },
   "files": [
     "dist"
-  ]
+  ],
+  "description": "To install dependencies:",
+  "main": "index.js",
+  "directories": {
+    "example": "examples",
+    "test": "tests"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }

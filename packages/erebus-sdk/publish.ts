@@ -3,7 +3,7 @@
 import { execSync } from "child_process";
 import { consola } from "consola";
 import chalk from "chalk";
-import { readFileSync, existsSync, copyFileSync } from "fs";
+import { readFileSync, existsSync, copyFileSync, writeFileSync } from "fs";
 import { join } from "path";
 
 interface PublishOptions {
@@ -105,6 +105,17 @@ class ErebusPublisher {
     }
   }
 
+  private incrementVersion(packageJson: any): string {
+    const currentVersion = packageJson.version;
+
+    // Increment patch version (e.g., 0.0.1 -> 0.0.2)
+    const versionParts = currentVersion.split(".");
+    const newPatchVersion = parseInt(versionParts[2]) + 1;
+    const newVersion = `${versionParts[0]}.${versionParts[1]}.${newPatchVersion}`;
+
+    return newVersion;
+  }
+
   private async copyEssentialFiles(): Promise<void> {
     this.log("📋 Copying essential files to dist...", "info");
 
@@ -112,6 +123,7 @@ class ErebusPublisher {
     const essentialFiles = [
       { src: "package.json", dest: "package.json" },
       { src: "README.md", dest: "README.md" },
+      { src: "LICENSE.md", dest: "LICENSE.md" },
     ];
 
     for (const file of essentialFiles) {
@@ -120,7 +132,62 @@ class ErebusPublisher {
 
       try {
         if (existsSync(srcPath)) {
-          copyFileSync(srcPath, destPath);
+          if (file.src === "package.json") {
+            // Modify package.json for publishing
+            const packageJson = JSON.parse(readFileSync(srcPath, "utf-8"));
+            const currentVersion = packageJson.version;
+
+            // Increment version
+            const newVersion = this.incrementVersion(packageJson);
+            packageJson.version = newVersion;
+
+            // Update root package.json with new version
+            const rootPackageJsonPath = join(process.cwd(), "package.json");
+            const rootPackageJson = JSON.parse(
+              readFileSync(rootPackageJsonPath, "utf-8"),
+            );
+            rootPackageJson.version = newVersion;
+            writeFileSync(
+              rootPackageJsonPath,
+              JSON.stringify(rootPackageJson, null, 2),
+            );
+
+            // Remove scripts that won't work in dist directory
+            delete packageJson.scripts;
+            delete packageJson.devDependencies;
+            // Ensure only the current directory is included in files
+            packageJson.files = ["."];
+
+            // Fix exports paths to be relative to dist directory
+            if (packageJson.exports) {
+              const updateExports = (exports: any) => {
+                if (typeof exports === "object") {
+                  for (const key in exports) {
+                    if (typeof exports[key] === "object") {
+                      updateExports(exports[key]);
+                    } else if (
+                      typeof exports[key] === "string" &&
+                      exports[key].startsWith("./dist/")
+                    ) {
+                      // Remove the ./dist/ prefix since we're in dist directory
+                      exports[key] = exports[key].replace("./dist/", "./");
+                    }
+                  }
+                }
+              };
+              updateExports(packageJson.exports);
+            }
+
+            // Write the modified package.json to dist
+            writeFileSync(destPath, JSON.stringify(packageJson, null, 2));
+
+            this.log(
+              `📦 Version incremented: ${chalk.bold(currentVersion)} → ${chalk.bold(newVersion)}`,
+              "success",
+            );
+          } else {
+            copyFileSync(srcPath, destPath);
+          }
           this.log(`📄 Copied ${file.src} to dist/`, "success");
         } else {
           this.log(`⚠️  ${file.src} not found in root directory`, "warn");
@@ -141,7 +208,7 @@ class ErebusPublisher {
     }
 
     // Check for essential files
-    const essentialFiles = ["package.json", "README.md"];
+    const essentialFiles = ["package.json", "README.md", "LICENSE.md"];
     for (const file of essentialFiles) {
       const filePath = join(distPath, file);
       if (existsSync(filePath)) {
@@ -162,13 +229,19 @@ class ErebusPublisher {
     const publishStart = Date.now();
 
     try {
+      const distPath = join(process.cwd(), "dist");
       const publishCommand = "bun publish --access public";
       if (this.options.verbose) {
-        this.log(`Running: ${chalk.dim(publishCommand)}`, "info");
+        this.log(
+          `Running: ${chalk.dim(`cd ${distPath} && ${publishCommand}`)}`,
+          "info",
+        );
       }
 
+      // Change to dist directory and publish from there
       execSync(publishCommand, {
         stdio: this.options.verbose ? "inherit" : "pipe",
+        cwd: distPath,
       });
       const publishTime = ((Date.now() - publishStart) / 1000).toFixed(2);
       this.log(
@@ -194,6 +267,7 @@ class ErebusPublisher {
 
     console.log(chalk.magenta.bold("\n📊 PUBLISH SUMMARY"));
     console.log(chalk.green("✅ Prerequisites check passed"));
+    console.log("✅ Version incremented");
     console.log(
       this.options.skipBuild
         ? "⏭️  Build step skipped"
