@@ -5,11 +5,12 @@
   "scripts": {
     "clean": "rm -rf dist",
     "clean:types": "rm -rf dist/types",
-    "build:js": "bun run build.config.ts",
-    "build:types": "tsc --project tsconfig.json --emitDeclarationOnly",
-    "build:types:check": "tsc --project tsconfig.json --noEmit",
-    "build": "bun run clean && bun run build:js && bun run build:types",
-    "build:dev": "bun run build:js",
+    "bundler:build:js": "bun run build.config.ts",
+    "bundler:build:types": "tsc --project tsconfig.json --emitDeclarationOnly",
+    "bundler:build:types:check": "tsc --project tsconfig.json --noEmit",
+    "check-types": "bun run build:types:check",
+    "build": "bun run clean && bun run bundler:build:js && bun run bundler:build:types",
+    "bundler:build:dev": "bun run bundler:build:js",
     "format": "bunx prettier . --write",
     "prepublishOnly": "bun run build",
     "test": "vitest run",
@@ -149,19 +150,27 @@
       "types": "./dist/types/src/server/adapter/next/createRouteHandler.d.ts"
     },
     "./service": {
-      "import": "./dist/server/src/service/Service.js",
+      "import": "./dist/service/src/service/Service.js",
       "types": "./dist/types/src/service/Service.d.ts"
     },
     "./service/baseClient": {
-      "import": "./dist/server/src/service/baseClient.js",
+      "import": "./dist/service/src/service/baseClient.js",
       "types": "./dist/types/src/service/baseClient.d.ts"
     },
     "./service/session": {
-      "import": "./dist/server/src/service/session.js",
+      "import": "./dist/service/src/service/session.js",
       "types": "./dist/types/src/service/session.d.ts"
     },
     "./service/types": {
       "types": "./dist/types/src/service/types.d.ts"
+    },
+    "./service/error": {
+      "import": "./dist/service/src/service/error.js",
+      "types": "./dist/types/src/service/error.d.ts"
+    },
+    "./service/patterns": {
+      "import": "./dist/service/src/service/patterns.js",
+      "types": "./dist/types/src/service/patterns.d.ts"
     },
     "./internal/jwt": {
       "import": "./dist/server/src/internal/lib/jwt.js",

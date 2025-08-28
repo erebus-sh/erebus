@@ -18,9 +18,12 @@ const files = await fg([
   "!src/**/*.stories.{ts,tsx}",
 ]);
 
-// Separate browser/client and node/server entrypoints for optimal output
+// Separate browser/client, node/server, and service entrypoints for optimal output
 const clientFiles = files.filter((f) => f.includes("client/"));
-const serverFiles = files.filter((f) => !f.includes("client/"));
+const serviceFiles = files.filter((f) => f.includes("service/"));
+const serverFiles = files.filter(
+  (f) => !f.includes("client/") && !f.includes("service/"),
+);
 
 // Build for browser (client code)
 const clientBuild = await Bun.build({
@@ -37,6 +40,23 @@ const clientBuild = await Bun.build({
   external: externalDeps,
   packages: "external",
   banner: "// Erebus SDK Client - Built with Bun",
+});
+
+// Build for node (service code)
+const serviceBuild = await Bun.build({
+  entrypoints: serviceFiles,
+  outdir: "./dist/service",
+  format: "esm",
+  target: "node",
+  minify: {
+    syntax: true,
+    whitespace: true,
+    identifiers: true,
+  },
+  sourcemap: "linked",
+  external: externalDeps,
+  packages: "external",
+  banner: "// Erebus SDK Service - Built with Bun",
 });
 
 // Build for node (server code)
@@ -57,7 +77,7 @@ const serverBuild = await Bun.build({
 });
 
 // Handle build errors
-for (const build of [clientBuild, serverBuild]) {
+for (const build of [clientBuild, serviceBuild, serverBuild]) {
   if (!build.success) {
     console.error("Build failed:");
     for (const log of build.logs) {
