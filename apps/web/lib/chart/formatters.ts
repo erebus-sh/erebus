@@ -51,10 +51,7 @@ export const formatTooltipDate = (
  * Parses a date value from various formats used in the chart
  * Handles UTC date strings from server and converts them to local time
  */
-export const parseChartDateValue = (
-  value: string | number,
-  _granularity: Granularity,
-): Date | null => {
+export const parseChartDateValue = (value: string | number): Date | null => {
   try {
     if (typeof value === "number") {
       return new Date(value);
@@ -74,7 +71,7 @@ export const formatChartTick = ({
   value,
   granularity,
 }: ChartTickFormatterProps): string => {
-  const date = parseChartDateValue(value, granularity);
+  const date = parseChartDateValue(value);
   if (!date || isNaN(date.getTime())) return "";
 
   return formatChartDate(date, granularity);
@@ -87,7 +84,7 @@ export const formatTooltipLabel = ({
   value,
   granularity,
 }: ChartTooltipLabelFormatterProps): string => {
-  const date = parseChartDateValue(value, granularity);
+  const date = parseChartDateValue(value);
   if (!date || isNaN(date.getTime())) return "Invalid date";
 
   return formatTooltipDate(date, granularity);

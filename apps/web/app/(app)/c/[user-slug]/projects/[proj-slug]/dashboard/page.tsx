@@ -111,8 +111,8 @@ export default function DashboardPage() {
               Analytics Dashboard
             </h1>
             <p className="text-muted-foreground">
-              Monitor your project's WebSocket connections, subscriptions, and
-              messages
+              Monitor your project&apos;s WebSocket connections, subscriptions,
+              and messages
             </p>
           </div>
 
@@ -169,8 +169,8 @@ export default function DashboardPage() {
               Analytics Dashboard
             </h1>
             <p className="text-muted-foreground">
-              Monitor your project's WebSocket connections, subscriptions, and
-              messages
+              Monitor your project&apos;s WebSocket connections, subscriptions,
+              and messages
             </p>
           </div>
 

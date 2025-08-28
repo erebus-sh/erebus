@@ -61,9 +61,9 @@ export default function ProjectCard({
   const params = useParams();
   const userSlug = params["user-slug"] as string;
 
-  if (!userSlug) return null;
-
   const deleteProject = useMutation(api.projects.mutation.deleteProject);
+
+  if (!userSlug) return null;
 
   const handleDelete = async (projectId: string) => {
     try {

@@ -62,7 +62,7 @@ class ChartErrorBoundary extends Component<
     this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(_: Error): ErrorBoundaryState {
+  static getDerivedStateFromError(): ErrorBoundaryState {
     return { hasError: true };
   }
 
@@ -98,7 +98,6 @@ export function DashboardChartLineInteractive({
   analyticsData,
   isLoading = false,
   onGranularityChange,
-  onDateRangeChange,
 }: DashboardChartLineInteractiveProps) {
   const [activeChart, setActiveChart] = useState<ChartKey>("connect");
   const [hasError, setHasError] = useState(false);
@@ -124,7 +123,7 @@ export function DashboardChartLineInteractive({
 
   const total = useMemo(() => calculateTotals(sanitizedData), [sanitizedData]);
 
-  const chartData = sanitizedData?.data || [];
+  const chartData = useMemo(() => sanitizedData?.data || [], [sanitizedData]);
   const hasSingleDataPoint = chartData.length === 1;
   const hasValidData = chartData.length > 0;
 
