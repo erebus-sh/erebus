@@ -1,13 +1,13 @@
 import { beforeAll, afterAll, test, expect, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { startAuthServer } from "@/server/app";
-import { ErebusService } from "@/service/Service";
+import { startAuthServer } from "../../../src/server/app";
+import { ErebusService } from "../../../src/service/Service";
 import { Access } from "@repo/schemas/grant";
-import { useErebusStore } from "@/client/react/store/erebus";
-import { createErebus } from "@/client/react/utils/createErebus";
+import { useErebusStore } from "../../../src/client/react/store/erebus";
+import { createErebus } from "../../../src/client/react/utils/createErebus";
 import { z } from "zod";
-import { ErebusPubSubClient } from "@/client/core/pubsub";
-import { Authorize } from "@/client/core/authorize";
+import { ErebusPubSubClient } from "../../../src/client/core/pubsub";
+import { Authorize } from "../../../src/client/core/authorize";
 
 // Simple test schema - similar to core primitive test
 const erebus = createErebus(
