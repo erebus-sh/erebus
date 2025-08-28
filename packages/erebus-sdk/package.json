@@ -1,8 +1,10 @@
 {
   "name": "erebus-sdk",
   "version": "0.0.7",
-  "module": "index.ts",
   "type": "module",
+  "main": "./dist/server/src/index.js",
+  "module": "./dist/server/src/index.js",
+  "types": "./dist/types/src/index.d.ts",
   "scripts": {
     "clean": "rm -rf dist",
     "clean:types": "rm -rf dist/types",
@@ -45,7 +47,7 @@
   ],
   "exports": {
     ".": {
-      "import": "./dist/src/index.js",
+      "import": "./dist/server/src/index.js",
       "types": "./dist/types/src/index.d.ts"
     },
     "./client": {
@@ -191,12 +193,31 @@
     "dist"
   ],
   "description": "To install dependencies:",
-  "main": "index.js",
   "directories": {
     "example": "examples",
     "test": "tests"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "typesVersions": {
+    "*": {
+      "client/*": [
+        "dist/types/src/client/*"
+      ],
+      "react/*": [
+        "dist/types/src/client/react/*"
+      ],
+      "server/*": [
+        "dist/types/src/server/*"
+      ],
+      "service/*": [
+        "dist/types/src/service/*"
+      ],
+      "*": [
+        "dist/types/src/*"
+      ]
+    }
+  },
+  "sideEffects": false
 }

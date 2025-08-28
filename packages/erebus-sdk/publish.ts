@@ -186,6 +186,16 @@ class ErebusPublisher {
               updateExports(packageJson.exports);
             }
 
+            // Ensure root entry fields are relative to dist/ after copy
+            // We publish from dist/, so these should point to built artifacts within dist
+            packageJson.main = "./server/src/index.js";
+            packageJson.module = "./server/src/index.js";
+            packageJson.types = "./types/src/index.d.ts";
+
+            // Remove stale values if present in copied file
+            if (packageJson.module === "index.ts") delete packageJson.module;
+            if (packageJson.main === "index.js") delete packageJson.main;
+
             // Write the modified package.json to dist
             writeFileSync(destPath, JSON.stringify(packageJson, null, 2));
 
@@ -223,6 +233,20 @@ class ErebusPublisher {
         this.log(`📄 ${file}: ${chalk.green("Present")}`, "success");
       } else {
         this.log(`📄 ${file}: ${chalk.red("Missing")}`, "warn");
+      }
+    }
+
+    // Validate representative build artifacts exist
+    const artifacts = [
+      "server/src/index.js",
+      "types/src/index.d.ts",
+      "client/src/client/react/index.js",
+      "types/src/client/react/index.d.ts",
+    ];
+    for (const p of artifacts) {
+      const fp = join(distPath, p);
+      if (!existsSync(fp)) {
+        throw new Error(`Missing build artifact: ${p}`);
       }
     }
   }
