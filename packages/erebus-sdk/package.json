@@ -19,7 +19,9 @@
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5",
+    "react": "^18 || ^19",
+    "zustand": "^4 || ^5"
   },
   "dependencies": {
     "@hono/node-server": "^1.18.2",
@@ -30,10 +32,18 @@
     "jose": "^6.0.12",
     "ky": "^1.8.2",
     "nanoid": "^5.1.5",
-    "zod": "^4.0.17",
-    "zustand": "^5.0.7"
+    "zod": "^4.0.17"
   },
   "exclude": [
     "test_projects"
+  ],
+  "exports": {
+    "./react/createErebus": {
+      "import": "./dist/src/client/react/utils/createErebus.js",
+      "types": "./dist/types/src/client/react/utils/createErebus.d.ts"
+    }
+  },
+  "files": [
+    "dist"
   ]
 }

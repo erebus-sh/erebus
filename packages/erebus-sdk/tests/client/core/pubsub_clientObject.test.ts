@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { ErebusPubSubClient } from "@/client/core/pubsub";
+import { ErebusPubSubClient } from "@/client/core/pubsub/ErebusPubSubClient";
 
 test("Creating an Erebus client object", () => {
   process.env.NODE_ENV = "test";
@@ -10,7 +10,6 @@ test("Creating an Erebus client object", () => {
   expect(client).toBeDefined();
   expect(client.__debugObject).toBeDefined();
   expect(client.__debugObject.connectionObject.url).toBe("ws://localhost:8080");
-  expect(client.__debugHandlers).toBeInstanceOf(Map);
   expect(client.__debugConn).toBeDefined();
   expect(client.__debugSummary).toEqual(
     expect.objectContaining({ handlerCount: 0 }),

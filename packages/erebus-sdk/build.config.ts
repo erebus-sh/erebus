@@ -1,10 +1,12 @@
 import { build } from "bun";
+import fg from "fast-glob";
+const files = await fg("src/client/react/**/*.{ts,tsx}");
 
 await build({
-  entrypoints: ["src/index.ts"],
+  entrypoints: [...files],
   outdir: "./dist",
   format: "esm",
   minify: true,
-  external: ["ky", "jose"],
   sourcemap: true,
+  external: ["*"],
 });
