@@ -1,7 +1,8 @@
 {
   "name": "erebus-sdk",
-  "version": "0.0.23",
+  "version": "0.0.31",
   "type": "module",
+  "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -15,7 +16,6 @@
     "build": "bun run clean && bun run build:sdk",
     "build:dev": "bun run build:sdk",
     "format": "bunx prettier . --write",
-    "prepublishOnly": "bun run build",
     "test": "vitest run",
     "test:react": "vitest run --config vitest.jsdom.config.ts"
   },
@@ -81,9 +81,29 @@
     "example": "examples",
     "test": "tests"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "real-time",
+    "cloudflare",
+    "durable-object",
+    "pubsub",
+    "messaging",
+    "websocket",
+    "typescript",
+    "react",
+    "serverless",
+    "edge",
+    "distributed",
+    "event-driven",
+    "sdk",
+    "api",
+    "subscription",
+    "publish-subscribe",
+    "state-sync",
+    "cloud",
+    "microservices"
+  ],
+  "author": "Erebus",
+  "license": "MIT",
   "typesVersions": {
     "*": {
       "client/*": [
