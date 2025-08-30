@@ -16,6 +16,7 @@ export { MessageProcessor } from "./MessageProcessor";
 export { GrantManager } from "./GrantManager";
 export { HeartbeatManager } from "./HeartbeatManager";
 export { StateManager } from "./StateManager";
+export { PresenceManager, PresenceHandler } from "./Presence";
 
 // Interfaces and types
 export type * from "./interfaces";

@@ -5,6 +5,7 @@ import {
   AckPublishOk,
   AckPublishErr,
   AckSubscription,
+  PresencePacket,
 } from "@repo/schemas/packetEnvelope";
 import { MessageBodySchema, type MessageBody } from "@repo/schemas/messageBody";
 
@@ -60,6 +61,14 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
         logger.warn("[parseServerFrame] ACK packet parsing failed");
         return null;
       }
+    } else if (data.packetType === "presence") {
+      logger.info("[parseServerFrame] validating presence packet schema");
+      const presence = PresencePacket.parse(data);
+      logger.info("[parseServerFrame] presence packet validated", {
+        topic: presence.topic,
+        clientId: presence.clientId,
+      });
+      return presence as PacketEnvelope;
     } else {
       // Legacy message parsing for backward compatibility
       if (!data.topic || typeof data.topic !== "string") {

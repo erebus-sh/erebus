@@ -1,9 +1,11 @@
 import type {
   PacketEnvelope,
   AckPacketType,
+  PresencePacketType,
 } from "@repo/schemas/packetEnvelope";
 import type { IMessageProcessor, OnMessage } from "./interfaces";
 import type { IAckManager } from "./interfaces";
+import type { PresenceManager } from "./Presence";
 import { parseServerFrame } from "@/client/core/wire";
 import { logger } from "@/internal/logger/consola";
 
@@ -14,15 +16,18 @@ export class MessageProcessor implements IMessageProcessor {
   #connectionId: string;
   #onMessage: OnMessage;
   #ackManager: IAckManager;
+  #presenceManager: PresenceManager;
 
   constructor(
     connectionId: string,
     onMessage: OnMessage,
     ackManager: IAckManager,
+    presenceManager: PresenceManager,
   ) {
     this.#connectionId = connectionId;
     this.#onMessage = onMessage;
     this.#ackManager = ackManager;
+    this.#presenceManager = presenceManager;
     logger.info(`[${this.#connectionId}] MessageProcessor created`);
   }
 
@@ -64,6 +69,15 @@ export class MessageProcessor implements IMessageProcessor {
           messageId: packet.payload?.id || "unknown",
         });
         this.#onMessage(packet);
+      } else if (packet.packetType === "presence") {
+        // Handle presence packets
+        logger.info(`[${this.#connectionId}] Handling presence packet`, {
+          topic: packet.topic,
+          clientId: packet.clientId,
+        });
+        this.#presenceManager.handlePresencePacket(
+          packet as PresencePacketType,
+        );
       } else {
         logger.warn(`[${this.#connectionId}] Unknown packet type`, {
           packetType: packet.packetType,

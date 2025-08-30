@@ -18,6 +18,8 @@ import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageProcessor } from "./MessageProcessor";
 import { GrantManager } from "./GrantManager";
 import { HeartbeatManager } from "./HeartbeatManager";
+import { PresenceManager } from "./Presence";
+import type { PresenceHandler } from "./Presence";
 import { logger } from "@/internal/logger/consola";
 import consola from "consola";
 
@@ -34,6 +36,7 @@ export class PubSubConnection {
   #messageProcessor: MessageProcessor;
   #grantManager: GrantManager;
   #heartbeatManager: HeartbeatManager;
+  #presenceManager: PresenceManager;
   #ackTimeoutMs = 30000; // 30 seconds timeout for ACKs
   #connectionId: string;
 
@@ -47,16 +50,18 @@ export class PubSubConnection {
     // Initialize all managers
     this.#ackManager = new AckManager(this.#connectionId);
     this.#subscriptionManager = new SubscriptionManager(this.#connectionId);
+    this.#presenceManager = new PresenceManager(this.#connectionId);
     this.#grantManager = new GrantManager(
       this.#connectionId,
       config.tokenProvider,
     );
 
-    // Create message processor with ACK handling
+    // Create message processor with ACK and presence handling
     this.#messageProcessor = new MessageProcessor(
       this.#connectionId,
       config.onMessage,
       this.#ackManager,
+      this.#presenceManager,
     );
 
     // Create connection manager with message processing
@@ -300,6 +305,32 @@ export class PubSubConnection {
     this.#connectionManager.setChannel(channel);
     // Clear cached grant when channel changes
     this.#grantManager.clearCachedGrant();
+  }
+
+  /**
+   * Register a presence handler for a specific topic
+   * @param topic - The topic to listen for presence updates on
+   * @param handler - The callback function to handle presence updates
+   */
+  onPresence(topic: string, handler: PresenceHandler): void {
+    this.#presenceManager.onPresence(topic, handler);
+  }
+
+  /**
+   * Remove a presence handler for a specific topic
+   * @param topic - The topic to remove the handler from
+   * @param handler - The specific handler function to remove
+   */
+  offPresence(topic: string, handler: PresenceHandler): void {
+    this.#presenceManager.offPresence(topic, handler);
+  }
+
+  /**
+   * Remove all presence handlers for a specific topic
+   * @param topic - The topic to clear all handlers for
+   */
+  clearPresenceHandlers(topic: string): void {
+    this.#presenceManager.clearPresenceHandlers(topic);
   }
 
   #publishInternal(

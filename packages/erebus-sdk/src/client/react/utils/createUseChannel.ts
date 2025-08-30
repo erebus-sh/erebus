@@ -35,7 +35,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
 
     useEffect(() => {
       (async () => {
-        console.log(`[useChannel:useEffect] Setting up channel "${channel}"`);
+        console.log(`[useChannel:useEffect] Setting up channel "${channel}")`);
 
         // Initialize channel state
         channelState.setChannel(channel);
@@ -497,6 +497,11 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
           sentAt: Date;
           payload: ChannelPayload;
         }) => void,
+        onPresence?: (presence: {
+          clientId: string;
+          topic: string;
+          timestamp: number;
+        }) => void,
       ) => {
         console.log(
           `[useChannel:subscribe] Subscribing to topic "${topic}" on channel "${channel}"`,
@@ -549,6 +554,15 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
         console.log(
           `[useChannel:subscribe] Setting up subscription for topic "${topic}" on channel "${channel}"`,
         );
+
+        // Presence: register handler if provided
+        let presenceOff: (() => void) | undefined;
+        if (onPresence) {
+          try {
+            pubsub.onPresence(topic, onPresence);
+            presenceOff = () => pubsub.offPresence(topic, onPresence);
+          } catch {}
+        }
 
         pubsub.subscribe(topic, (msg) => {
           console.log(
@@ -607,7 +621,14 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
           useChannelState.getState().setSubscriptionStatus(topic, "subscribed");
         }
 
-        return () => {};
+        // Return cleanup for presence handler if set
+        return () => {
+          if (presenceOff) {
+            try {
+              presenceOff();
+            } catch {}
+          }
+        };
       },
       [channel],
     );

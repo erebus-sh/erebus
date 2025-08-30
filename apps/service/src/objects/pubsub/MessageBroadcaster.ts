@@ -2,6 +2,7 @@ import { Access } from "@repo/schemas/grant";
 import { GrantSchema } from "@repo/schemas/grant";
 import { MessageBody } from "@repo/schemas/messageBody";
 import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
+import { PacketEnvelope, PresencePacket } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -491,6 +492,91 @@ export class MessageBroadcaster extends BaseService {
       topic,
       seq,
     });
+  }
+
+  /**
+   * Broadcast presence packets to all connected WebSocket connections.
+   * This is a fire-and-forget operation with no ACKs or complex processing.
+   *
+   * @param presencePacket - The presence packet to broadcast
+   */
+  async broadcastPresence(
+    presencePacket: PacketEnvelope & {
+      packetType: "presence";
+      clientId: string;
+      topic: string;
+    },
+  ): Promise<void> {
+    this.logDebug(
+      `[PRESENCE_BROADCAST] Broadcasting presence packet for client: ${presencePacket.clientId}, topic: ${presencePacket.topic}`,
+    );
+
+    // Get all active WebSocket connections
+    const sockets = this.ctx.getWebSockets();
+    this.logDebug(
+      `[PRESENCE_BROADCAST] Total WebSocket connections: ${sockets.length}`,
+    );
+
+    // Pre-serialize the presence packet once for all recipients
+    const serializedPacket = MessageBroadcaster.TEXT_ENCODER.encode(
+      JSON.stringify(presencePacket),
+    );
+
+    // Track broadcast metrics
+    let sentCount = 0;
+    let errorCount = 0;
+
+    // Process sockets in batches for better performance
+    const batchSize = 50; // Smaller batch size for presence updates
+    for (let i = 0; i < sockets.length; i += batchSize) {
+      const batch = sockets.slice(i, i + batchSize);
+
+      // Process current batch in parallel
+      const batchPromises = batch.map(async (socket) => {
+        try {
+          // Check socket state
+          if (socket.readyState !== WebSocket.READY_STATE_OPEN) {
+            return false;
+          }
+
+          // Handle backpressure if needed
+          const backpressureResult = await this.handleBackpressure(socket);
+          if (backpressureResult) {
+            return false;
+          }
+
+          // Send the presence packet
+          socket.send(serializedPacket);
+          return true;
+        } catch (error) {
+          this.logDebug(
+            `[PRESENCE_BROADCAST] Failed to send to socket: ${error}`,
+          );
+          return false;
+        }
+      });
+
+      // Wait for current batch to complete
+      const batchResults = await Promise.all(batchPromises);
+
+      // Update metrics
+      batchResults.forEach((sent) => {
+        if (sent) {
+          sentCount++;
+        } else {
+          errorCount++;
+        }
+      });
+
+      // Yield control between batches to prevent blocking
+      if (i + batchSize < sockets.length) {
+        await this.yieldControl();
+      }
+    }
+
+    this.logDebug(
+      `[PRESENCE_BROADCAST] Presence broadcast completed - sent: ${sentCount}, errors: ${errorCount}`,
+    );
   }
 
   /**

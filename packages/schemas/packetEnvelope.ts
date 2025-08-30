@@ -22,6 +22,12 @@ const UnsubscribePacket = z.object({
   topic: z.string().min(1),
 });
 
+const PresencePacket = z.object({
+  packetType: z.literal("presence"),
+  clientId: z.string().min(1),
+  topic: z.string().min(1),
+});
+
 const PublishPacket = z.object({
   packetType: z.literal("publish"),
   ack: z.boolean().optional(),
@@ -96,6 +102,7 @@ export const PacketEnvelopeSchema = z.discriminatedUnion("packetType", [
   ConnectPacket,
   SubscribePacket,
   UnsubscribePacket,
+  PresencePacket,
   PublishPacket,
   AckPacket,
 ]);
@@ -106,6 +113,7 @@ export type PacketEnvelope = z.infer<typeof PacketEnvelopeSchema>;
 export type ConnectPacketType = z.infer<typeof ConnectPacket>;
 export type SubscribePacketType = z.infer<typeof SubscribePacket>;
 export type UnsubscribePacketType = z.infer<typeof UnsubscribePacket>;
+export type PresencePacketType = z.infer<typeof PresencePacket>;
 export type PublishPacketType = z.infer<typeof PublishPacket>;
 export type AckPacketType = z.infer<typeof AckPacket>;
 
@@ -120,6 +128,7 @@ export {
   ConnectPacket,
   SubscribePacket,
   UnsubscribePacket,
+  PresencePacket,
   PublishPacket,
   AckPacket,
   AckPublishOk,

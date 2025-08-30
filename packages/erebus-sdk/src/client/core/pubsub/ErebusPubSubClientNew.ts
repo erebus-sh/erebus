@@ -1,6 +1,7 @@
 import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { AckCallback } from "../types";
+import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnectionNew";
 import { StateManager } from "./StateManager";
 import { logger } from "@/internal/logger/consola";
@@ -379,6 +380,78 @@ export class ErebusPubSubClientNew {
 
   get processedMessagesCount(): number {
     return this.#stateManager.processedMessagesCount;
+  }
+
+  /**
+   * Register a presence handler for a specific topic
+   * @param topic - The topic to listen for presence updates on
+   * @param handler - The callback function to handle presence updates
+   */
+  onPresence(topic: string, handler: PresenceHandler): void {
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] onPresence called`, { topic });
+    logger.info("Erebus.onPresence() called", { topic });
+
+    if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
+      const error = "Invalid topic: must be a non-empty string";
+      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error("Invalid topic for presence", { topic });
+      throw new Error(error);
+    }
+
+    if (typeof handler !== "function") {
+      const error = "Invalid handler: must be a function";
+      consola.error(`[Erebus:${instanceId}] ${error}`);
+      logger.error("Invalid presence handler", { handlerType: typeof handler });
+      throw new Error(error);
+    }
+
+    this.#conn.onPresence(topic, handler);
+    consola.info(
+      `[Erebus:${instanceId}] Presence handler registered for topic`,
+      {
+        topic,
+      },
+    );
+    logger.info("Presence handler registered", { topic });
+  }
+
+  /**
+   * Remove a presence handler for a specific topic
+   * @param topic - The topic to remove the handler from
+   * @param handler - The specific handler function to remove
+   */
+  offPresence(topic: string, handler: PresenceHandler): void {
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] offPresence called`, { topic });
+    logger.info("Erebus.offPresence() called", { topic });
+
+    this.#conn.offPresence(topic, handler);
+    consola.info(`[Erebus:${instanceId}] Presence handler removed for topic`, {
+      topic,
+    });
+    logger.info("Presence handler removed", { topic });
+  }
+
+  /**
+   * Remove all presence handlers for a specific topic
+   * @param topic - The topic to clear all handlers for
+   */
+  clearPresenceHandlers(topic: string): void {
+    const instanceId = this.#conn.connectionId;
+    consola.info(`[Erebus:${instanceId}] clearPresenceHandlers called`, {
+      topic,
+    });
+    logger.info("Erebus.clearPresenceHandlers() called", { topic });
+
+    this.#conn.clearPresenceHandlers(topic);
+    consola.info(
+      `[Erebus:${instanceId}] All presence handlers cleared for topic`,
+      {
+        topic,
+      },
+    );
+    logger.info("All presence handlers cleared", { topic });
   }
 
   /**

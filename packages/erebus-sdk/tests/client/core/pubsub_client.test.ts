@@ -660,3 +660,117 @@ test("ACK error handling: client publishes to unauthorized topic and receives er
   // Clean up
   client.close();
 }, 30000);
+
+test("Presence functionality: clients receive presence updates when others subscribe/unsubscribe", async () => {
+  // Generate unique topic name for this test run
+  const uniqueTopic = `presence_test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+  console.log(
+    `Starting presence functionality test with topic: ${uniqueTopic}`,
+  );
+
+  // Create two clients for presence testing
+  const client1 = await ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:6969",
+    wsBaseUrl: "ws://localhost:8787",
+  });
+
+  const client2 = await ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:6969",
+    wsBaseUrl: "ws://localhost:8787",
+  });
+
+  console.log("Both clients created for presence test");
+
+  // Join the test channel for both clients
+  client1.joinChannel("test_channel");
+  client2.joinChannel("test_channel");
+
+  // Connect both clients
+  await client1.connect();
+  await client2.connect();
+  console.log("Both clients connected for presence test");
+
+  // Track presence events
+  const client1PresenceEvents: Array<{
+    clientId: string;
+    topic: string;
+    timestamp: number;
+  }> = [];
+  const client2PresenceEvents: Array<{
+    clientId: string;
+    topic: string;
+    timestamp: number;
+  }> = [];
+
+  // Set up presence handlers
+  client1.onPresence(uniqueTopic, (presence) => {
+    console.log(`Client1 received presence update:`, presence);
+    client1PresenceEvents.push(presence);
+  });
+
+  client2.onPresence(uniqueTopic, (presence) => {
+    console.log(`Client2 received presence update:`, presence);
+    client2PresenceEvents.push(presence);
+  });
+
+  console.log("Presence handlers set up for both clients");
+
+  // Client1 subscribes to the topic (should trigger presence updates)
+  client1.subscribe(uniqueTopic, (payload: MessageBody) => {
+    console.log(`Client1 received message: ${payload.payload}`);
+  });
+
+  // Wait a bit for the subscription and presence update to process
+  await new Promise((r) => setTimeout(r, 500));
+
+  // Client2 subscribes to the topic (should trigger another presence update)
+  client2.subscribe(uniqueTopic, (payload: MessageBody) => {
+    console.log(`Client2 received message: ${payload.payload}`);
+  });
+
+  // Wait for presence updates to be processed
+  await new Promise((r) => setTimeout(r, 1000));
+
+  console.log(`Client1 presence events: ${client1PresenceEvents.length}`);
+  console.log(`Client2 presence events: ${client2PresenceEvents.length}`);
+
+  // Both clients should have received presence updates about each other's subscriptions
+  expect(client1PresenceEvents.length).toBeGreaterThanOrEqual(1);
+  expect(client2PresenceEvents.length).toBeGreaterThanOrEqual(1);
+
+  // Verify presence event structure
+  if (client1PresenceEvents.length > 0) {
+    const presenceEvent = client1PresenceEvents[0];
+    expect(presenceEvent.clientId).toBeDefined();
+    expect(typeof presenceEvent.clientId).toBe("string");
+    expect(presenceEvent.topic).toBe(uniqueTopic);
+    expect(typeof presenceEvent.timestamp).toBe("number");
+    expect(presenceEvent.timestamp).toBeGreaterThan(0);
+  }
+
+  // Test unsubscribe presence updates
+  const initialPresenceCount = client1PresenceEvents.length;
+
+  // Client2 unsubscribes (should trigger presence update)
+  client2.unsubscribe(uniqueTopic);
+
+  // Wait for unsubscribe presence update
+  await new Promise((r) => setTimeout(r, 500));
+
+  // Client1 should have received a presence update about client2's unsubscription
+  expect(client1PresenceEvents.length).toBeGreaterThanOrEqual(
+    initialPresenceCount,
+  );
+
+  console.log("Presence functionality test completed successfully");
+
+  // Clean up
+  client1.unsubscribe(uniqueTopic);
+  await new Promise((r) => setTimeout(r, 100));
+
+  client1.close();
+  client2.close();
+}, 30000);

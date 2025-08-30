@@ -2,6 +2,7 @@ import { Access, GrantSchema, Grant } from "@repo/schemas/grant";
 import {
   PacketEnvelope,
   PacketEnvelopeSchema,
+  PresencePacket,
 } from "@repo/schemas/packetEnvelope";
 import { MessageBody } from "@repo/schemas/messageBody";
 import { verify } from "@/lib/jwt";
@@ -10,6 +11,8 @@ import { WsErrors } from "@/enums/wserrors";
 import { BaseService } from "./BaseService";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageBuffer } from "./MessageBuffer";
+import { ShardManager } from "./ShardManager";
+import { MessageBroadcaster } from "./MessageBroadcaster";
 import { ServiceContext } from "./types";
 
 /**
@@ -64,12 +67,16 @@ export class MessageHandler extends BaseService {
    * @param subscriptionManager - Service for managing subscriptions
    * @param messageBuffer - Service for message persistence and retrieval
    * @param broadcastCoordinator - Service for coordinating message broadcasts
+   * @param shardManager - Service for managing shard coordination
+   * @param messageBroadcaster - Service for broadcasting presence packets
    */
   constructor(
     serviceContext: ServiceContext,
     private readonly subscriptionManager: SubscriptionManager,
     private readonly messageBuffer: MessageBuffer,
     private readonly broadcastCoordinator: MessageBroadcastCoordinator,
+    private readonly shardManager: ShardManager,
+    private readonly messageBroadcaster: MessageBroadcaster,
   ) {
     super(serviceContext);
   }
@@ -140,6 +147,12 @@ export class MessageHandler extends BaseService {
           break;
         case "publish":
           await this.handlePublishPacket(ws, envelope);
+          break;
+        case "presence":
+          // Presence packets are server-generated, not client-sent
+          this.logDebug(
+            `[WS_MESSAGE] Received presence packet from client - ignoring`,
+          );
           break;
         default:
           this.logError(
@@ -334,6 +347,9 @@ export class MessageHandler extends BaseService {
       await this.sendAck(ws, subscribeAck);
       this.logDebug(`[WS_SUBSCRIBE] Subscribe ACK sent for topic: ${topic}`);
 
+      // Send Presence Update
+      await this.sendPresenceUpdate(clientId, topic, projectId, channelName);
+
       // Enqueue usage tracking for successful subscription
       await this.enqueueUsageEvent("websocket.subscribe", projectId, keyId);
 
@@ -409,9 +425,60 @@ export class MessageHandler extends BaseService {
       this.logDebug(
         `[WS_UNSUBSCRIBE] Unsubscribe ACK sent for topic: ${topic}`,
       );
+
+      // Send Presence Update
+      await this.sendPresenceUpdate(clientId, topic, projectId, channelName);
     } catch (error) {
       this.logError(`[WS_UNSUBSCRIBE] Unsubscription failed: ${error}`);
       // Don't close connection for unsubscribe failures
+    }
+  }
+
+  /**
+   * Send presence update to all connected clients when subscription status changes.
+   * Uses existing MessageBroadcaster infrastructure for efficient fire-and-forget delivery.
+   *
+   * @param clientId - ID of the client whose presence changed
+   * @param topic - Topic that the client subscribed/unsubscribed to
+   * @param projectId - Project ID for the channel
+   * @param channelName - Channel name
+   */
+  private async sendPresenceUpdate(
+    clientId: string,
+    topic: string,
+    projectId: string,
+    channelName: string,
+  ): Promise<void> {
+    this.logDebug(
+      `[PRESENCE_UPDATE] Sending presence update for client: ${clientId}, topic: ${topic}`,
+    );
+
+    try {
+      // Get current subscribers for the topic
+      const subscribers = await this.subscriptionManager.getSubscribers(
+        projectId,
+        channelName,
+        topic,
+      );
+
+      // Create presence update packet
+      const presencePacket = PresencePacket.parse({
+        packetType: "presence",
+        clientId: clientId,
+        topic: topic,
+      });
+
+      // Use MessageBroadcaster's optimized presence broadcasting
+      await this.messageBroadcaster.broadcastPresence(presencePacket);
+
+      this.logDebug(
+        `[PRESENCE_UPDATE] Presence update broadcast completed for client: ${clientId}, subscribers: ${subscribers.length}`,
+      );
+    } catch (error) {
+      this.logError(
+        `[PRESENCE_UPDATE] Error sending presence update: ${error}`,
+      );
+      // Don't fail the subscription/unsubscription for presence update errors
     }
   }
 

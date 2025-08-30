@@ -65,6 +65,8 @@ export class ChannelV1
       this.subscriptionManager,
       this.messageBuffer,
       this, // ChannelV1 implements MessageBroadcastCoordinator
+      this.shardManager, // Add ShardManager dependency
+      this.messageBroadcaster, // Add MessageBroadcaster for presence updates
     );
 
     this.log(
