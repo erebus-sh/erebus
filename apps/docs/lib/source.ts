@@ -1,8 +1,20 @@
-import { docs } from "@/.source";
+import { docs, blog } from "@/.source";
 import { loader } from "fumadocs-core/source";
 import { createMDXSource } from "fumadocs-mdx";
 
-// See https://fumadocs.vercel.app/docs/headless/source-api for more info
+export const blogSource = loader({
+  baseUrl: "/blog",
+  source: createMDXSource(blog),
+});
+
+export const {
+  getPage: getBlogPost,
+  getPages: getBlogPosts,
+  pageTree: pageBlogTree,
+} = blogSource;
+
+export type BlogPost = ReturnType<typeof getBlogPost>;
+
 export const source = loader({
   // it assigns a URL to your pages
   baseUrl: "/docs",

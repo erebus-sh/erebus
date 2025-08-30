@@ -2,6 +2,7 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 @import "tw-animate-css";
+@import "../fumadocs-blog/styles/globals.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -68,12 +69,46 @@
   --shadow-opacity: var(--shadow-opacity);
   --color-shadow-color: var(--shadow-color);
   --color-destructive-foreground: var(--destructive-foreground);
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes accordion-down {
+  from {
+    height: 0;
+    }
+  to {
+    height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+    }
+  to {
+    height: 0;
+    }
+  }
 }
 
 :root {
   --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -128,6 +163,8 @@
     0px 1px 0px 0px hsl(0 0% 0% / 0), 0px 8px 10px -1px hsl(0 0% 0% / 0);
   --shadow-2xl: 0px 1px 0px 0px hsl(0 0% 0% / 0);
   --tracking-normal: -0.05em;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
 }
 
 .dark {
@@ -197,22 +234,22 @@
     @apply bg-background text-foreground;
     letter-spacing: var(--tracking-normal);
   }
-  
+
   /* Smooth scrolling for anchor links */
   html {
     scroll-behavior: smooth;
   }
-  
+
   /* Style for anchor links in headings */
   .anchor {
     text-decoration: none;
     transition: opacity 0.2s ease;
   }
-  
+
   .anchor:hover {
     opacity: 0.8;
   }
-  
+
   /* Adjust scroll position for fixed header if needed */
   :target {
     scroll-margin-top: 2rem;

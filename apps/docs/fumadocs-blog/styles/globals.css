@@ -1,0 +1,15 @@
+@source "../components/**/*.{ts,tsx}";
+
+.blog {
+  #nd-page {
+    @apply col-span-4 xl:col-span-3 order-last;
+  }
+
+  #nd-toc {
+    @apply mx-auto px-4 lg:px-6;
+    /* @apply mx-auto; */
+    div {
+      @apply pe-0;
+    }
+  }
+}
