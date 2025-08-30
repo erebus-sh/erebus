@@ -1,0 +1,18 @@
+---
+title: Why Cloudflare Durable Objects?
+description: Explain why we chose Cloudflare Durable Objects for Erebus
+author: #V0ID
+date: 2025-09-03
+tags: [erebus, real-time, cloud, durable-objects]
+image: https://shadcnblocks.com/images/block/placeholder-5.svg
+---
+
+# Why Cloudflare Durable Objects?
+
+## What are Durable Objects?
+
+Durable Objects are distributed V8 isolates that can run across Cloudflare’s global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.  
+
+Because they are V8 instances, they can also hibernate and scale down to zero when idle. That means Erebus runs serverless by design, so you only pay for what you actually use.  
+
+## Why Erebus chose Durable Objects

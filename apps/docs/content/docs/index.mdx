@@ -22,6 +22,18 @@ When you connect, you are placed in the nearest point of presence (PoP). Everyon
 
 ---
 
+## How Erebus infrastructure works
+
+Erebus is built on top of [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/).  
+
+In short, Durable Objects are distributed V8 isolates that can run across Cloudflare’s global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.  
+
+Because they are V8 instances, they can also hibernate and scale down to zero when idle. That means Erebus runs serverless by design, so you only pay for what you actually use.  
+
+A deep dive into the choices behind Erebus infrastructure check our blog [Why Cloudflare Durable Objects?](/blog/dive/why-cloudflare-durable-objects).
+
+---
+
 ## What is inside the docs
 
 - **Setup** – Managed beta or self host locally.  
