@@ -1,56 +1,34 @@
 ---
-title: Introduction
-description: Kick off your journey with Erebus – the real-time infrastructure at the edge.
+title: Introduction to Erebus
+description: Start with Erebus, a focused beta for real-time at the edge.
 ---
 
-# Welcome to Erebus
+# Welcome to Erebus (Beta)
+<Callout title="Beta version" type="warning">
+Erebus is in beta. The SDK APIs might change and are not guaranteed to be backward compatible with every update.  
+You are welcome to try Erebus in side projects and share feedback.  
+If the docs do not cover what you need, help can be provided directly. Reach out at [x.com/v0id_user](https://x.com/v0id_user).
+</Callout>
 
-Erebus is a **real‑time infrastructure platform**. We give you the building blocks to power messaging, presence, and sync at scale — without forcing you to reinvent low‑latency infra.
+Erebus is an early-stage real-time infrastructure platform. At this stage you get one core primitive with two behaviors built in:
 
-You choose how to run it:
-- **Managed Service** — fully hosted, with usage‑based pricing and a generous free tier.
-- **Self‑Host** — run it yourself with Docker or deploy directly to your infra.
+- **Pub/Sub Channels** — publish and subscribe to ordered messages using ULID sequences so delivery order is guaranteed.  
+- **Presence** — presence events are part of channels. When clients connect and subscribe to a room, presence state is updated automatically and fired out to everyone in that channel.  
+- **Acknowledgments** — an MQTT-style ack system with QoS 1 support. Every message is delivered at least once and acknowledged by subscribers.  
 
----
+That is the foundation. One channel gives you both messaging and awareness of who is in the room.  
 
-## What You’ll Find in the Docs
-
-- **Introduction** – What Erebus is, why it exists, and how it compares to alternatives.
-- **Installation / Setup** – Step‑by‑step for both managed service and self‑host setups.
-- **Core Concepts** – Channels, messages, ordering (ULIDs), presence, and authentication with grant tokens.
-- **SDK Guides** – Using the Erebus SDK in Next.js and React, with typed hooks like `useChannel`.
-- **Advanced Primitives** – Working directly with the low‑level APIs.
-- **Reference** – Full API and SDK reference.
-- **Contribution Guide** – How to contribute or extend Erebus.
+When you connect, you are placed in the nearest point of presence (PoP). Everyone in that region shares the same local channel object, so ordering and presence are consistent without global lag.
 
 ---
 
-## Quick Links
+## What is inside the docs
 
-| Topic                | Jump There |
-|----------------------|------------|
-| Setup                | [Managed Service](/docs/setup/managed) · [Self‑Host](/docs/setup/self-host) |
-| Core Concepts        | [Channels](/docs/concepts/channels) · [Presence](/docs/concepts/presence) |
-| SDK Guides           | [React SDK](/docs/sdk/react) |
-| Reference            | [API Reference](/docs/reference) |
-| Contribute           | [Contribution Guide](/docs/contribution-guidelines) |
-
-> **Status**: MVP live — real‑time infra that just works. Iterate fast, scale later.
+- **Setup** – Managed beta or self host locally.  
+- **Concepts** – Channels, ordering, presence, and tokens.  
+- **SDK Guide** – Use `useChannel` in your React app.  
+- **Reference** – API and SDK calls.  
 
 ---
 
-### Why This Matters
-
-1. **Choice** — managed hosting or total control via self‑hosting.
-2. **Primitives** — not just an opinionated layer; real building blocks.
-3. **DX first** — type‑safe SDKs, clean APIs, and fast iteration.
-
----
-
-### Next Steps
-
-<Cards>
-  <Card href="/docs/get-started/install" title="Install Erebus SDK">
-    Install the Erebus SDK to get started.
-  </Card>
-</Cards>
+> **Status**: Beta. Channels with ordered messages and built-in presence are live. More primitives will grow from here.
