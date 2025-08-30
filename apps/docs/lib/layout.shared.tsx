@@ -1,4 +1,4 @@
-import LogoBare from "@/components/logo-bare";
+import Logo from "@/components/logo";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
 /**
@@ -11,12 +11,7 @@ import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: (
-        <>
-          <LogoBare size="sm" />
-          Erebus
-        </>
-      ),
+      title: <Logo />,
     },
     // see https://fumadocs.dev/docs/ui/navigation/links
     links: [],
