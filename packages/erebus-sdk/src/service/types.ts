@@ -5,5 +5,3 @@ export enum Access {
   ReadWrite = "read-write",
   Huh = "huh?",
 }
-
-console.log(Access.Read);

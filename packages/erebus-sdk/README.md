@@ -16,7 +16,7 @@ bun add erebus-sdk
 
 ## What is this?
 
-This SDK provides application interfaces to interact with the Erebus infrastructure.
+This SDK provides type safety you can trust, Zod at the core. And application interfaces to interact with the Erebus infrastructure.
 
 ## Available primitives
 
@@ -27,13 +27,18 @@ This SDK provides application interfaces to interact with the Erebus infrastruct
 
 ## Quickstart example
 
-```javascript
-import { useChannel } from "erebus-sdk";
+```typescript
+import { createErebus } from "erebus-sdk/react";
+import { z } from "zod";
 
-const channel = useChannel("my-channel");
-channel.subscribe((message) => {
-  console.log("Received message:", message);
+const { useChannel } = createErebus({
+  room: z.object({
+    message: z.string(),
+    sentAt: z.number(),
+  }),
 });
+
+export default useChannel;
 ```
 
 ## Documentation
