@@ -1,11 +1,16 @@
 import { useCallback } from "react";
 import type { AckResponse } from "@/client/core/types";
+import type { AnySchema } from "../utils/types";
+import type { z } from "zod";
 
-// Primitive hook for publishing messages with status tracking
-export function useMessagePublisher(
+// Type-safe hook for publishing messages with status tracking
+export function useMessagePublisher<
+  S extends Record<string, AnySchema>,
+  C extends keyof S & string,
+>(
   publishWithAck: (
     topic: string,
-    payload: any,
+    payload: z.infer<S[C]>,
     ackCallback?: (ack: AckResponse) => void,
   ) => Promise<{ clientMsgId: string; status: "sent" | "error" | "timeout" }>,
   addMessage: (
@@ -19,7 +24,7 @@ export function useMessagePublisher(
   updateMessageClientId: (messageId: string, clientMsgId: string) => void,
 ) {
   const publishAck = useCallback(
-    async (topic: string, payload: any, messageContent: string) => {
+    async (topic: string, payload: z.infer<S[C]>, messageContent: string) => {
       console.log(
         "Publishing message with ack and UI tracking to topic:",
         topic,

@@ -8,6 +8,7 @@ import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
 import type { AnySchema, CreateErebusOptions } from "./types";
 import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
+import { useMessagePublisher as useMessagePublisherPrimitive } from "../hooks/useMessagePublisher";
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
   _schemas: S,
@@ -633,17 +634,41 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
       [channel],
     );
 
+    // Type-safe message publisher bound to this channel's schema
+    const useMessagePublisher = useCallback(
+      (
+        addMessage: (
+          content: string,
+          status?: "sending" | "sent" | "error" | "timeout",
+        ) => string,
+        updateMessageStatus: (
+          messageId: string,
+          status: "sending" | "sent" | "error" | "timeout",
+        ) => void,
+        updateMessageClientId: (messageId: string, clientMsgId: string) => void,
+      ) => {
+        return useMessagePublisherPrimitive<S, C>(
+          publishWithAck,
+          addMessage,
+          updateMessageStatus,
+          updateMessageClientId,
+        );
+      },
+      [publishWithAck],
+    );
+
     // Get the reactive status object from channel state
     const status = channelState.status;
 
     console.log(
-      `[useChannel] Returning publish, publishWithAck, subscribe, unsubscribe, reactive status, and messagesMap for channel "${channel}"`,
+      `[useChannel] Returning publish, publishWithAck, subscribe, unsubscribe, useMessagePublisher, reactive status, and messagesMap for channel "${channel}"`,
     );
     return {
       publish,
       publishWithAck,
       unsubscribe,
       subscribe,
+      useMessagePublisher,
       status, // This is the new reactive status object that eliminates polling
       messagesMap, // Map of message statuses for tracking publishWithAck results
     };
