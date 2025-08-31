@@ -1,6 +1,6 @@
 {
   "name": "erebus-sdk",
-  "version": "0.0.36",
+  "version": "0.0.37",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -66,6 +66,11 @@
       "types": "./dist/server/app.d.ts",
       "import": "./dist/server/app.mjs",
       "require": "./dist/server/app.cjs"
+    },
+    "./server/next": {
+      "types": "./dist/server/adapter/next/index.d.ts",
+      "import": "./dist/server/adapter/next/index.mjs",
+      "require": "./dist/server/adapter/next/index.cjs"
     },
     "./service": {
       "types": "./dist/service/index.d.ts",
