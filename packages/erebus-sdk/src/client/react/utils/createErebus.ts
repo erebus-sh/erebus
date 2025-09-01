@@ -5,6 +5,12 @@ import {
   createEmptyMessages,
 } from "./helpers";
 import { createUseChannel } from "./createUseChannel";
+import {
+  useAutoSubscribe,
+  useMessagePublisher,
+  useMessagesState,
+  useMessagesStatusSync,
+} from "../hooks";
 
 export function createErebus<S extends Record<string, AnySchema>>(
   schemas: S,
@@ -25,11 +31,61 @@ export function createErebus<S extends Record<string, AnySchema>>(
   // Create empty messages function
   const createEmptyMessagesFn = () => createEmptyMessages(schemas);
 
+  // Create the useSubscribe hook with full type safety
+  function useSubscribe<C extends keyof S & string>(channel: C, topic: string) {
+    const { subscribe, publishWithAck, unsubscribe, status, messagesMap } =
+      useChannel(channel);
+    const roomStatus = status.subscriptions[topic] || "unsubscribed";
+
+    const messages = useAutoSubscribe(
+      schemas,
+      subscribe,
+      unsubscribe,
+      topic,
+      status.isReady,
+      roomStatus,
+    );
+
+    // Use primitive hooks to manage complex state and logic
+    const {
+      messages: outgoingMessageState,
+      addMessage,
+      updateMessageStatus,
+      updateMessageClientId,
+    } = useMessagesState();
+
+    // Sync message statuses from messagesMap
+    useMessagesStatusSync(
+      outgoingMessageState,
+      messagesMap,
+      updateMessageStatus,
+    );
+
+    // Publisher with ack status tracking - now type-safe!
+    const { publishAck } = useMessagePublisher(
+      schemas,
+      publishWithAck,
+      addMessage,
+      updateMessageStatus,
+      updateMessageClientId,
+    );
+
+    return {
+      messages,
+      publishAck,
+      subscriptionStatus: status.subscriptions[topic],
+      connectionStatus: status.connectionState,
+      isReady: status.isReady,
+      messagesMap,
+    };
+  }
+
   console.log(
-    "[createErebus] Returning functions: useChannel, parse, validateMessage, createEmptyMessages",
+    "[createErebus] Returning functions: useChannel, useSubscribe, parse, validateMessage, createEmptyMessages",
   );
   return {
     useChannel,
+    useSubscribe,
     parse,
     validateMessage,
     createEmptyMessages: createEmptyMessagesFn,
