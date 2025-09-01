@@ -28,17 +28,19 @@ This SDK provides type safety you can trust, Zod at the core. And application in
 ## Quickstart example
 
 ```typescript
-import { createErebus } from "erebus-sdk/react";
+import { createErebus } from "@/client/react/utils/createErebus";
 import { z } from "zod";
 
-const { useChannel } = createErebus({
+const channels = {
   room: z.object({
     message: z.string(),
     sentAt: z.number(),
   }),
-});
+};
 
-export default useChannel;
+const { useSubscribe } = createErebus(channels);
+
+export default useSubscribe;
 ```
 
 ## Documentation

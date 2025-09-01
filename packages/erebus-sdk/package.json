@@ -1,6 +1,6 @@
 {
   "name": "erebus-sdk",
-  "version": "0.0.38",
+  "version": "0.0.39",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
