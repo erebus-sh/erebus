@@ -8,6 +8,7 @@ export function useMessagePublisher<
   S extends Record<string, AnySchema>,
   C extends keyof S & string,
 >(
+  _schemas: S,
   publishWithAck: (
     topic: string,
     payload: z.infer<S[C]>,

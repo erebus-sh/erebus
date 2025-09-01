@@ -35,6 +35,42 @@ export default {
     const latitude = Number(cf?.latitude);
     const longitude = Number(cf?.longitude);
 
+    // Comprehensive log of request details
+    console.log("[FETCH] Incoming request details:", {
+      url: request.url,
+      path,
+      method,
+      upgrade,
+      headers: Object.fromEntries(request.headers.entries()),
+      cf: {
+        continent: continentCode,
+        latitude: cf?.latitude,
+        longitude: cf?.longitude,
+        country: cf?.country,
+        region: cf?.region,
+        city: cf?.city,
+        colo: cf?.colo,
+        timezone: cf?.timezone,
+        postalCode: cf?.postalCode,
+        metroCode: cf?.metroCode,
+        regionCode: cf?.regionCode,
+        asOrganization: cf?.asOrganization,
+        asn: cf?.asn,
+        clientTcpRtt: cf?.clientTcpRtt,
+        requestPriority: cf?.requestPriority,
+        tlsCipher: cf?.tlsCipher,
+        tlsClientAuth: cf?.tlsClientAuth,
+        tlsVersion: cf?.tlsVersion,
+        edgeRequestKeepAliveStatus: cf?.edgeRequestKeepAliveStatus,
+      },
+      parsed: {
+        continentCode,
+        latitude,
+        longitude,
+      },
+      timestamp: new Date().toISOString(),
+    });
+
     /**
      * Locations
      *

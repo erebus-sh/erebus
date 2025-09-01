@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useErebusStore } from "@/client/react/store/erebus";
 import { useChannelState } from "@/client/react/store/channelState";
 import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
-import type { AnySchema, CreateErebusOptions } from "./types";
+import type { AnySchema, SubscribedData, CreateErebusOptions } from "./types";
 import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
 import { useMessagePublisher as useMessagePublisherPrimitive } from "../hooks/useMessagePublisher";
@@ -490,14 +490,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
     const subscribe = useCallback(
       async (
         topic: string,
-        callback?: (data: {
-          id: string;
-          topic: string;
-          senderId: string;
-          seq: string;
-          sentAt: Date;
-          payload: ChannelPayload;
-        }) => void,
+        callback?: (data: SubscribedData<S, C>) => void,
         onPresence?: (presence: {
           clientId: string;
           topic: string;
@@ -648,6 +641,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
         updateMessageClientId: (messageId: string, clientMsgId: string) => void,
       ) => {
         return useMessagePublisherPrimitive<S, C>(
+          _schemas,
           publishWithAck,
           addMessage,
           updateMessageStatus,

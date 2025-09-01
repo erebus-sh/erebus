@@ -11,6 +11,17 @@ export interface CreateErebusOptions {
   debug?: boolean; // Enable verbose logging for debugging
 }
 
+export interface SubscribedData<
+  S extends Record<string, AnySchema>,
+  C extends keyof S & string,
+> {
+  id: string;
+  topic: string;
+  senderId: string;
+  seq: string;
+  sentAt: Date;
+  payload: z.infer<S[C]>;
+}
 // Generic helper types - maintain the original type structure
 export type Channel<S extends Record<string, AnySchema>> = ChannelName<S>;
 export type Payload<

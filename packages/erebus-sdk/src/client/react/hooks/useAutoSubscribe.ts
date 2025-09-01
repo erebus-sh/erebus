@@ -1,10 +1,16 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import type { AnySchema, SubscribedData } from "../utils/types";
+import { createParse } from "../utils/helpers";
 
 // Primitive hook for automatic subscription management based on connection status
-export function useAutoSubscribe(
+export function useAutoSubscribe<
+  S extends Record<string, AnySchema>,
+  C extends keyof S & string,
+>(
+  _schemas: S,
   subscribe: (
     topic: string,
-    callback?: (data: unknown) => void,
+    callback?: (data: SubscribedData<S, C>) => void,
     onPresence?: (presence: {
       clientId: string;
       topic: string;
@@ -21,6 +27,12 @@ export function useAutoSubscribe(
     timestamp: number;
   }) => void,
 ) {
+  const [messages, setMessages] = useState<
+    {
+      data: SubscribedData<S, C>;
+    }[]
+  >([]);
+  const parse = createParse(_schemas);
   useEffect(() => {
     let isSubscribed = false;
     let presenceCleanup: (() => void) | void;
@@ -38,7 +50,14 @@ export function useAutoSubscribe(
 
       console.log("Auto-subscribing to topic:", topic);
       try {
-        presenceCleanup = await subscribe(topic, undefined, onPresence);
+        presenceCleanup = await subscribe(
+          topic,
+          (message) => {
+            // Ensure the parsed message is of type SubscribedData<S, C>
+            setMessages((prev) => [...prev, { data: message }]);
+          },
+          onPresence,
+        );
         isSubscribed = true;
       } catch (error) {
         console.error("Failed to auto-subscribe:", error);
@@ -58,5 +77,17 @@ export function useAutoSubscribe(
         } catch {}
       }
     };
-  }, [isReady, currentStatus, subscribe, unsubscribe, topic, onPresence]);
+  }, [
+    isReady,
+    currentStatus,
+    subscribe,
+    unsubscribe,
+    topic,
+    onPresence,
+    _schemas,
+    parse,
+    messages,
+  ]);
+
+  return messages;
 }
