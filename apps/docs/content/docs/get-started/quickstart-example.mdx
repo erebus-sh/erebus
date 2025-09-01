@@ -1,0 +1,15 @@
+---
+title: Quickstart Example
+description: Guiding you through the process of using Erebus.
+---
+
+# Quickstart Example - Publish and Subscribe to a channel
+
+Erebus core
+```typescript
+import { ErebusClient } from "erebus-sdk";
+
+const client = await ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+});
+```
