@@ -1,4 +1,9 @@
-import { STORAGE_KEYS, PUBSUB_CONSTANTS, SubscriptionParams } from "./types";
+import {
+  STORAGE_KEYS,
+  PUBSUB_CONSTANTS,
+  SubscriptionParams,
+  ServiceContext,
+} from "./types";
 import { BaseService } from "./BaseService";
 
 /**
@@ -12,6 +17,34 @@ import { BaseService } from "./BaseService";
  * - Bulk operations for performance optimization
  */
 export class SubscriptionManager extends BaseService {
+  private readonly presenceUpdateCallback: (
+    clientId: string,
+    topic: string,
+    projectId: string,
+    channelName: string,
+    action: "subscribe" | "unsubscribe",
+  ) => Promise<void>;
+
+  /**
+   * Initialize the SubscriptionManager with required presence update callback.
+   *
+   * @param serviceContext - Service context containing DO state and environment
+   * @param presenceUpdateCallback - Required callback for sending presence updates
+   */
+  constructor(
+    serviceContext: ServiceContext,
+    presenceUpdateCallback: (
+      clientId: string,
+      topic: string,
+      projectId: string,
+      channelName: string,
+      action: "subscribe" | "unsubscribe",
+    ) => Promise<void>,
+  ) {
+    super(serviceContext);
+    this.presenceUpdateCallback = presenceUpdateCallback;
+  }
+
   /**
    * Subscribe a client to a topic with atomic operations and capacity checks.
    *
@@ -62,6 +95,15 @@ export class SubscriptionManager extends BaseService {
     });
 
     this.logDebug(`[SUBSCRIBE] Subscription transaction completed`);
+
+    // Send presence update
+    await this.presenceUpdateCallback(
+      clientId,
+      topic,
+      projectId,
+      channelName,
+      "subscribe",
+    );
   }
 
   /**
@@ -95,6 +137,15 @@ export class SubscriptionManager extends BaseService {
     });
 
     this.logDebug(`[UNSUBSCRIBE] Unsubscription transaction completed`);
+
+    // Send presence update
+    await this.presenceUpdateCallback(
+      clientId,
+      topic,
+      projectId,
+      channelName,
+      "unsubscribe",
+    );
   }
 
   /**
@@ -214,9 +265,23 @@ export class SubscriptionManager extends BaseService {
 
     // Process all unsubscriptions in parallel for performance
     await Promise.all(
-      topics.map((topic) =>
-        this.unsubscribeFromTopic({ topic, projectId, channelName, clientId }),
-      ),
+      topics.map(async (topic) => {
+        await this.unsubscribeFromTopic({
+          topic,
+          projectId,
+          channelName,
+          clientId,
+        });
+
+        // Send presence update
+        await this.presenceUpdateCallback(
+          clientId,
+          topic,
+          projectId,
+          channelName,
+          "unsubscribe",
+        );
+      }),
     );
 
     this.logDebug(`[BULK_UNSUBSCRIBE] Bulk unsubscription completed`);

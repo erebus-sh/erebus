@@ -1,6 +1,7 @@
 import { GrantSchema } from "@repo/schemas/grant";
 import { Env } from "@/env";
 import { MessageBody } from "@repo/schemas/messageBody";
+import { PacketEnvelope, PresencePacket } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import { ErebusPubSubService } from "./ErebusPubSubService";
 import {
@@ -48,7 +49,25 @@ export class ChannelV1
     super(ctx, env);
 
     // Initialize base services first (no dependencies)
-    this.subscriptionManager = new SubscriptionManager(this.serviceContext);
+    this.subscriptionManager = new SubscriptionManager(
+      this.serviceContext,
+      // Pass presence update callback that delegates to MessageBroadcaster
+      async (
+        clientId: string,
+        topic: string,
+        projectId: string,
+        channelName: string,
+        action: "subscribe" | "unsubscribe",
+      ) => {
+        await this.sendPresenceUpdate(
+          clientId,
+          topic,
+          projectId,
+          channelName,
+          action,
+        );
+      },
+    );
     this.messageBuffer = new MessageBuffer(this.serviceContext);
     this.sequenceManager = new SequenceManager(this.serviceContext);
     this.shardManager = new ShardManager(this.serviceContext);
@@ -65,8 +84,6 @@ export class ChannelV1
       this.subscriptionManager,
       this.messageBuffer,
       this, // ChannelV1 implements MessageBroadcastCoordinator
-      this.shardManager, // Add ShardManager dependency
-      this.messageBroadcaster, // Add MessageBroadcaster for presence updates
     );
 
     this.log(
@@ -194,6 +211,58 @@ export class ChannelV1
    */
   async setShardsInLocalStorage(shards: string[]): Promise<void> {
     await this.shardManager.setShardsInLocalStorage(shards);
+  }
+
+  /**
+   * Send presence update to all connected clients when subscription status changes.
+   * Uses existing MessageBroadcaster infrastructure for efficient fire-and-forget delivery.
+   *
+   * @param clientId - ID of the client whose presence changed
+   * @param topic - Topic that the client subscribed/unsubscribed to
+   * @param projectId - Project ID for the channel
+   * @param channelName - Channel name
+   * @param action - Whether client subscribed (online) or unsubscribed (offline)
+   */
+  private async sendPresenceUpdate(
+    clientId: string,
+    topic: string,
+    projectId: string,
+    channelName: string,
+    action: "subscribe" | "unsubscribe",
+  ): Promise<void> {
+    this.logDebug(
+      `[PRESENCE_UPDATE] Sending presence update for client: ${clientId}, topic: ${topic}, action: ${action}`,
+    );
+
+    try {
+      // Get current subscribers for the topic
+      const subscribers = await this.subscriptionManager.getSubscribers(
+        projectId,
+        channelName,
+        topic,
+      );
+
+      // Create presence update packet
+      const presencePacket = PresencePacket.parse({
+        packetType: "presence",
+        clientId: clientId,
+        topic: topic,
+        status: action === "subscribe" ? "online" : "offline",
+      });
+
+      // Use MessageBroadcaster's optimized presence broadcasting
+      await this.messageBroadcaster.broadcastPresence(presencePacket);
+
+      this.logDebug(
+        `[PRESENCE_UPDATE] Presence update broadcast completed for client: ${clientId}, subscribers: ${subscribers.length}`,
+      );
+    } catch (error) {
+      this.log(
+        `[PRESENCE_UPDATE] Error sending presence update: ${error}`,
+        "error",
+      );
+      // Don't fail the subscription/unsubscription for presence update errors
+    }
   }
 
   /**

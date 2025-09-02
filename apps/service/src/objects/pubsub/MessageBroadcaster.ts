@@ -505,10 +505,11 @@ export class MessageBroadcaster extends BaseService {
       packetType: "presence";
       clientId: string;
       topic: string;
+      status: "online" | "offline";
     },
   ): Promise<void> {
     this.logDebug(
-      `[PRESENCE_BROADCAST] Broadcasting presence packet for client: ${presencePacket.clientId}, topic: ${presencePacket.topic}`,
+      `[PRESENCE_BROADCAST] Broadcasting presence packet for client: ${presencePacket.clientId}, topic: ${presencePacket.topic}, status: ${presencePacket.status}`,
     );
 
     // Get all active WebSocket connections

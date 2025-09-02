@@ -697,22 +697,34 @@ test("Presence functionality: clients receive presence updates when others subsc
   const client1PresenceEvents: Array<{
     clientId: string;
     topic: string;
+    status: "online" | "offline";
     timestamp: number;
   }> = [];
   const client2PresenceEvents: Array<{
     clientId: string;
     topic: string;
+    status: "online" | "offline";
     timestamp: number;
   }> = [];
 
   // Set up presence handlers
   client1.onPresence(uniqueTopic, (presence) => {
-    console.log(`Client1 received presence update:`, presence);
+    console.log(`Client1 received presence update:`, {
+      clientId: presence.clientId,
+      topic: presence.topic,
+      status: presence.status,
+      timestamp: presence.timestamp,
+    });
     client1PresenceEvents.push(presence);
   });
 
   client2.onPresence(uniqueTopic, (presence) => {
-    console.log(`Client2 received presence update:`, presence);
+    console.log(`Client2 received presence update:`, {
+      clientId: presence.clientId,
+      topic: presence.topic,
+      status: presence.status,
+      timestamp: presence.timestamp,
+    });
     client2PresenceEvents.push(presence);
   });
 
@@ -747,6 +759,8 @@ test("Presence functionality: clients receive presence updates when others subsc
     expect(presenceEvent.clientId).toBeDefined();
     expect(typeof presenceEvent.clientId).toBe("string");
     expect(presenceEvent.topic).toBe(uniqueTopic);
+    expect(presenceEvent.status).toBeDefined();
+    expect(["online", "offline"]).toContain(presenceEvent.status);
     expect(typeof presenceEvent.timestamp).toBe("number");
     expect(presenceEvent.timestamp).toBeGreaterThan(0);
   }
@@ -764,6 +778,22 @@ test("Presence functionality: clients receive presence updates when others subsc
   expect(client1PresenceEvents.length).toBeGreaterThanOrEqual(
     initialPresenceCount,
   );
+
+  // Verify we received both online and offline events
+  const onlineEvents = client1PresenceEvents.filter(
+    (e) => e.status === "online",
+  );
+  const offlineEvents = client1PresenceEvents.filter(
+    (e) => e.status === "offline",
+  );
+
+  console.log(
+    `Client1 received ${onlineEvents.length} online events and ${offlineEvents.length} offline events`,
+  );
+
+  // Should have at least one online event (client2 subscribing) and one offline event (client2 unsubscribing)
+  expect(onlineEvents.length).toBeGreaterThanOrEqual(1);
+  expect(offlineEvents.length).toBeGreaterThanOrEqual(1);
 
   console.log("Presence functionality test completed successfully");
 

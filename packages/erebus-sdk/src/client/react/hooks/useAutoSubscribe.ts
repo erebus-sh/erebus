@@ -14,6 +14,7 @@ export function useAutoSubscribe<
     onPresence?: (presence: {
       clientId: string;
       topic: string;
+      status: "online" | "offline";
       timestamp: number;
     }) => void,
   ) => Promise<(() => void) | void>,
@@ -24,6 +25,7 @@ export function useAutoSubscribe<
   onPresence?: (presence: {
     clientId: string;
     topic: string;
+    status: "online" | "offline";
     timestamp: number;
   }) => void,
 ) {

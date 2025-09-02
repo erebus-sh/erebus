@@ -74,6 +74,7 @@ export class MessageProcessor implements IMessageProcessor {
         logger.info(`[${this.#connectionId}] Handling presence packet`, {
           topic: packet.topic,
           clientId: packet.clientId,
+          status: packet.status,
         });
         this.#presenceManager.handlePresencePacket(
           packet as PresencePacketType,

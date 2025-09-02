@@ -32,7 +32,16 @@ export function createErebus<S extends Record<string, AnySchema>>(
   const createEmptyMessagesFn = () => createEmptyMessages(schemas);
 
   // Create the useSubscribe hook with full type safety
-  function useSubscribe<C extends keyof S & string>(channel: C, topic: string) {
+  function useSubscribe<C extends keyof S & string>(
+    channel: C,
+    topic: string,
+    onPresence?: (presence: {
+      clientId: string;
+      topic: string;
+      status: "online" | "offline";
+      timestamp: number;
+    }) => void,
+  ) {
     const { subscribe, publishWithAck, unsubscribe, status, messagesMap } =
       useChannel(channel);
     const roomStatus = status.subscriptions[topic] || "unsubscribed";
@@ -44,6 +53,7 @@ export function createErebus<S extends Record<string, AnySchema>>(
       topic,
       status.isReady,
       roomStatus,
+      onPresence,
     );
 
     // Use primitive hooks to manage complex state and logic

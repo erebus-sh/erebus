@@ -7,6 +7,7 @@ import { logger } from "@/internal/logger/consola";
 export type PresenceHandler = (presence: {
   clientId: string;
   topic: string;
+  status: "online" | "offline";
   timestamp: number;
 }) => void;
 
@@ -118,6 +119,7 @@ export class PresenceManager {
     logger.info(`[${this.#connectionId}] Handling presence packet`, {
       clientId: presencePacket.clientId,
       topic: presencePacket.topic,
+      status: presencePacket.status,
     });
 
     const handlers = this.#presenceHandlers.get(presencePacket.topic);
@@ -135,6 +137,7 @@ export class PresenceManager {
     const presenceEvent = {
       clientId: presencePacket.clientId,
       topic: presencePacket.topic,
+      status: presencePacket.status,
       timestamp: Date.now(),
     };
 

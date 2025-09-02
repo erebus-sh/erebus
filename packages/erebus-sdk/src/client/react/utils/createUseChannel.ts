@@ -494,6 +494,7 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
         onPresence?: (presence: {
           clientId: string;
           topic: string;
+          status: "online" | "offline";
           timestamp: number;
         }) => void,
       ) => {
