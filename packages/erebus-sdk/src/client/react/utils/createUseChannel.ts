@@ -9,6 +9,11 @@ import type { AnySchema, SubscribedData, CreateErebusOptions } from "./types";
 import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
 import { useMessagePublisher as useMessagePublisherPrimitive } from "../hooks/useMessagePublisher";
+import {
+  getGrant,
+  setGrant,
+  clearGrant,
+} from "@/client/react/cache/localStorage";
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
   _schemas: S,

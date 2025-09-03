@@ -3,10 +3,10 @@ export {
   PubSubConnection,
   BackpressureError,
   NotConnectedError,
-} from "./PubSubConnectionNew";
+} from "./PubSubConnection";
 
 // Main client export
-export { ErebusPubSubClientNew as ErebusPubSubClient } from "./ErebusPubSubClientNew";
+export { ErebusPubSubClientNew as ErebusPubSubClient } from "./ErebusPubSubClient";
 
 // Individual managers (for advanced use cases)
 export { ConnectionManager } from "./ConnectionManager";

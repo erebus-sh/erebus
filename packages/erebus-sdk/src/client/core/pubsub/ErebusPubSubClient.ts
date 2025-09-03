@@ -2,7 +2,7 @@ import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { AckCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
-import { PubSubConnection } from "./PubSubConnectionNew";
+import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import { logger } from "@/internal/logger/consola";
 import consola from "consola";
