@@ -9,11 +9,7 @@ import type { AnySchema, SubscribedData, CreateErebusOptions } from "./types";
 import { z } from "zod";
 import type { AckResponse } from "@/client/core/types";
 import { useMessagePublisher as useMessagePublisherPrimitive } from "../hooks/useMessagePublisher";
-import {
-  getGrant,
-  setGrant,
-  clearGrant,
-} from "@/client/react/cache/localStorage";
+import { getGrant, setGrant } from "@/client/react/cache/localStorage";
 
 export function createUseChannel<S extends Record<string, AnySchema>>(
   _schemas: S,
@@ -129,6 +125,16 @@ export function createUseChannel<S extends Record<string, AnySchema>>(
           client: ErebusClientState.PubSub,
           authBaseUrl,
           wsBaseUrl,
+          grantCacheLayer: () => {
+            const grant = getGrant();
+            if (grant) {
+              return Promise.resolve(grant);
+            }
+            return Promise.resolve(undefined);
+          },
+          cacheGrant: (grant) => {
+            setGrant(grant);
+          },
         });
 
         // Join the channel before using the client

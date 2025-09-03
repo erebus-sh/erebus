@@ -1,6 +1,6 @@
 import { baseClient } from "./baseClient";
 import { ErebusSession } from "./session";
-import { ErebusError } from "./error";
+import { ErebusError } from "../internal/error";
 import {
   type GrantRequest,
   secretKeySchema,

@@ -1,3 +1,4 @@
+import { ErebusError } from "@/internal/error";
 import { Authorize } from "./authorize";
 import { ErebusPubSubClientNew as ErebusPubSubClient } from "./pubsub/ErebusPubSubClient";
 export enum ErebusClientState {
@@ -6,6 +7,8 @@ export enum ErebusClientState {
 
 export interface ErebusClientOptions {
   client: ErebusClientState;
+  grantCacheLayer?: () => Promise<string | undefined>;
+  cacheGrant?: (grant: string) => void;
   authBaseUrl: string;
   wsBaseUrl?: string;
 }
@@ -28,7 +31,7 @@ export class ErebusClient {
 
         return pubSubClient;
       default:
-        throw new Error("Invalid client state");
+        throw new ErebusError("Invalid client state");
     }
   }
 
@@ -41,15 +44,34 @@ export class ErebusClient {
             : "wss://gateway.erebus.sh/v1/pubsub",
           tokenProvider: (channel: string) => {
             const authorize = new Authorize(opts.authBaseUrl);
-            // This will return a Promise, but the function itself is sync.
-            // The consumer must handle the async tokenProvider as usual.
-            return authorize.generateToken(channel);
+
+            // If the user provided a grant cache layer, we call it.
+            if (opts.grantCacheLayer) {
+              const grantPromise = opts.grantCacheLayer();
+              // grantCacheLayer returns a Promise<string | undefined>
+              return grantPromise.then((grant) => {
+                if (grant) {
+                  return grant;
+                }
+                // If no grant, just call the default token provider
+                return authorize.generateToken(channel);
+              });
+            }
+
+            // This will return a Promise<string>
+            const token = authorize.generateToken(channel).then((token) => {
+              if (opts.cacheGrant) {
+                opts.cacheGrant(token);
+              }
+              return token;
+            });
+            return token;
           },
         });
 
         return pubSubClient;
       default:
-        throw new Error("Invalid client state");
+        throw new ErebusError("Invalid client state");
     }
   }
 }
