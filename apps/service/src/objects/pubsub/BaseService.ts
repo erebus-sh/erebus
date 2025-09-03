@@ -2,6 +2,7 @@ import { ServiceContext } from "./types";
 import { Env } from "@/env";
 import { AckPacketType } from "@repo/schemas/packetEnvelope";
 import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * Base class for all PubSub services providing common functionality.
@@ -160,20 +161,18 @@ export abstract class BaseService {
   }
 
   /**
-   * Send an ACK packet to a WebSocket connection.
+   * Send an ACK packet to an ErebusClient connection.
    *
-   * @param ws - WebSocket connection to send ACK to
+   * @param client - ErebusClient connection to send ACK to
    * @param ackPacket - Complete ACK packet
    */
   protected async sendAck(
-    ws: WebSocket,
+    client: ErebusClient,
     ackPacket: AckPacketType,
   ): Promise<void> {
     try {
-      if (ws.readyState === WebSocket.READY_STATE_OPEN) {
-        ws.send(JSON.stringify(ackPacket));
-        this.logDebug(`[SEND_ACK] ACK sent for path: ${ackPacket.result.path}`);
-      }
+      client.sendAck(ackPacket);
+      this.logDebug(`[SEND_ACK] ACK sent for path: ${ackPacket.result.path}`);
     } catch (error) {
       this.logError(`[SEND_ACK] Failed to send ACK: ${error}`);
     }
@@ -265,6 +264,25 @@ export abstract class BaseService {
         },
       },
     };
+  }
+
+  /**
+   * Get all active ErebusClient connections with valid grants.
+   *
+   * @returns Array of ErebusClient instances (only those with valid grants)
+   */
+  protected getErebusClients(): ErebusClient[] {
+    const sockets = this.ctx.getWebSockets();
+    const clients: ErebusClient[] = [];
+
+    for (const socket of sockets) {
+      const client = ErebusClient.fromWebSocket(socket);
+      if (client) {
+        clients.push(client);
+      }
+    }
+
+    return clients;
   }
 
   /**

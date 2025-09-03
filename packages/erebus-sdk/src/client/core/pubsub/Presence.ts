@@ -1,15 +1,11 @@
 import type { PresencePacketType } from "@repo/schemas/packetEnvelope";
 import { logger } from "@/internal/logger/consola";
+import type { Presence } from "@/client/core/types";
 
 /**
  * Handler function type for presence updates
  */
-export type PresenceHandler = (presence: {
-  clientId: string;
-  topic: string;
-  status: "online" | "offline";
-  timestamp: number;
-}) => void;
+export type PresenceHandler = (presence: Presence) => void;
 
 /**
  * Manages presence event handlers for different topics
@@ -134,7 +130,7 @@ export class PresenceManager {
     }
 
     // Create presence event data
-    const presenceEvent = {
+    const presenceEvent: Presence = {
       clientId: presencePacket.clientId,
       topic: presencePacket.topic,
       status: presencePacket.status,

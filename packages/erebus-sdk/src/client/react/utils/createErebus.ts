@@ -1,4 +1,5 @@
 import type { AnySchema, CreateErebusOptions } from "./types";
+import type { Presence } from "@/client/core/types";
 import {
   createParse,
   createValidateMessage,
@@ -35,12 +36,7 @@ export function createErebus<S extends Record<string, AnySchema>>(
   function useSubscribe<C extends keyof S & string>(
     channel: C,
     topic: string,
-    onPresence?: (presence: {
-      clientId: string;
-      topic: string;
-      status: "online" | "offline";
-      timestamp: number;
-    }) => void,
+    onPresence?: (presence: Presence) => void,
   ) {
     const { subscribe, publishWithAck, unsubscribe, status, messagesMap } =
       useChannel(channel);

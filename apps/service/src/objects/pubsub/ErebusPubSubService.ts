@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { Env } from "@/env";
 import { ServiceContext } from "./types";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * Abstract base class for all Erebus PubSub services.
@@ -143,42 +144,6 @@ export abstract class ErebusPubSubService extends DurableObject<Env> {
   }
 
   /**
-   * Async WebSocket send wrapper with proper error handling and timing.
-   * This method is hibernation-compatible and handles send failures gracefully.
-   *
-   * @param ws - WebSocket to send data to
-   * @param data - Data to send (string or JSON serializable)
-   * @returns Promise that resolves when send completes
-   * @throws Error if WebSocket is not in OPEN state or send fails
-   */
-  protected async sendWebSocketMessage(
-    ws: WebSocket,
-    data: unknown,
-  ): Promise<void> {
-    return new Promise<void>((resolve, reject) => {
-      try {
-        // Check WebSocket state before attempting send
-        if (ws.readyState !== WebSocket.READY_STATE_OPEN) {
-          reject(
-            new Error(`WebSocket not open (readyState: ${ws.readyState})`),
-          );
-          return;
-        }
-
-        const str = typeof data === "string" ? data : JSON.stringify(data);
-
-        // WebSocket send is synchronous in Cloudflare Workers
-        ws.send(str);
-
-        // Resolve on next tick to represent completion
-        queueMicrotask(resolve);
-      } catch (error) {
-        reject(error as Error);
-      }
-    });
-  }
-
-  /**
    * Utility method to create a WebSocket pair and prepare for hibernation.
    *
    * @returns Object containing client and server WebSocket instances
@@ -212,24 +177,41 @@ export abstract class ErebusPubSubService extends DurableObject<Env> {
   }
 
   /**
-   * Safely close a WebSocket connection with proper error handling.
+   * Get all active ErebusClient connections with valid grants.
    *
-   * @param ws - WebSocket to close
+   * @returns Array of ErebusClient instances (only those with valid grants)
+   */
+  protected getErebusClients(): ErebusClient[] {
+    const sockets = this.getWebSockets();
+    const clients: ErebusClient[] = [];
+
+    for (const socket of sockets) {
+      const client = ErebusClient.fromWebSocket(socket);
+      if (client) {
+        clients.push(client);
+      }
+    }
+
+    return clients;
+  }
+
+  /**
+   * Safely close an ErebusClient connection with proper error handling.
+   *
+   * @param client - ErebusClient to close
    * @param code - Close code (optional)
    * @param reason - Close reason (optional)
    */
   protected safeCloseWebSocket(
-    ws: WebSocket,
+    client: ErebusClient,
     code?: number,
     reason?: string,
   ): void {
     try {
-      if (ws.readyState === WebSocket.READY_STATE_OPEN) {
-        ws.close(code, reason);
-        this.logDebug(
-          `[CLOSE_WS] WebSocket closed (code: ${code}, reason: ${reason})`,
-        );
-      }
+      client.close(code, reason);
+      this.logDebug(
+        `[CLOSE_WS] WebSocket closed (code: ${code}, reason: ${reason})`,
+      );
     } catch (error) {
       this.log(`[CLOSE_WS] Error closing WebSocket: ${error}`, "warn");
     }

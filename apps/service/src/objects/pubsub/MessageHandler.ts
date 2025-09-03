@@ -10,9 +10,8 @@ import { WsErrors } from "@/enums/wserrors";
 import { BaseService } from "./BaseService";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageBuffer } from "./MessageBuffer";
-import { ShardManager } from "./ShardManager";
-import { MessageBroadcaster } from "./MessageBroadcaster";
 import { ServiceContext } from "./types";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * Result of a broadcast operation containing sequence information for ACKs.
@@ -126,47 +125,72 @@ export class MessageHandler extends BaseService {
       return;
     }
 
-    // Route to appropriate packet handler
+    // Handle connect packets differently (no ErebusClient wrapper yet)
+    if (envelope.packetType === "connect") {
+      await this.handleConnectPacket(ws, envelope);
+      return;
+    }
+
+    // For all other packets, create ErebusClient wrapper
+    const client = ErebusClient.fromWebSocket(ws);
+    if (!client) {
+      this.logError(
+        `[WS_MESSAGE] No valid grant found for ${envelope.packetType} packet`,
+      );
+      this.closeWebSocketWithError(ws, WsErrors.BadRequest, "Invalid grant");
+      return;
+    }
+
+    await this.handleClientMessage(client, envelope);
+  }
+
+  /**
+   * Handle messages from authenticated clients (non-connect packets).
+   *
+   * @param client - Authenticated ErebusClient
+   * @param envelope - Parsed packet envelope
+   */
+  private async handleClientMessage(
+    client: ErebusClient,
+    envelope: PacketEnvelope,
+  ): Promise<void> {
     this.logDebug(
-      `[WS_MESSAGE] Processing packet type: ${envelope.packetType}`,
+      `[CLIENT_MESSAGE] Processing packet type: ${envelope.packetType} for client: ${client.clientId}`,
     );
 
     try {
       switch (envelope.packetType) {
-        case "connect":
-          await this.handleConnectPacket(ws, envelope);
-          break;
         case "subscribe":
-          await this.handleSubscribePacket(ws, envelope);
+          await this.handleSubscribePacket(client, envelope);
           break;
         case "unsubscribe":
-          await this.handleUnsubscribePacket(ws, envelope);
+          await this.handleUnsubscribePacket(client, envelope);
           break;
         case "publish":
-          await this.handlePublishPacket(ws, envelope);
+          await this.handlePublishPacket(client, envelope);
           break;
         case "presence":
           // Presence packets are server-generated, not client-sent
           this.logDebug(
-            `[WS_MESSAGE] Received presence packet from client - ignoring`,
+            `[CLIENT_MESSAGE] Received presence packet from client - ignoring`,
           );
           break;
         default:
           this.logError(
-            `[WS_MESSAGE] Unknown packet type: ${(envelope as any).packetType}`,
+            `[CLIENT_MESSAGE] Unknown packet type: ${(envelope as any).packetType}`,
           );
-          this.closeWebSocketWithError(
-            ws,
+          this.closeClientWithError(
+            client,
             WsErrors.BadRequest,
             "Unknown packet type",
           );
       }
     } catch (error) {
       this.logError(
-        `[WS_MESSAGE] Error processing ${envelope.packetType} packet: ${error}`,
+        `[CLIENT_MESSAGE] Error processing ${envelope.packetType} packet: ${error}`,
       );
-      this.closeWebSocketWithError(
-        ws,
+      this.closeClientWithError(
+        client,
         WsErrors.InternalServerError,
         "Processing failed",
       );
@@ -263,11 +287,11 @@ export class MessageHandler extends BaseService {
    * - Subscribes the client to the topic
    * - Retrieves and delivers missed messages since last seen
    *
-   * @param ws - WebSocket connection
+   * @param client - ErebusClient connection
    * @param envelope - Parsed packet envelope
    */
   private async handleSubscribePacket(
-    ws: WebSocket,
+    client: ErebusClient,
     envelope: PacketEnvelope,
   ): Promise<void> {
     this.logDebug(`[WS_SUBSCRIBE] Processing subscribe command`);
@@ -277,34 +301,32 @@ export class MessageHandler extends BaseService {
       this.logError(
         `[WS_SUBSCRIBE] Invalid packet type for subscribe handler: ${envelope.packetType}`,
       );
-      this.closeWebSocketWithError(
-        ws,
+      this.closeClientWithError(
+        client,
         WsErrors.BadRequest,
         "Invalid packet type",
       );
       return;
     }
 
-    // Extract and validate grant
-    const grant = this.getValidGrant(ws, "subscribe");
-    if (!grant) return; // Error already handled and WebSocket closed
-
-    const clientId = grant.data.userId;
     const topic = envelope.topic;
-    const channelName = grant.data.channel;
-    const projectId = grant.data.project_id;
-    const keyId = grant.data.key_id;
     this.logDebug(
-      `[WS_SUBSCRIBE] Subscribe request - clientId: ${clientId}, ` +
-        `topic: ${topic}, channel: ${channelName}`,
+      `[WS_SUBSCRIBE] Subscribe request - clientId: ${client.clientId}, ` +
+        `topic: ${topic}, channel: ${client.channel}`,
     );
+
+    // Check topic authorization using ErebusClient helper
+    if (!client.hasTopicAccess(topic)) {
+      this.logError(`[WS_SUBSCRIBE] Client not authorized for topic: ${topic}`);
+      return; // Silently ignore unauthorized subscription
+    }
 
     // Check if already subscribed (prevent duplicates)
     const isSubscribed = await this.subscriptionManager.isSubscribedToTopic({
       topic,
-      projectId,
-      channelName,
-      clientId,
+      projectId: client.projectId,
+      channelName: client.channel,
+      clientId: client.clientId,
     });
 
     if (isSubscribed) {
@@ -312,26 +334,20 @@ export class MessageHandler extends BaseService {
       return; // Silently ignore duplicate subscription
     }
 
-    // Check topic authorization
-    const isAuthorized = grant.data.topics.some(
-      (t: Grant["topics"][0]) => t.topic === topic || t.topic === "*",
-    );
-    if (!isAuthorized) {
-      this.logError(`[WS_SUBSCRIBE] Client not authorized for topic: ${topic}`);
-      return; // Silently ignore unauthorized subscription
-    }
-
     try {
       // Subscribe the client to the topic
       this.logDebug(
         `[WS_SUBSCRIBE] Client authorized, proceeding with subscription`,
       );
-      await this.subscriptionManager.subscribeToTopic({
-        topic,
-        projectId,
-        channelName,
-        clientId,
-      });
+      await this.subscriptionManager.subscribeToTopic(
+        {
+          topic,
+          projectId: client.projectId,
+          channelName: client.channel,
+          clientId: client.clientId,
+        },
+        client,
+      );
       this.logDebug(`[WS_SUBSCRIBE] Successfully subscribed to channel`);
 
       // Send success ACK (always send for subscribe operations)
@@ -341,19 +357,23 @@ export class MessageHandler extends BaseService {
         "subscribed",
         "subscribe",
       );
-      await this.sendAck(ws, subscribeAck);
+      await this.sendAck(client, subscribeAck);
       this.logDebug(`[WS_SUBSCRIBE] Subscribe ACK sent for topic: ${topic}`);
 
       // Enqueue usage tracking for successful subscription
-      await this.enqueueUsageEvent("websocket.subscribe", projectId, keyId);
+      await this.enqueueUsageEvent(
+        "websocket.subscribe",
+        client.projectId,
+        client.keyId,
+      );
 
       // Retrieve and deliver missed messages
-      await this.deliverMissedMessages(ws, grant.data, topic);
+      await this.deliverMissedMessages(client, topic);
       this.logDebug(`[WS_SUBSCRIBE] Subscribe process completed`);
     } catch (error) {
       this.logError(`[WS_SUBSCRIBE] Subscription failed: ${error}`);
-      this.closeWebSocketWithError(
-        ws,
+      this.closeClientWithError(
+        client,
         WsErrors.InternalServerError,
         "Subscription failed",
       );
@@ -363,11 +383,11 @@ export class MessageHandler extends BaseService {
   /**
    * Handle 'unsubscribe' packet for topic unsubscription.
    *
-   * @param ws - WebSocket connection
+   * @param client - ErebusClient connection
    * @param envelope - Parsed packet envelope
    */
   private async handleUnsubscribePacket(
-    ws: WebSocket,
+    client: ErebusClient,
     envelope: PacketEnvelope,
   ): Promise<void> {
     this.logDebug(`[WS_UNSUBSCRIBE] Processing unsubscribe command`);
@@ -377,34 +397,26 @@ export class MessageHandler extends BaseService {
       this.logError(
         `[WS_UNSUBSCRIBE] Invalid packet type for unsubscribe handler: ${envelope.packetType}`,
       );
-      this.closeWebSocketWithError(
-        ws,
+      this.closeClientWithError(
+        client,
         WsErrors.BadRequest,
         "Invalid packet type",
       );
       return;
     }
 
-    // Extract and validate grant
-    const grant = this.getValidGrant(ws, "unsubscribe");
-    if (!grant) return; // Error already handled and WebSocket closed
-
-    const clientId = grant.data.userId;
     const topic = envelope.topic;
-    const channelName = grant.data.channel;
-    const projectId = grant.data.project_id;
-
     this.logDebug(
-      `[WS_UNSUBSCRIBE] Unsubscribe request - clientId: ${clientId}, ` +
-        `topic: ${topic}, channel: ${channelName}`,
+      `[WS_UNSUBSCRIBE] Unsubscribe request - clientId: ${client.clientId}, ` +
+        `topic: ${topic}, channel: ${client.channel}`,
     );
 
     try {
       await this.subscriptionManager.unsubscribeFromTopic({
         topic,
-        projectId,
-        channelName,
-        clientId,
+        projectId: client.projectId,
+        channelName: client.channel,
+        clientId: client.clientId,
       });
       this.logDebug(`[WS_UNSUBSCRIBE] Successfully unsubscribed from channel`);
 
@@ -415,7 +427,7 @@ export class MessageHandler extends BaseService {
         "unsubscribed",
         "unsubscribe",
       );
-      await this.sendAck(ws, unsubscribeAck);
+      await this.sendAck(client, unsubscribeAck);
       this.logDebug(
         `[WS_UNSUBSCRIBE] Unsubscribe ACK sent for topic: ${topic}`,
       );
@@ -435,11 +447,11 @@ export class MessageHandler extends BaseService {
    * - Sends ACK responses when requested
    * - Provides performance instrumentation
    *
-   * @param ws - WebSocket connection
+   * @param client - ErebusClient connection
    * @param envelope - Parsed packet envelope
    */
   private async handlePublishPacket(
-    ws: WebSocket,
+    client: ErebusClient,
     envelope: PacketEnvelope,
   ): Promise<void> {
     // Capture ingress time immediately for performance tracking
@@ -450,8 +462,8 @@ export class MessageHandler extends BaseService {
       this.logError(
         `[WS_PUBLISH] Invalid packet type for publish handler: ${envelope.packetType}`,
       );
-      this.closeWebSocketWithError(
-        ws,
+      this.closeClientWithError(
+        client,
         WsErrors.BadRequest,
         "Invalid packet type",
       );
@@ -460,41 +472,20 @@ export class MessageHandler extends BaseService {
 
     this.logDebug(
       `[WS_PUBLISH] Ingress topic=${envelope.payload.topic ?? "n/a"} ` +
-        `client=${ws?.deserializeAttachment?.()?.userId ?? "n/a"} t_ingress=${tIngress.toFixed(3)}ms`,
+        `client=${client.clientId} t_ingress=${tIngress.toFixed(3)}ms`,
     );
 
-    // Extract and validate grant
-    const grant = this.getValidGrant(ws, "publish");
-    if (!grant) return; // Error already handled and WebSocket closed
-
-    const clientId = grant.data.userId;
     const topic = envelope.payload.topic;
-    const channelName = grant.data.channel;
-    const projectId = grant.data.project_id;
-    const keyId = grant.data.key_id;
     const payload = envelope.payload;
     const needsAck = envelope.ack === true;
     const clientMsgId = envelope.clientMsgId;
 
     this.logDebug(
-      `[WS_PUBLISH] Publish request - clientId: ${clientId}, topic: ${topic}, channel: ${channelName}, needsAck: ${needsAck}`,
+      `[WS_PUBLISH] Publish request - clientId: ${client.clientId}, topic: ${topic}, channel: ${client.channel}, needsAck: ${needsAck}`,
     );
 
-    // Check write access permissions
-    const hasWriteAccess = grant.data.topics.some((t: Grant["topics"][0]) => {
-      const topicMatch = t.topic === topic || t.topic === "*";
-      const scopeMatch =
-        t.scope === Access.Write || t.scope === Access.ReadWrite;
-
-      this.logDebug(
-        `[WS_PUBLISH] Evaluating: topic="${t.topic}" scope="${t.scope}" ` +
-          `(topicMatch=${topicMatch}, scopeMatch=${scopeMatch})`,
-      );
-
-      return topicMatch && scopeMatch;
-    });
-
-    if (!hasWriteAccess) {
+    // Check write access permissions using ErebusClient helper
+    if (!client.hasWriteAccess(topic)) {
       this.logError(
         `[WS_PUBLISH] Client lacks write access for topic "${topic}"`,
       );
@@ -507,7 +498,7 @@ export class MessageHandler extends BaseService {
           "FORBIDDEN",
           "Insufficient permissions for topic",
         );
-        await this.sendAck(ws, errorAck);
+        await this.sendAck(client, errorAck);
       }
       return;
     }
@@ -515,9 +506,9 @@ export class MessageHandler extends BaseService {
     // Check subscription status (required for publishing)
     const isSubscribed = await this.subscriptionManager.isSubscribedToTopic({
       topic,
-      projectId,
-      channelName,
-      clientId,
+      projectId: client.projectId,
+      channelName: client.channel,
+      clientId: client.clientId,
     });
 
     if (!isSubscribed) {
@@ -531,7 +522,7 @@ export class MessageHandler extends BaseService {
           "FORBIDDEN",
           "Must be subscribed to topic before publishing",
         );
-        await this.sendAck(ws, errorAck);
+        await this.sendAck(client, errorAck);
       }
       return;
     }
@@ -545,11 +536,11 @@ export class MessageHandler extends BaseService {
       const broadcastResult =
         await this.broadcastCoordinator.broadcastToAllShardsAndUpdateState(
           payload,
-          clientId,
+          client.clientId,
           topic,
-          projectId,
-          keyId,
-          channelName,
+          client.projectId,
+          client.keyId,
+          client.channel,
           tIngress,
           tEnqueued,
         );
@@ -563,7 +554,7 @@ export class MessageHandler extends BaseService {
           broadcastResult.seq,
           tIngress,
         );
-        await this.sendAck(ws, successAck);
+        await this.sendAck(client, successAck);
         this.logDebug(
           `[WS_PUBLISH] Success ACK sent for clientMsgId: ${clientMsgId}, seq: ${broadcastResult.seq}`,
         );
@@ -574,7 +565,7 @@ export class MessageHandler extends BaseService {
         const tFinish = monoNow();
         const elapsed = (tFinish - tIngress).toFixed(2);
         console.log(
-          `[MESSAGE_HANDLER] [WS_PUBLISH] Done topic=${topic} client=${clientId} ` +
+          `[MESSAGE_HANDLER] [WS_PUBLISH] Done topic=${topic} client=${client.clientId} ` +
             `elapsed=${elapsed}ms (ingress=${tIngress.toFixed(3)}ms → finish=${tFinish.toFixed(3)}ms)`,
         );
       }
@@ -589,7 +580,7 @@ export class MessageHandler extends BaseService {
           "INTERNAL",
           "Message publishing failed",
         );
-        await this.sendAck(ws, errorAck);
+        await this.sendAck(client, errorAck);
       }
 
       // Don't close connection for publish failures, just log
@@ -599,13 +590,11 @@ export class MessageHandler extends BaseService {
   /**
    * Retrieve and deliver missed messages to a newly subscribed client.
    *
-   * @param ws - WebSocket connection to deliver messages to
-   * @param grant - Validated grant data
+   * @param client - ErebusClient connection to deliver messages to
    * @param topic - Topic to retrieve messages for
    */
   private async deliverMissedMessages(
-    ws: WebSocket,
-    grant: Grant,
+    client: ErebusClient,
     topic: string,
   ): Promise<void> {
     this.logDebug(
@@ -615,18 +604,18 @@ export class MessageHandler extends BaseService {
     try {
       // Get last seen sequence for this client
       const lastSeqSeen = await this.messageBuffer.getLastSeen(
-        grant.project_id,
-        grant.channel,
+        client.projectId,
+        client.channel,
         topic,
-        grant.userId,
+        client.clientId,
       );
 
       this.logDebug(`[DELIVER_MISSED] Last seen sequence: ${lastSeqSeen}`);
 
       // Retrieve messages after last seen
       const messages = await this.messageBuffer.getMessagesAfter({
-        projectId: grant.project_id,
-        channelName: grant.channel,
+        projectId: client.projectId,
+        channelName: client.channel,
         topic,
         afterSeq: lastSeqSeen,
       });
@@ -638,11 +627,11 @@ export class MessageHandler extends BaseService {
       // Send each missed message to the client
       let lastDeliveredSeq: string | null = null;
       for (const message of messages) {
-        if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+        if (client.isOpen) {
           this.logDebug(
             `[DELIVER_MISSED] Sending missed message with seq: ${message.seq}`,
           );
-          ws.send(JSON.stringify(message));
+          client.sendJSON(message);
           lastDeliveredSeq = message.seq;
         } else {
           this.logDebug(
@@ -655,14 +644,14 @@ export class MessageHandler extends BaseService {
       // If we delivered at least one message, advance last-seen to the last delivered seq
       if (lastDeliveredSeq) {
         await this.messageBuffer.updateLastSeenSingle(
-          grant.project_id,
-          grant.channel,
+          client.projectId,
+          client.channel,
           topic,
-          grant.userId,
+          client.clientId,
           lastDeliveredSeq,
         );
         this.logDebug(
-          `[DELIVER_MISSED] Updated last-seen to seq=${lastDeliveredSeq} for clientId=${grant.userId}`,
+          `[DELIVER_MISSED] Updated last-seen to seq=${lastDeliveredSeq} for clientId=${client.clientId}`,
         );
       }
 
@@ -673,31 +662,6 @@ export class MessageHandler extends BaseService {
       );
       // Don't close connection for missed message errors
     }
-  }
-
-  /**
-   * Extract and validate grant from WebSocket attachment.
-   *
-   * @param ws - WebSocket connection
-   * @param operation - Operation name for logging
-   * @returns Parsed grant or null if invalid (WebSocket will be closed)
-   */
-  private getValidGrant(
-    ws: WebSocket,
-    operation: string,
-  ): { success: true; data: Grant } | null {
-    const grantRaw = ws.deserializeAttachment();
-    const grant = GrantSchema.safeParse(grantRaw);
-
-    if (!grant.success) {
-      this.logError(
-        `[WS_${operation.toUpperCase()}] Invalid grant schema: ${grant.error}`,
-      );
-      this.closeWebSocketWithError(ws, WsErrors.BadRequest, "Invalid grant");
-      return null;
-    }
-
-    return grant;
   }
 
   /**
@@ -721,6 +685,28 @@ export class MessageHandler extends BaseService {
       }
     } catch (error) {
       this.logError(`[CLOSE_WS] Error closing WebSocket: ${error}`);
+    }
+  }
+
+  /**
+   * Close ErebusClient with error code and reason.
+   *
+   * @param client - ErebusClient to close
+   * @param code - Error code
+   * @param reason - Error reason
+   */
+  private closeClientWithError(
+    client: ErebusClient,
+    code: number,
+    reason: string,
+  ): void {
+    try {
+      client.close(code, reason);
+      this.logDebug(
+        `[CLOSE_CLIENT] ErebusClient closed with code ${code}: ${reason}`,
+      );
+    } catch (error) {
+      this.logError(`[CLOSE_CLIENT] Error closing ErebusClient: ${error}`);
     }
   }
 

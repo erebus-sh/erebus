@@ -22,6 +22,7 @@
 // Core Services
 export { ErebusPubSubService } from "./ErebusPubSubService";
 export { BaseService } from "./BaseService";
+export { ErebusClient } from "./ErebusClient";
 export { MessageHandler } from "./MessageHandler";
 export type {
   MessageBroadcastCoordinator,

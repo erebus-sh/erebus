@@ -1,7 +1,7 @@
 import { GrantSchema } from "@repo/schemas/grant";
 import { Env } from "@/env";
 import { MessageBody } from "@repo/schemas/messageBody";
-import { PacketEnvelope, PresencePacket } from "@repo/schemas/packetEnvelope";
+import { PresencePacket } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import { ErebusPubSubService } from "./ErebusPubSubService";
 import {
@@ -15,6 +15,7 @@ import { MessageBuffer } from "./MessageBuffer";
 import { SequenceManager } from "./SequenceManager";
 import { ShardManager } from "./ShardManager";
 import { PublishMessageParams } from "./types";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * ChannelV1 - Main PubSub channel implementation extending ErebusPubSubService.
@@ -51,22 +52,7 @@ export class ChannelV1
     // Initialize base services first (no dependencies)
     this.subscriptionManager = new SubscriptionManager(
       this.serviceContext,
-      // Pass presence update callback that delegates to MessageBroadcaster
-      async (
-        clientId: string,
-        topic: string,
-        projectId: string,
-        channelName: string,
-        action: "subscribe" | "unsubscribe",
-      ) => {
-        await this.sendPresenceUpdate(
-          clientId,
-          topic,
-          projectId,
-          channelName,
-          action,
-        );
-      },
+      this,
     );
     this.messageBuffer = new MessageBuffer(this.serviceContext);
     this.sequenceManager = new SequenceManager(this.serviceContext);
@@ -148,32 +134,38 @@ export class ChannelV1
     );
 
     try {
-      const grantRaw = ws.deserializeAttachment();
-      const grant = GrantSchema.safeParse(grantRaw);
-
-      if (!grant.success) {
+      // Try to create ErebusClient from WebSocket
+      const client = ErebusClient.fromWebSocket(ws);
+      if (!client) {
         this.log("[CLOSE] No/invalid grant; skipping cleanup", "warn");
         return;
       }
 
-      const { userId, project_id, channel, topics } = grant.data;
       this.log(
-        `[CLOSE] Unsubscribing client from all topics - clientId: ${userId}, ` +
-          `channel: ${channel}, topicCount: ${topics.length}`,
+        `[CLOSE] Unsubscribing client from all topics - clientId: ${client.clientId}, ` +
+          `channel: ${client.channel}, topicCount: ${client.topics.length}`,
       );
 
       await this.subscriptionManager.bulkUnsubscribe(
-        userId,
-        project_id,
-        channel,
-        topics.map((t) => t.topic),
+        client.clientId,
+        client.projectId,
+        client.channel,
+        client.topics.map((t) => t.topic),
       );
 
       this.log("[CLOSE] Successfully unsubscribed from all topics");
     } catch (error) {
       this.log(`[CLOSE] Error during cleanup: ${error}`, "error");
     } finally {
-      this.safeCloseWebSocket(ws);
+      // Still need to close the raw WebSocket for cleanup
+      try {
+        if (ws.readyState === WebSocket.READY_STATE_OPEN) {
+          ws.close(code, reason);
+          this.logDebug(`[CLOSE] Raw WebSocket closed`);
+        }
+      } catch (error) {
+        this.log(`[CLOSE] Error closing raw WebSocket: ${error}`, "warn");
+      }
     }
   }
 
@@ -222,13 +214,15 @@ export class ChannelV1
    * @param projectId - Project ID for the channel
    * @param channelName - Channel name
    * @param action - Whether client subscribed (online) or unsubscribed (offline)
+   * @param selfClient - Optional self client for enriched presence updates
    */
-  private async sendPresenceUpdate(
+  public async sendPresenceUpdate(
     clientId: string,
     topic: string,
     projectId: string,
     channelName: string,
     action: "subscribe" | "unsubscribe",
+    selfClient?: ErebusClient,
   ): Promise<void> {
     this.logDebug(
       `[PRESENCE_UPDATE] Sending presence update for client: ${clientId}, topic: ${topic}, action: ${action}`,
@@ -251,7 +245,11 @@ export class ChannelV1
       });
 
       // Use MessageBroadcaster's optimized presence broadcasting
-      await this.messageBroadcaster.broadcastPresence(presencePacket);
+      await this.messageBroadcaster.broadcastPresence(
+        presencePacket,
+        selfClient,
+        subscribers,
+      );
 
       this.logDebug(
         `[PRESENCE_UPDATE] Presence update broadcast completed for client: ${clientId}, subscribers: ${subscribers.length}`,

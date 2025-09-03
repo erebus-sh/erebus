@@ -66,3 +66,10 @@ export type PendingPublish = {
 export function logTypeInfo(label: string, value: unknown) {
   logger.info("type info", { label, valueType: typeof value });
 }
+
+export type Presence = {
+  clientId: string;
+  topic: string;
+  status: "online" | "offline";
+  timestamp: number;
+};

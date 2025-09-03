@@ -14,6 +14,7 @@ import {
 } from "./types";
 import { BaseService } from "./BaseService";
 import { MessageBuffer } from "./MessageBuffer";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * Manages message broadcasting to WebSocket connections with advanced performance optimizations.
@@ -83,10 +84,10 @@ export class MessageBroadcaster extends BaseService {
         `topic: ${topic}, seq: ${seq}, subscribersCount: ${subscriberClientIds.length}`,
     );
 
-    // Get all active WebSocket connections
-    const sockets = this.ctx.getWebSockets();
+    // Get all active ErebusClient connections
+    const clients = this.getErebusClients();
     this.logDebug(
-      `[PUBLISH_MESSAGE] Total WebSocket connections: ${sockets.length}`,
+      `[PUBLISH_MESSAGE] Total ErebusClient connections: ${clients.length}`,
     );
 
     // Initialize metrics
@@ -107,9 +108,9 @@ export class MessageBroadcaster extends BaseService {
       JSON.stringify(messageBody),
     );
 
-    // Process sockets in batches to prevent event loop blocking
-    await this.procesSocketBatches(
-      sockets,
+    // Process clients in batches to prevent event loop blocking
+    await this.processClientBatches(
+      clients,
       serializedMessage,
       senderClientId,
       subscriberClientIds,
@@ -146,9 +147,9 @@ export class MessageBroadcaster extends BaseService {
   }
 
   /**
-   * Process WebSocket connections in batches with yielding for performance.
+   * Process ErebusClient connections in batches with yielding for performance.
    *
-   * @param sockets - Array of WebSocket connections
+   * @param clients - Array of ErebusClient connections
    * @param serializedMessage - Pre-serialized message bytes
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
@@ -156,8 +157,8 @@ export class MessageBroadcaster extends BaseService {
    * @param sentToClients - Set tracking clients that have received the message
    * @param metrics - Metrics object to update
    */
-  private async procesSocketBatches(
-    sockets: WebSocket[],
+  private async processClientBatches(
+    clients: ErebusClient[],
     serializedMessage: Uint8Array,
     senderClientId: string,
     subscriberClientIds: string[],
@@ -167,13 +168,13 @@ export class MessageBroadcaster extends BaseService {
   ): Promise<void> {
     const batchSize = this.config.batchSize;
 
-    for (let i = 0; i < sockets.length; i += batchSize) {
-      const batch = sockets.slice(i, i + batchSize);
+    for (let i = 0; i < clients.length; i += batchSize) {
+      const batch = clients.slice(i, i + batchSize);
 
       // Process current batch in parallel
-      const batchPromises = batch.map((socket) =>
-        this.processSingleSocket(
-          socket,
+      const batchPromises = batch.map((client) =>
+        this.processSingleClient(
+          client,
           serializedMessage,
           senderClientId,
           subscriberClientIds,
@@ -192,7 +193,7 @@ export class MessageBroadcaster extends BaseService {
       // Note from #V0ID: I have no fucking Idea what do this do, Cursor AI put it here,
       // it seems to be a performance optimization of some sort with the async engine.
       // Ama just keept real, i have no idea what do this do.
-      if (i + batchSize < sockets.length) {
+      if (i + batchSize < clients.length) {
         await this.yieldControl();
         metrics.yieldCount++;
       }
@@ -200,9 +201,9 @@ export class MessageBroadcaster extends BaseService {
   }
 
   /**
-   * Process a single WebSocket connection with comprehensive error handling.
+   * Process a single ErebusClient connection with comprehensive error handling.
    *
-   * @param socket - WebSocket to process
+   * @param client - ErebusClient to process
    * @param serializedMessage - Pre-serialized message bytes
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
@@ -210,8 +211,8 @@ export class MessageBroadcaster extends BaseService {
    * @param sentToClients - Set tracking clients that have received the message
    * @returns Promise resolving to send result
    */
-  private async processSingleSocket(
-    socket: WebSocket,
+  private async processSingleClient(
+    client: ErebusClient,
     serializedMessage: Uint8Array,
     senderClientId: string,
     subscriberClientIds: string[],
@@ -219,64 +220,34 @@ export class MessageBroadcaster extends BaseService {
     sentToClients: Set<string>,
   ): Promise<SocketSendResult> {
     try {
-      // Validate socket has a grant attachment
-      const attachment = socket.deserializeAttachment();
-      if (!attachment) {
-        this.logDebug(
-          `[PROCESS_SOCKET] Socket does not have a grant attachment`,
-        );
-        return { result: "skipped", reason: "no_attachment" };
-      }
-
-      // Parse and validate grant
-      const grant = GrantSchema.safeParse(attachment);
-      if (!grant.success) {
-        this.logDebug(
-          `[PROCESS_SOCKET] Socket does not have a valid grant attachment`,
-        );
-        return { result: "skipped", reason: "invalid_grant" };
-      }
-
-      const recipientClientId = grant.data.userId;
+      const recipientClientId = client.clientId;
 
       // Prevent duplicate deliveries
       if (sentToClients.has(recipientClientId)) {
         return { result: "duplicate", reason: "duplicate_client" };
       }
 
-      // Check topic access permissions
-      const topicAccess = grant.data.topics.find(
-        (t) => t.topic === topic || t.topic === "*",
-      );
-
-      if (topicAccess?.scope === Access.Huh) {
+      // Check topic access permissions using ErebusClient helpers
+      if (client.hasHuhAccess(topic)) {
         // Special "Huh" scope - send informational message
-        return await this.sendHuhMessage(
-          socket,
-          recipientClientId,
-          sentToClients,
-        );
-      } else if (
-        topicAccess?.scope === Access.Read ||
-        topicAccess?.scope === Access.ReadWrite
-      ) {
+        return await this.sendHuhMessage(client, sentToClients);
+      } else if (client.hasReadAccess(topic)) {
         // Regular read access - send the actual message
         return await this.sendMessage(
-          socket,
+          client,
           serializedMessage,
-          recipientClientId,
           senderClientId,
           subscriberClientIds,
           sentToClients,
         );
       } else {
         this.logDebug(
-          `[PROCESS_SOCKET] Socket ${grant.data.userId} lacks read scope for topic: ${topic}`,
+          `[PROCESS_CLIENT] Client ${client.clientId} lacks read scope for topic: ${topic}`,
         );
         return { result: "skipped", reason: "no_read_scope" };
       }
     } catch (error) {
-      this.logDebug(`[PROCESS_SOCKET] Failed to process socket: ${error}`);
+      this.logDebug(`[PROCESS_CLIENT] Failed to process client: ${error}`);
       return { result: "error", reason: "exception", error };
     }
   }
@@ -284,17 +255,15 @@ export class MessageBroadcaster extends BaseService {
   /**
    * Send a "Huh" informational message for curiosity-driven access.
    *
-   * @param socket - WebSocket to send to
-   * @param recipientClientId - Client ID of the recipient
+   * @param client - ErebusClient to send to
    * @param sentToClients - Set to update with delivered client
    * @returns Promise resolving to send result
    */
   private async sendHuhMessage(
-    socket: WebSocket,
-    recipientClientId: string,
+    client: ErebusClient,
     sentToClients: Set<string>,
   ): Promise<SocketSendResult> {
-    if (socket.readyState !== WebSocket.READY_STATE_OPEN) {
+    if (!client.isOpen) {
       return { result: "skipped", reason: "socket_not_open" };
     }
 
@@ -304,8 +273,8 @@ export class MessageBroadcaster extends BaseService {
         "Curious wanderer! Embark on your quest for knowledge at https://docs.erebus.sh/",
     };
 
-    socket.send(JSON.stringify(huhMessage));
-    sentToClients.add(recipientClientId);
+    client.sendJSON(huhMessage);
+    sentToClients.add(client.clientId);
 
     return { result: "sent", reason: "huh_scope" };
   }
@@ -313,22 +282,22 @@ export class MessageBroadcaster extends BaseService {
   /**
    * Send the actual message with backpressure handling and access control.
    *
-   * @param socket - WebSocket to send to
+   * @param client - ErebusClient to send to
    * @param serializedMessage - Pre-serialized message bytes
-   * @param recipientClientId - Client ID of the recipient
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
    * @param sentToClients - Set to update with delivered client
    * @returns Promise resolving to send result
    */
   private async sendMessage(
-    socket: WebSocket,
+    client: ErebusClient,
     serializedMessage: Uint8Array,
-    recipientClientId: string,
     senderClientId: string,
     subscriberClientIds: string[],
     sentToClients: Set<string>,
   ): Promise<SocketSendResult> {
+    const recipientClientId = client.clientId;
+
     // Only send to subscribers (not the sender)
     if (
       senderClientId === recipientClientId ||
@@ -337,19 +306,19 @@ export class MessageBroadcaster extends BaseService {
       return { result: "skipped", reason: "sender_or_not_subscribed" };
     }
 
-    // Check socket state
-    if (socket.readyState !== WebSocket.READY_STATE_OPEN) {
+    // Check client state
+    if (!client.isOpen) {
       return { result: "skipped", reason: "socket_not_open" };
     }
 
     // Handle backpressure
-    const backpressureResult = await this.handleBackpressure(socket);
+    const backpressureResult = await this.handleBackpressure(client);
     if (backpressureResult) {
       return backpressureResult;
     }
 
     // Send the message (optimized with pre-serialized bytes)
-    socket.send(serializedMessage);
+    client.send(serializedMessage);
     sentToClients.add(recipientClientId);
 
     return { result: "sent", reason: "normal_send" };
@@ -358,13 +327,13 @@ export class MessageBroadcaster extends BaseService {
   /**
    * Handle WebSocket backpressure to prevent buffer overflow.
    *
-   * @param socket - WebSocket to check
+   * @param client - ErebusClient to check
    * @returns Promise resolving to skip result if backpressure is too high, null otherwise
    */
   private async handleBackpressure(
-    socket: WebSocket,
+    client: ErebusClient,
   ): Promise<SocketSendResult | null> {
-    const bufferedAmount = (socket as any).bufferedAmount || 0;
+    const bufferedAmount = client.bufferedAmount;
 
     if (bufferedAmount > this.config.backpressureThresholdHigh) {
       // Socket is severely backed up, skip this send
@@ -495,10 +464,12 @@ export class MessageBroadcaster extends BaseService {
   }
 
   /**
-   * Broadcast presence packets to all connected WebSocket connections.
+   * Broadcast presence packets to all connected ErebusClient connections.
    * This is a fire-and-forget operation with no ACKs or complex processing.
    *
    * @param presencePacket - The presence packet to broadcast
+   * @param selfClient - Optional self client to send enriched packet to
+   * @param subscribers - Optional list of subscribers to restrict broadcast to
    */
   async broadcastPresence(
     presencePacket: PacketEnvelope & {
@@ -507,51 +478,73 @@ export class MessageBroadcaster extends BaseService {
       topic: string;
       status: "online" | "offline";
     },
+    selfClient?: ErebusClient,
+    subscribers?: string[],
   ): Promise<void> {
     this.logDebug(
       `[PRESENCE_BROADCAST] Broadcasting presence packet for client: ${presencePacket.clientId}, topic: ${presencePacket.topic}, status: ${presencePacket.status}`,
     );
 
-    // Get all active WebSocket connections
-    const sockets = this.ctx.getWebSockets();
+    // Get all active ErebusClient connections
+    const clients = this.getErebusClients();
     this.logDebug(
-      `[PRESENCE_BROADCAST] Total WebSocket connections: ${sockets.length}`,
+      `[PRESENCE_BROADCAST] Total ErebusClient connections: ${clients.length}`,
     );
 
-    // Pre-serialize the presence packet once for all recipients
-    const serializedPacket = MessageBroadcaster.TEXT_ENCODER.encode(
+    // Prepare two variants:
+    // - generic packet for other subscribers (only clientId/topic/status)
+    // - enriched packet for the sender/self including the full subscribers list
+    const genericPacketSerialized = MessageBroadcaster.TEXT_ENCODER.encode(
       JSON.stringify(presencePacket),
+    );
+
+    const selfPacketSerialized = MessageBroadcaster.TEXT_ENCODER.encode(
+      JSON.stringify({ ...presencePacket, subscribers: subscribers ?? [] }),
     );
 
     // Track broadcast metrics
     let sentCount = 0;
     let errorCount = 0;
 
-    // Process sockets in batches for better performance
+    // Process clients in batches for better performance
     const batchSize = 50; // Smaller batch size for presence updates
-    for (let i = 0; i < sockets.length; i += batchSize) {
-      const batch = sockets.slice(i, i + batchSize);
+    for (let i = 0; i < clients.length; i += batchSize) {
+      const batch = clients.slice(i, i + batchSize);
 
       // Process current batch in parallel
-      const batchPromises = batch.map(async (socket) => {
+      const batchPromises = batch.map(async (client) => {
         try {
-          // Check socket state
-          if (socket.readyState !== WebSocket.READY_STATE_OPEN) {
+          // Check client state
+          if (!client.isOpen) {
             return false;
+          }
+
+          // Optional: restrict broadcast to the provided subscribers (room members)
+          if (subscribers && subscribers.length > 0) {
+            if (!subscribers.includes(client.clientId)) {
+              return false;
+            }
           }
 
           // Handle backpressure if needed
-          const backpressureResult = await this.handleBackpressure(socket);
+          const backpressureResult = await this.handleBackpressure(client);
           if (backpressureResult) {
             return false;
           }
+          this.logDebug(
+            `[PRESENCE_BROADCAST] Sending presence packet to client: ${client.clientId}`,
+          );
 
-          // Send the presence packet
-          socket.send(serializedPacket);
+          // Send the appropriate presence packet
+          if (selfClient && selfClient.clientId === client.clientId) {
+            selfClient.send(selfPacketSerialized);
+          } else {
+            client.send(genericPacketSerialized);
+          }
           return true;
         } catch (error) {
           this.logDebug(
-            `[PRESENCE_BROADCAST] Failed to send to socket: ${error}`,
+            `[PRESENCE_BROADCAST] Failed to send to client: ${error}`,
           );
           return false;
         }
@@ -570,7 +563,7 @@ export class MessageBroadcaster extends BaseService {
       });
 
       // Yield control between batches to prevent blocking
-      if (i + batchSize < sockets.length) {
+      if (i + batchSize < clients.length) {
         await this.yieldControl();
       }
     }

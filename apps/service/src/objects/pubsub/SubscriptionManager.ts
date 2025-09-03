@@ -5,6 +5,8 @@ import {
   ServiceContext,
 } from "./types";
 import { BaseService } from "./BaseService";
+import { ChannelV1 } from "./channel";
+import { ErebusClient } from "./ErebusClient";
 
 /**
  * Manages client subscriptions to topics with atomic operations and capacity limits.
@@ -17,13 +19,7 @@ import { BaseService } from "./BaseService";
  * - Bulk operations for performance optimization
  */
 export class SubscriptionManager extends BaseService {
-  private readonly presenceUpdateCallback: (
-    clientId: string,
-    topic: string,
-    projectId: string,
-    channelName: string,
-    action: "subscribe" | "unsubscribe",
-  ) => Promise<void>;
+  private readonly channel: ChannelV1;
 
   /**
    * Initialize the SubscriptionManager with required presence update callback.
@@ -31,18 +27,9 @@ export class SubscriptionManager extends BaseService {
    * @param serviceContext - Service context containing DO state and environment
    * @param presenceUpdateCallback - Required callback for sending presence updates
    */
-  constructor(
-    serviceContext: ServiceContext,
-    presenceUpdateCallback: (
-      clientId: string,
-      topic: string,
-      projectId: string,
-      channelName: string,
-      action: "subscribe" | "unsubscribe",
-    ) => Promise<void>,
-  ) {
+  constructor(serviceContext: ServiceContext, channel: ChannelV1) {
     super(serviceContext);
-    this.presenceUpdateCallback = presenceUpdateCallback;
+    this.channel = channel;
   }
 
   /**
@@ -55,9 +42,13 @@ export class SubscriptionManager extends BaseService {
    * - Uses transactions for consistency
    *
    * @param params - Subscription parameters
+   * @param selfClient - Optional ErebusClient for self-identification in presence updates
    * @throws Error if topic has reached maximum subscriber capacity
    */
-  async subscribeToTopic(params: SubscriptionParams): Promise<void> {
+  async subscribeToTopic(
+    params: SubscriptionParams,
+    selfClient?: ErebusClient,
+  ): Promise<void> {
     const { topic, projectId, channelName, clientId } = params;
 
     this.logDebug(
@@ -96,13 +87,15 @@ export class SubscriptionManager extends BaseService {
 
     this.logDebug(`[SUBSCRIBE] Subscription transaction completed`);
 
-    // Send presence update
-    await this.presenceUpdateCallback(
+    this.logDebug(`[SUBSCRIBE] Sending presence update to other subscribers`);
+
+    this.channel.sendPresenceUpdate(
       clientId,
       topic,
       projectId,
       channelName,
       "subscribe",
+      selfClient,
     );
   }
 
@@ -139,7 +132,7 @@ export class SubscriptionManager extends BaseService {
     this.logDebug(`[UNSUBSCRIBE] Unsubscription transaction completed`);
 
     // Send presence update
-    await this.presenceUpdateCallback(
+    await this.channel.sendPresenceUpdate(
       clientId,
       topic,
       projectId,
@@ -274,7 +267,7 @@ export class SubscriptionManager extends BaseService {
         });
 
         // Send presence update
-        await this.presenceUpdateCallback(
+        await this.channel.sendPresenceUpdate(
           clientId,
           topic,
           projectId,

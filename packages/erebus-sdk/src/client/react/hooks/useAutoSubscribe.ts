@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AnySchema, SubscribedData } from "../utils/types";
 import { createParse } from "../utils/helpers";
+import type { Presence } from "@/client/core/types";
 
 // Primitive hook for automatic subscription management based on connection status
 export function useAutoSubscribe<
@@ -11,23 +12,13 @@ export function useAutoSubscribe<
   subscribe: (
     topic: string,
     callback?: (data: SubscribedData<S, C>) => void,
-    onPresence?: (presence: {
-      clientId: string;
-      topic: string;
-      status: "online" | "offline";
-      timestamp: number;
-    }) => void,
+    onPresence?: (presence: Presence) => void,
   ) => Promise<(() => void) | void>,
   unsubscribe: (topic: string) => void,
   topic: string,
   isReady: boolean,
   currentStatus: "subscribed" | "unsubscribed" | "pending" | undefined,
-  onPresence?: (presence: {
-    clientId: string;
-    topic: string;
-    status: "online" | "offline";
-    timestamp: number;
-  }) => void,
+  onPresence?: (presence: Presence) => void,
 ) {
   const [messages, setMessages] = useState<
     {
