@@ -2,7 +2,7 @@ import { Access } from "@repo/schemas/grant";
 import { GrantSchema } from "@repo/schemas/grant";
 import { MessageBody } from "@repo/schemas/messageBody";
 import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
-import { PacketEnvelope, PresencePacket } from "@repo/schemas/packetEnvelope";
+import { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -472,12 +472,7 @@ export class MessageBroadcaster extends BaseService {
    * @param subscribers - Optional list of subscribers to restrict broadcast to
    */
   async broadcastPresence(
-    presencePacket: PacketEnvelope & {
-      packetType: "presence";
-      clientId: string;
-      topic: string;
-      status: "online" | "offline";
-    },
+    presencePacket: Extract<PacketEnvelope, { packetType: "presence" }>,
     selfClient?: ErebusClient,
     subscribers?: string[],
   ): Promise<void> {

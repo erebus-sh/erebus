@@ -38,7 +38,7 @@ export class SubscriptionManager extends BaseService {
    * This method:
    * - Checks current subscriber count against limits
    * - Atomically adds the client to the subscriber list
-   * - Prevents duplicate subscriptions
+   * - Always sends presence updates (even for existing subscriptions)
    * - Uses transactions for consistency
    *
    * @param params - Subscription parameters
@@ -58,6 +58,8 @@ export class SubscriptionManager extends BaseService {
 
     const key = STORAGE_KEYS.subscribers(projectId, channelName, topic);
     this.logDebug(`[SUBSCRIBE] Storage key: ${key}`);
+
+    let wasAlreadySubscribed = false;
 
     await this.transaction(async (txn) => {
       // Get current subscribers within transaction
@@ -80,16 +82,26 @@ export class SubscriptionManager extends BaseService {
         this.logDebug(
           `[SUBSCRIBE] Client added to subscribers, new count: ${updated.length}`,
         );
+        wasAlreadySubscribed = false;
       } else {
         this.logDebug(`[SUBSCRIBE] Client already in subscribers list`);
+        wasAlreadySubscribed = true;
       }
     });
 
     this.logDebug(`[SUBSCRIBE] Subscription transaction completed`);
 
-    this.logDebug(`[SUBSCRIBE] Sending presence update to other subscribers`);
+    // Small delay to prevent race condition when multiple clients connect simultaneously
+    // This ensures all concurrent subscription transactions complete before presence updates
+    await new Promise((resolve) => setTimeout(resolve, 10));
 
-    this.channel.sendPresenceUpdate(
+    // Always send presence update, even if client was already subscribed
+    // This handles cases like page refreshes where the client needs to re-establish presence
+    this.logDebug(
+      `[SUBSCRIBE] Sending presence update to other subscribers (wasAlreadySubscribed: ${wasAlreadySubscribed})`,
+    );
+
+    await this.channel.sendPresenceUpdate(
       clientId,
       topic,
       projectId,

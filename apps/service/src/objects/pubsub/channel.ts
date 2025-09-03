@@ -229,7 +229,10 @@ export class ChannelV1
     );
 
     try {
-      // Get current subscribers for the topic
+      // Small delay to ensure all concurrent transactions are complete
+      await new Promise((resolve) => setTimeout(resolve, 5));
+
+      // Get fresh subscribers for the topic right before broadcasting
       const subscribers = await this.subscriptionManager.getSubscribers(
         projectId,
         channelName,

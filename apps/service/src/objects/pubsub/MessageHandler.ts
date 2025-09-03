@@ -321,21 +321,8 @@ export class MessageHandler extends BaseService {
       return; // Silently ignore unauthorized subscription
     }
 
-    // Check if already subscribed (prevent duplicates)
-    const isSubscribed = await this.subscriptionManager.isSubscribedToTopic({
-      topic,
-      projectId: client.projectId,
-      channelName: client.channel,
-      clientId: client.clientId,
-    });
-
-    if (isSubscribed) {
-      this.logDebug(`[WS_SUBSCRIBE] Client already subscribed to topic`);
-      return; // Silently ignore duplicate subscription
-    }
-
     try {
-      // Subscribe the client to the topic
+      // Subscribe the client to the topic (handles duplicate subscriptions gracefully)
       this.logDebug(
         `[WS_SUBSCRIBE] Client authorized, proceeding with subscription`,
       );
