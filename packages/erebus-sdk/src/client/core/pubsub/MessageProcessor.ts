@@ -41,6 +41,14 @@ export class MessageProcessor implements IMessageProcessor {
       return null;
     }
 
+    // Ping packet just skip it
+    if (dataStr === "ping") {
+      logger.warn(`[${this.#connectionId}] Ping packet, skipping`, {
+        rawDataPreview: dataStr.slice(0, 200),
+      });
+      return null;
+    }
+
     const parsed = parseServerFrame(dataStr);
     if (!parsed) {
       logger.warn(`[${this.#connectionId}] Failed to parse server frame`, {
@@ -99,7 +107,7 @@ export class MessageProcessor implements IMessageProcessor {
       path: ackPacket.result.path,
     });
 
-    // Route ACK to the ACK manager for processing
+    // Route all ACKs to the ACK manager - it will handle both publish and subscription ACKs
     this.#ackManager.handleAck(ackPacket);
   }
 }

@@ -2,7 +2,7 @@ import type {
   PacketEnvelope,
   AckPacketType,
 } from "@repo/schemas/packetEnvelope";
-import type { PendingPublish } from "../types";
+import type { PendingPublish, PendingSubscription } from "../types";
 
 /**
  * Basic connection states
@@ -86,10 +86,13 @@ export interface IConnectionManager {
  */
 export interface IAckManager {
   trackPublish(requestId: string, pending: PendingPublish): void;
+  trackSubscription(requestId: string, pending: PendingSubscription): void;
   handleAck(ackPacket: AckPacketType): void;
-  handleTimeout(requestId: string): void;
+  handlePublishTimeout(requestId: string): void;
+  handleSubscriptionTimeout(requestId: string): void;
   cleanup(reason: string): void;
   getPendingCount(): number;
+  getPendingSubscriptionCount(): number;
 }
 
 /**

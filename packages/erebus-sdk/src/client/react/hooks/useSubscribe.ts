@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useStore } from "zustand";
 import { useRoomContext } from "../provider/RoomProvider";
 import type { AnySchema } from "../utils/types";
-import type { Presence } from "@/client/core/types";
+import type { Presence, SubscriptionResponse } from "@/client/core/types";
 import { z } from "zod";
 
 export interface UseSubscribeOptions {
   onPresence?: (presence: Presence) => void;
   autoSubscribe?: boolean; // Default: true
+  onSubscriptionAck?: (response: SubscriptionResponse) => void;
+  onUnsubscribeAck?: (response: SubscriptionResponse) => void;
+  subscriptionTimeoutMs?: number; // Default: 10000ms
 }
 
 export function useSubscribe<
@@ -18,7 +21,18 @@ export function useSubscribe<
   T extends string = string,
 >(topic: T, options: UseSubscribeOptions = {}) {
   const { store } = useRoomContext<S>();
-  const { onPresence, autoSubscribe = true } = options;
+  const {
+    onPresence,
+    autoSubscribe = true,
+    onSubscriptionAck,
+    onUnsubscribeAck,
+    subscriptionTimeoutMs = 10000,
+  } = options;
+
+  const [subscriptionError, setSubscriptionError] = useState<{
+    code: string;
+    message: string;
+  } | null>(null);
 
   // Get subscription state and messages for this topic
   const subscriptionState = useStore(store, (state) =>
@@ -60,40 +74,65 @@ export function useSubscribe<
         });
       }
 
-      // Subscribe to messages
-      client.subscribe(topic, (msg: unknown) => {
-        console.log(`Received message on topic ${topic}:`, msg);
-
-        // Parse payload based on channel schema
-        const messageData = msg as {
-          id: string;
-          topic: string;
-          senderId: string;
-          seq: string;
-          sentAt: number;
-          payload: unknown;
-        };
-
-        let parsed = messageData.payload;
-        if (typeof messageData.payload === "string") {
-          try {
-            parsed = JSON.parse(messageData.payload);
-          } catch {
-            // Keep as string if JSON parsing fails
-          }
+      // Create subscription ACK callback
+      const subscriptionCallback = (response: SubscriptionResponse) => {
+        if (response.success) {
+          console.log(`Successfully subscribed to topic: ${topic}`);
+          setSubscriptionError(null);
+        } else {
+          console.error(
+            `Failed to subscribe to topic ${topic}:`,
+            response.error,
+          );
+          setSubscriptionError(response.error);
+          state.setSubscriptionState(topic, "error");
         }
 
-        const message = {
-          id: messageData.id,
-          topic: messageData.topic,
-          senderId: messageData.senderId,
-          seq: messageData.seq,
-          sentAt: new Date(messageData.sentAt),
-          payload: parsed,
-        };
+        // Call user-provided callback if available
+        if (onSubscriptionAck) {
+          onSubscriptionAck(response);
+        }
+      };
 
-        state.addIncomingMessage(topic, message);
-      });
+      // Subscribe to messages with ACK callback
+      client.subscribeWithCallback(
+        topic,
+        (msg: unknown) => {
+          console.log(`Received message on topic ${topic}:`, msg);
+
+          // Parse payload based on channel schema
+          const messageData = msg as {
+            id: string;
+            topic: string;
+            senderId: string;
+            seq: string;
+            sentAt: number;
+            payload: unknown;
+          };
+
+          let parsed = messageData.payload;
+          if (typeof messageData.payload === "string") {
+            try {
+              parsed = JSON.parse(messageData.payload);
+            } catch {
+              // Keep as string if JSON parsing fails
+            }
+          }
+
+          const message = {
+            id: messageData.id,
+            topic: messageData.topic,
+            senderId: messageData.senderId,
+            seq: messageData.seq,
+            sentAt: new Date(messageData.sentAt),
+            payload: parsed,
+          };
+
+          state.addIncomingMessage(topic, message);
+        },
+        subscriptionCallback,
+        subscriptionTimeoutMs,
+      );
 
       state.setSubscriptionState(topic, "subscribed");
       console.log(`Successfully subscribed to topic: ${topic}`);
@@ -124,10 +163,33 @@ export function useSubscribe<
     console.log(`Unsubscribing from topic: ${topic}`);
 
     try {
-      client.unsubscribe(topic);
+      // Create unsubscribe ACK callback
+      const unsubscribeCallback = (response: SubscriptionResponse) => {
+        if (response.success) {
+          console.log(`Successfully unsubscribed from topic: ${topic}`);
+        } else {
+          console.error(
+            `Failed to unsubscribe from topic ${topic}:`,
+            response.error,
+          );
+          // Note: We don't set subscription error state for unsubscribe failures
+          // since the client-side unsubscription already happened
+        }
+
+        // Call user-provided callback if available
+        if (onUnsubscribeAck) {
+          onUnsubscribeAck(response);
+        }
+      };
+
+      client.unsubscribeWithCallback(
+        topic,
+        unsubscribeCallback,
+        subscriptionTimeoutMs,
+      );
       state.clearSubscription(topic);
       state.clearPresence(topic);
-      console.log(`Successfully unsubscribed from topic: ${topic}`);
+      console.log(`Unsubscribe request sent for topic: ${topic}`);
     } catch (error) {
       console.error(`Failed to unsubscribe from topic ${topic}:`, error);
     }
@@ -160,6 +222,7 @@ export function useSubscribe<
       payload: z.infer<S[C]>;
     }>,
     subscriptionState,
+    subscriptionError,
     subscribe,
     unsubscribe,
     isReady,

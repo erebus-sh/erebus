@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import type { AnySchema, SubscribedData } from "../utils/types";
 import { createParse } from "../utils/helpers";
-import type { Presence } from "@/client/core/types";
+import type { Presence, SubscriptionResponse } from "@/client/core/types";
 
 // Primitive hook for automatic subscription management based on connection status
 export function useAutoSubscribe<
@@ -13,6 +13,7 @@ export function useAutoSubscribe<
     topic: string,
     callback?: (data: SubscribedData<S, C>) => void,
     onPresence?: (presence: Presence) => void,
+    onSubscriptionAck?: (response: SubscriptionResponse) => void,
   ) => Promise<(() => void) | void>,
   unsubscribe: (topic: string) => void,
   topic: string,
@@ -25,6 +26,10 @@ export function useAutoSubscribe<
       data: SubscribedData<S, C>;
     }[]
   >([]);
+  const [subscriptionError, setSubscriptionError] = useState<{
+    code: string;
+    message: string;
+  } | null>(null);
   const parse = createParse(_schemas);
   useEffect(() => {
     let isSubscribed = false;
@@ -50,10 +55,27 @@ export function useAutoSubscribe<
             setMessages((prev) => [...prev, { data: message }]);
           },
           onPresence,
+          (response: SubscriptionResponse) => {
+            if (response.success) {
+              console.log(`Auto-subscription succeeded for topic: ${topic}`);
+              setSubscriptionError(null);
+            } else {
+              console.error(
+                `Auto-subscription failed for topic ${topic}:`,
+                response.error,
+              );
+              setSubscriptionError(response.error);
+            }
+          },
         );
         isSubscribed = true;
       } catch (error) {
         console.error("Failed to auto-subscribe:", error);
+        setSubscriptionError({
+          code: "SUBSCRIPTION_ERROR",
+          message:
+            error instanceof Error ? error.message : "Failed to auto-subscribe",
+        });
       }
     }
 
@@ -82,5 +104,5 @@ export function useAutoSubscribe<
     messages,
   ]);
 
-  return messages;
+  return { messages, subscriptionError };
 }

@@ -135,6 +135,11 @@ export class PresenceManager {
       topic: presencePacket.topic,
       status: presencePacket.status,
       timestamp: Date.now(),
+      // Include subscribers array if present (for enriched self presence updates)
+      // Use type assertion since the server may send additional fields
+      ...((presencePacket as any).subscribers && {
+        subscribers: (presencePacket as any).subscribers,
+      }),
     };
 
     // Call all handlers for this topic

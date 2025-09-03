@@ -1,6 +1,6 @@
 import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
-import type { AckCallback } from "../types";
+import type { AckCallback, SubscriptionCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
@@ -112,8 +112,21 @@ export class ErebusPubSubClientNew {
   }
 
   subscribe(topic: string, handler: Handler) {
+    this.subscribeWithCallback(topic, handler);
+  }
+
+  subscribeWithCallback(
+    topic: string,
+    handler: Handler,
+    onAck?: SubscriptionCallback,
+    timeoutMs?: number,
+  ) {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Subscribe called`, { topic });
+    consola.info(`[Erebus:${instanceId}] Subscribe called`, {
+      topic,
+      hasAckCallback: !!onAck,
+      timeout: timeoutMs,
+    });
     logger.info("Erebus.subscribe() called", { topic });
 
     if (!this.#stateManager.channel) {
@@ -141,12 +154,24 @@ export class ErebusPubSubClientNew {
 
     this.#stateManager.addHandler(topic, handler);
     this.#stateManager.addPendingSubscription(topic);
-    this.#conn.subscribe(topic);
+    this.#conn.subscribeWithCallback(topic, onAck, timeoutMs);
   }
 
   unsubscribe(topic: string) {
+    this.unsubscribeWithCallback(topic);
+  }
+
+  unsubscribeWithCallback(
+    topic: string,
+    onAck?: SubscriptionCallback,
+    timeoutMs?: number,
+  ) {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Unsubscribe called`, { topic });
+    consola.info(`[Erebus:${instanceId}] Unsubscribe called`, {
+      topic,
+      hasAckCallback: !!onAck,
+      timeout: timeoutMs,
+    });
     logger.info("Unsubscribe function called", { topic });
 
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
@@ -168,7 +193,7 @@ export class ErebusPubSubClientNew {
 
     this.#stateManager.clearHandlers(topic);
     this.#stateManager.removePendingSubscription(topic);
-    this.#conn.unsubscribe(topic);
+    this.#conn.unsubscribeWithCallback(topic, onAck, timeoutMs);
   }
 
   publish({

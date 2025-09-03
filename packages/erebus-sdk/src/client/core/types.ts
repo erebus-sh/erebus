@@ -52,6 +52,41 @@ export type AckResponse = AckSuccess | AckError;
 export type AckCallback = (response: AckResponse) => void;
 
 /**
+ * Subscription response for successful operations
+ */
+export type SubscriptionSuccess = {
+  success: true;
+  ack: AckPacketType;
+  topic: string;
+  status: "subscribed" | "unsubscribed";
+  path: "subscribe" | "unsubscribe";
+};
+
+/**
+ * Subscription response for failed operations
+ */
+export type SubscriptionError = {
+  success: false;
+  ack?: AckPacketType;
+  error: {
+    code: string;
+    message: string;
+  };
+  topic: string;
+  path: "subscribe" | "unsubscribe";
+};
+
+/**
+ * Combined subscription response type
+ */
+export type SubscriptionResponse = SubscriptionSuccess | SubscriptionError;
+
+/**
+ * Callback function for subscription responses
+ */
+export type SubscriptionCallback = (response: SubscriptionResponse) => void;
+
+/**
  * Pending publish request tracking
  */
 export type PendingPublish = {
@@ -59,6 +94,19 @@ export type PendingPublish = {
   clientMsgId: string;
   topic: string;
   callback: AckCallback;
+  timestamp: number;
+  timeoutId?: NodeJS.Timeout;
+};
+
+/**
+ * Pending subscription request tracking
+ */
+export type PendingSubscription = {
+  requestId: string;
+  clientMsgId?: string;
+  topic: string;
+  path: "subscribe" | "unsubscribe";
+  callback: SubscriptionCallback;
   timestamp: number;
   timeoutId?: NodeJS.Timeout;
 };
@@ -72,4 +120,5 @@ export type Presence = {
   topic: string;
   status: "online" | "offline";
   timestamp: number;
+  subscribers?: string[]; // Optional array of subscriber client IDs (for enriched self presence)
 };

@@ -56,15 +56,22 @@ export function useMessages<
     }));
 
     const outgoing = outgoingMessages.map((msg: OutgoingMessage) => ({
-      ...msg,
+      // Normalize outgoing messages to match incoming message structure
+      id: msg.id,
+      topic: topic || "", // Use the topic parameter
+      senderId: "local", // Local messages don't have a real senderId
+      seq: msg.clientMsgId || msg.id, // Use clientMsgId or fallback to id
+      sentAt: msg.timestamp, // Map timestamp to sentAt for compatibility
+      payload: { message: msg.content }, // Map content to payload.message
       type: "outgoing" as const,
       timestamp: msg.timestamp,
+      status: msg.status, // Keep the status for UI purposes
     }));
 
     return [...incoming, ...outgoing].sort(
       (a, b) => a.timestamp.getTime() - b.timestamp.getTime(),
     );
-  }, [incomingMessages, outgoingMessages]);
+  }, [incomingMessages, outgoingMessages, topic]);
 
   return {
     // Individual message arrays

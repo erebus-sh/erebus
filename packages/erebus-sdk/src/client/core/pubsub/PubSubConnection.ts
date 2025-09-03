@@ -1,6 +1,11 @@
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { MessageBody } from "@repo/schemas/messageBody";
-import type { AckCallback, PendingPublish } from "../types";
+import type {
+  AckCallback,
+  PendingPublish,
+  SubscriptionCallback,
+  PendingSubscription,
+} from "../types";
 import type {
   ConnectionConfig,
   ConnectionHealth,
@@ -222,7 +227,19 @@ export class PubSubConnection {
   }
 
   subscribe(topic: string): void {
-    logger.info(`[${this.#connectionId}] Subscribe called`, { topic });
+    this.subscribeWithCallback(topic);
+  }
+
+  subscribeWithCallback(
+    topic: string,
+    callback?: SubscriptionCallback,
+    timeoutMs?: number,
+  ): void {
+    logger.info(`[${this.#connectionId}] Subscribe called`, {
+      topic,
+      hasCallback: !!callback,
+      timeout: timeoutMs,
+    });
 
     this.#subscriptionManager.subscribe(topic);
 
@@ -232,7 +249,46 @@ export class PubSubConnection {
         { topic },
       );
       try {
-        this.#connectionManager.send({ packetType: "subscribe", topic });
+        let requestId: string | undefined;
+        let clientMsgId: string | undefined;
+
+        // Set up ACK tracking if callback provided
+        if (callback) {
+          requestId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+          // Optional clientMsgId for subscription tracking
+          if (
+            typeof crypto !== "undefined" &&
+            typeof crypto.randomUUID === "function"
+          ) {
+            clientMsgId = crypto.randomUUID();
+          }
+
+          const pending: PendingSubscription = {
+            requestId,
+            clientMsgId,
+            topic,
+            path: "subscribe",
+            callback,
+            timestamp: Date.now(),
+          };
+
+          // Set timeout for subscription ACK response
+          if (timeoutMs && timeoutMs > 0) {
+            pending.timeoutId = setTimeout(() => {
+              this.#ackManager.handleSubscriptionTimeout(requestId!);
+            }, timeoutMs);
+          }
+
+          this.#ackManager.trackSubscription(requestId, pending);
+        }
+
+        this.#connectionManager.send({
+          packetType: "subscribe",
+          topic,
+          ...(requestId && { requestId }),
+          ...(clientMsgId && { clientMsgId }),
+        });
       } catch (error) {
         logger.error(`[${this.#connectionId}] Error sending subscribe packet`, {
           error,
@@ -251,7 +307,19 @@ export class PubSubConnection {
   }
 
   unsubscribe(topic: string): void {
-    logger.info(`[${this.#connectionId}] Unsubscribe called`, { topic });
+    this.unsubscribeWithCallback(topic);
+  }
+
+  unsubscribeWithCallback(
+    topic: string,
+    callback?: SubscriptionCallback,
+    timeoutMs?: number,
+  ): void {
+    logger.info(`[${this.#connectionId}] Unsubscribe called`, {
+      topic,
+      hasCallback: !!callback,
+      timeout: timeoutMs,
+    });
 
     this.#subscriptionManager.unsubscribe(topic);
 
@@ -261,7 +329,46 @@ export class PubSubConnection {
         { topic },
       );
       try {
-        this.#connectionManager.send({ packetType: "unsubscribe", topic });
+        let requestId: string | undefined;
+        let clientMsgId: string | undefined;
+
+        // Set up ACK tracking if callback provided
+        if (callback) {
+          requestId = `unsub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+          // Optional clientMsgId for subscription tracking
+          if (
+            typeof crypto !== "undefined" &&
+            typeof crypto.randomUUID === "function"
+          ) {
+            clientMsgId = crypto.randomUUID();
+          }
+
+          const pending: PendingSubscription = {
+            requestId,
+            clientMsgId,
+            topic,
+            path: "unsubscribe",
+            callback,
+            timestamp: Date.now(),
+          };
+
+          // Set timeout for subscription ACK response
+          if (timeoutMs && timeoutMs > 0) {
+            pending.timeoutId = setTimeout(() => {
+              this.#ackManager.handleSubscriptionTimeout(requestId!);
+            }, timeoutMs);
+          }
+
+          this.#ackManager.trackSubscription(requestId, pending);
+        }
+
+        this.#connectionManager.send({
+          packetType: "unsubscribe",
+          topic,
+          ...(requestId && { requestId }),
+          ...(clientMsgId && { clientMsgId }),
+        });
       } catch (error) {
         logger.error(
           `[${this.#connectionId}] Error sending unsubscribe packet`,
@@ -405,7 +512,7 @@ export class PubSubConnection {
         // Set timeout for ACK response
         if (timeoutMs && timeoutMs > 0) {
           pending.timeoutId = setTimeout(() => {
-            this.#ackManager.handleTimeout(requestId!);
+            this.#ackManager.handlePublishTimeout(requestId!);
           }, timeoutMs);
         }
 
@@ -436,13 +543,14 @@ export class PubSubConnection {
     );
 
     try {
+      // Server primarily uses payload.topic, but schema requires topic at envelope level too
       this.#connectionManager.send({
         packetType: "publish",
-        ack: withAck,
-        requestId,
         topic: payload.topic,
+        ack: withAck,
         payload,
         clientMsgId: clientMsgId!,
+        ...(withAck && requestId && { requestId }), // Only include requestId for ACK tracking
       });
     } catch (error) {
       // Clean up ACK tracking on send failure

@@ -98,7 +98,7 @@ export function useTopic<
 
   return {
     // Subscription data
-    messages: subscription.messages,
+    messages: messages.allMessages,
     subscriptionState: subscription.subscriptionState,
 
     // Publishing functions
