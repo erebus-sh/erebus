@@ -1,16 +1,19 @@
-import type { ErebusClient } from "@/client/core/Erebus";
+import type { ErebusPubSubClient } from "@/client/core/pubsub";
+import { ErebusError } from "@/internal/error";
 import { createContext, useContext } from "react";
 
 type ErebusContext = {
-  client: ErebusClient;
+  makeClient: () => ErebusPubSubClient;
 } | null;
 
 export const ErebusContext = createContext<ErebusContext>(null);
 
-export const useErebus = () => {
+export function useErebus() {
   const context = useContext(ErebusContext);
   if (!context) {
-    throw new Error("useErebusContext must be used within a ErebusProvider");
+    throw new ErebusError(
+      "useErebusContext must be used within a ErebusProvider",
+    );
   }
   return context;
-};
+}
