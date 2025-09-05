@@ -20,6 +20,7 @@ const schema = {
 const useChannel = createChannel(schema);
 
 export function Chat() {
+  // Uses "test_channel" schema for messages in this topic
   const { messages, publish } = useChannel("test_channel");
 
   return (
@@ -31,6 +32,7 @@ export function Chat() {
 }
 
 export function Notifications() {
+  // Uses "notification_inbox" schema for messages in this topic
   const { messages, publish } = useChannel("notification_inbox");
 
   return <div>Notifications</div>;
@@ -40,20 +42,24 @@ const authBaseUrl = "http://localhost:6969";
 const wsBaseUrl = "ws://localhost:8787";
 
 test("React SDK - Chat Channel", () => {
+  // TopicProvider provides the conversation room (topic: "chat_room_123")
+  // useChannel("test_channel") specifies which schema to use for validation
   render(<Chat />, {
     wrapper: ({ children }) => (
       <ErebusProvider authBaseUrl={authBaseUrl} wsBaseUrl={wsBaseUrl}>
-        <TopicProvider topic="test_channel">{children}</TopicProvider>
+        <TopicProvider topic="chat_room_123">{children}</TopicProvider>
       </ErebusProvider>
     ),
   });
 });
 
 test("React SDK - Notification Channel", () => {
+  // TopicProvider provides the conversation room (topic: "user_notifications")
+  // useChannel("notification_inbox") specifies which schema to use for validation
   render(<Notifications />, {
     wrapper: ({ children }) => (
       <ErebusProvider authBaseUrl={authBaseUrl} wsBaseUrl={wsBaseUrl}>
-        <TopicProvider topic="user_id132">{children}</TopicProvider>
+        <TopicProvider topic="user_notifications">{children}</TopicProvider>
       </ErebusProvider>
     ),
   });
