@@ -1,30 +1,23 @@
 import { useErebus } from "../context/ErebusContext";
-import type { SchemaMap } from "../utils/types";
 import { ErebusError } from "@/internal/error";
-import { ErebusPubSubClient } from "@/client/core/pubsub";
 import { TopicContext } from "../context/TopicContext";
-type Props<S extends SchemaMap> = {
+import React from "react";
+
+type Props<K extends string> = {
   children: React.ReactNode;
-  topic: string;
-  client: ErebusPubSubClient;
-  schema: S;
+  topic: K;
 };
-export function TopicProvider<S extends SchemaMap>({
-  children,
-  topic,
-  schema,
-}: Props<S>) {
+
+export function TopicProvider<K extends string>({ children, topic }: Props<K>) {
   const { makeClient } = useErebus();
   const client = makeClient();
 
   if (!client) {
-    throw new ErebusError(
-      "ChannelProvider must be used within a ErebusProvider",
-    );
+    throw new ErebusError("TopicProvider must be used within a ErebusProvider");
   }
 
   return (
-    <TopicContext.Provider value={{ topic, client, schema }}>
+    <TopicContext.Provider value={{ topic, client }}>
       {children}
     </TopicContext.Provider>
   );

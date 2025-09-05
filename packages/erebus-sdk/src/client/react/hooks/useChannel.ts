@@ -1,32 +1,37 @@
-import type { SchemaMap } from "../utils/types";
+import type { SchemaMap, Topic } from "../utils/types";
 import { z } from "zod";
 import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
+import { useEffect, useState } from "react";
 
-export function useChannel<K extends keyof S, S extends SchemaMap = SchemaMap>(
-  channel: K,
+export function useChannel<S extends SchemaMap, K extends Topic<S>>(
+  overrideTopic: K,
+  schema: S,
 ) {
-  const { client, topic, schema } = useTopic();
+  const { client } = useTopic();
+  const topic = overrideTopic;
 
   type PayloadT = z.infer<S[K]>;
+  const [messages, setMessages] = useState<PayloadT[]>([]);
+
+  useEffect(() => {
+    client.subscribe(topic, (payload) => {
+      setMessages((prev) => [...prev, payload as PayloadT]);
+    });
+  }, [client, topic]);
 
   const publish = (payload: PayloadT) => {
-    // Ensure the topic exists in the schema and is defined
-    const topicSchema = schema[channel];
+    const topicSchema = schema[topic];
     if (!topicSchema) {
-      throw new ErebusError(
-        `Schema for topic "${String(topic)}" is not defined.`,
-      );
+      throw new ErebusError(`Schema for topic "${topic}" is not defined.`);
     }
-    topicSchema.parse(payload); // runtime check
+    topicSchema.parse(payload);
 
-    // ErebusPubSubClient expects { topic: string, messageBody: string }
-    // Serialize the payload to JSON string
     client.publish({
-      topic: String(topic),
+      topic,
       messageBody: JSON.stringify(payload),
     });
   };
 
-  return { publish };
+  return { publish, messages };
 }

@@ -1,15 +1,13 @@
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusError } from "@/internal/error";
 import { createContext, useContext } from "react";
-import type { z } from "zod";
 
-type TopicCtx<T extends z.ZodTypeAny> = {
+type TopicCtx = {
   topic: string;
   client: ErebusPubSubClient;
-  schema: T;
 };
 
-export const TopicContext = createContext<TopicCtx<any> | null>(null);
+export const TopicContext = createContext<TopicCtx | null>(null);
 
 export function useTopic() {
   const ctx = useContext(TopicContext);
