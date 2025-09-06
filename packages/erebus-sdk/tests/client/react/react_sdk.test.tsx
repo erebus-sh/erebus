@@ -26,7 +26,16 @@ export function Chat() {
   return (
     <>
       <input type="text" />
-      <button>Send</button>
+      <button
+        onClick={() =>
+          publish({
+            message: "Hello, world!",
+            sentAt: Date.now(),
+          })
+        }
+      >
+        Send
+      </button>
     </>
   );
 }
@@ -35,7 +44,20 @@ export function Notifications() {
   // Uses "notification_inbox" schema for messages in this topic
   const { messages, publish } = useChannel("notification_inbox");
 
-  return <div>Notifications</div>;
+  return (
+    <>
+      <button
+        onClick={() =>
+          publish({
+            notification: "[message] form [user]",
+            sentAt: Date.now(),
+          })
+        }
+      >
+        Send
+      </button>
+    </>
+  );
 }
 
 const authBaseUrl = "http://localhost:6969";

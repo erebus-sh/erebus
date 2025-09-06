@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
 import { useEffect, useState } from "react";
+import { joinAndConnect } from "../utils/helpers";
 
 export function useChannel<S extends SchemaMap, K extends Topic<S>>(
   channelName: K,
@@ -14,14 +15,24 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
 
   type PayloadT = z.infer<S[K]>;
   const [messages, setMessages] = useState<PayloadT[]>([]);
-
+  const [isError, setIsError] = useState(false);
+  const [error, setError] = useState<ErebusError | null>(null);
   useEffect(() => {
     // TODO: First of all, joinChannel and connect then thing about how we subscribe
     //       handle errors, and stuff like, that if you are allowed or not, throw errors
     //
-    client.subscribe(topic, (payload) => {
-      setMessages((prev) => [...prev, payload as PayloadT]);
-    });
+
+    (async () => {
+      const { success, error } = await joinAndConnect(client, channelName);
+      if (!success) {
+        setIsError(true);
+        setError(error);
+        return;
+      }
+      client.subscribe(topic, (payload) => {
+        setMessages((prev) => [...prev, payload as PayloadT]);
+      });
+    })();
   }, [client, topic]);
 
   const publish = (payload: PayloadT) => {
@@ -39,5 +50,5 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
     });
   };
 
-  return { publish, messages };
+  return { publish, messages, isError, error };
 }
