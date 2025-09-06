@@ -1,3 +1,5 @@
+"use client";
+
 import type { SchemaMap, Topic } from "../utils/types";
 import { z } from "zod";
 import { ErebusError } from "@/service";
@@ -8,7 +10,7 @@ import type { PerMessageStatus, PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
 import type { MessageBody } from "@repo/schemas/messageBody";
 
-export function useChannel<S extends SchemaMap, K extends Topic<S>>(
+export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
   channelName: K,
   schema: S,
 ) {
@@ -21,6 +23,7 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
   const [messages, setMessages] = useState<Message[]>([]);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
+  const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
 
   /**
    * Track the status of each published message individually.
@@ -86,14 +89,17 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
                   "Subscription failed: the server could not process your request to subscribe to the specified topic due to a timeout.",
                 ),
               );
+              return;
             } else {
               setError(
                 new ErebusError(
                   "Subscription failed: the server could not process your request to subscribe to the specified topic.",
                 ),
               );
+              return;
             }
           }
+          setIsSubscribed(true);
         },
       );
     })();
@@ -101,6 +107,7 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
     return () => {
       try {
         client.unsubscribe(topic);
+        setIsSubscribed(false);
       } catch {}
     };
   }, [client, topic]);
@@ -194,5 +201,6 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
     messageStatuses: statusRef.current,
     isError,
     error,
+    isSubscribed,
   };
 }

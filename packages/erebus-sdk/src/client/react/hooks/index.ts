@@ -1,1 +1,1 @@
-export * from "./useChannel";
+export * from "./useChannelInternal";

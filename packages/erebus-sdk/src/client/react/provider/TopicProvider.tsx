@@ -1,3 +1,5 @@
+"use client";
+
 import { useErebus } from "../context/ErebusContext";
 import { ErebusError } from "@/internal/error";
 import { TopicContext } from "../context/TopicContext";

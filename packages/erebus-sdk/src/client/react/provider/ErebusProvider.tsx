@@ -1,3 +1,5 @@
+"use client";
+
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusContext } from "../context/ErebusContext";
 import type { ReactNode } from "react";
