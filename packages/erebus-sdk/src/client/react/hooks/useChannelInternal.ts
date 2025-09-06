@@ -81,7 +81,9 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
           ]);
         },
         (ack) => {
+          console.log("[useChannelInternal] Subscription ACK", ack);
           if (!ack.success) {
+            console.log("[useChannelInternal] Subscription ACK failed", ack);
             setIsError(true);
             if (ack.error.code === "TIMEOUT") {
               setError(
@@ -91,6 +93,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
               );
               return;
             } else {
+              console.log("[useChannelInternal] Subscription ACK failed", ack);
               setError(
                 new ErebusError(
                   "Subscription failed: the server could not process your request to subscribe to the specified topic.",
@@ -99,9 +102,19 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
               return;
             }
           }
+          console.log("[useChannelInternal] Subscription ACK success", ack);
           setIsSubscribed(true);
         },
       );
+
+      client.onPresence(topic, (presence) => {
+        // TODO: Complete this, it's easy
+        if (presence.status === "online") {
+          console.log("[useChannelInternal] Presence online", presence);
+        } else {
+          console.log("[useChannelInternal] Presence offline", presence);
+        }
+      });
     })();
 
     return () => {
