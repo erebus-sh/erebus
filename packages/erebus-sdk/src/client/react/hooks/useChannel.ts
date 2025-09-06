@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { joinAndConnect } from "../utils/helpers";
 import type { PerMessageStatus, PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
+import type { MessageBody } from "@repo/schemas/messageBody";
 
 export function useChannel<S extends SchemaMap, K extends Topic<S>>(
   channelName: K,
@@ -16,8 +17,9 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
   // channelName specifies which schema to use for validation
 
   type PayloadT = z.infer<S[K]>;
-  const [messages, setMessages] = useState<PayloadT[]>([]);
-  const [isError, setIsError] = useState(false);
+  type Message = Omit<MessageBody, "payload"> & { payload: PayloadT };
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
 
   /**
@@ -62,8 +64,18 @@ export function useChannel<S extends SchemaMap, K extends Topic<S>>(
       }
       client.subscribe(
         topic,
-        (payload) => {
-          setMessages((prev) => [...prev, payload as PayloadT]);
+        (msg) => {
+          // msg.payload contains the payload, so we parse it
+          if (!schema[channelName]) {
+            throw new ErebusError(
+              `Schema for channel "${channelName}" is not defined.`,
+            );
+          }
+          const parsedPayload = schema[channelName].parse(msg.payload);
+          setMessages((prev) => [
+            ...prev,
+            { ...msg, payload: parsedPayload } as Message,
+          ]);
         },
         (ack) => {
           if (!ack.success) {
