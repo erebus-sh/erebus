@@ -111,8 +111,13 @@ export class ErebusPubSubClientNew {
     logger.info("Channel joined successfully", { channel });
   }
 
-  subscribe(topic: string, handler: Handler) {
-    this.subscribeWithCallback(topic, handler);
+  subscribe(
+    topic: string,
+    handler: Handler,
+    onAck?: SubscriptionCallback,
+    timeoutMs: number = 3000,
+  ) {
+    this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
   }
 
   subscribeWithCallback(
@@ -210,7 +215,7 @@ export class ErebusPubSubClientNew {
     topic,
     messageBody,
     onAck,
-    timeoutMs = 30000,
+    timeoutMs = 3000,
   }: {
     topic: string;
     messageBody: string;
