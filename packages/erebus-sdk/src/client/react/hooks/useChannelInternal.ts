@@ -32,6 +32,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
 
   /**
    * Track the status of each published message individually.
@@ -116,6 +117,14 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
       );
 
       client.onPresence(topic, (presence) => {
+        setPresence((prev) => {
+          /**
+           * Update the presence map by setting the presence for the specific clientId.
+           * This approach allows efficient updates and lookups for individual users,
+           * rather than replacing the entire presence map each time.
+           */
+          return new Map(prev).set(presence.clientId, presence);
+        });
         onPresence(presence);
       });
     })();
@@ -223,5 +232,6 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     isError,
     error,
     isSubscribed,
+    presence,
   };
 }
