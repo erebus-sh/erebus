@@ -129,7 +129,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
     payload: PayloadT,
     opts: PublishOptions = {},
   ): Promise<{
-    id: string;
+    localId: string;
     success: boolean;
     attempts: number;
     error: ErebusError | null;
@@ -142,25 +142,30 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
     }
     schema[channelName].parse(payload);
 
-    const id = genId();
+    const localId = genId();
     const maxRetries = opts.maxRetries ?? 2;
     const baseDelay = opts.baseDelayMs ?? 250;
 
-    setMsgStatus(id, { id, status: "sending", attempts: 0, error: null });
+    setMsgStatus(localId, {
+      id: localId,
+      status: "sending",
+      attempts: 0,
+      error: null,
+    });
 
     let attempts = 0;
 
     const attemptOnce = () =>
       new Promise<void>((resolve, reject) => {
         attempts += 1;
-        setMsgStatus(id, { attempts });
+        setMsgStatus(localId, { attempts });
 
         client.publishWithAck({
           topic,
           messageBody: JSON.stringify(payload),
           onAck: (ack) => {
             if (ack.success) {
-              setMsgStatus(id, { status: "success", error: null });
+              setMsgStatus(localId, { status: "success", error: null });
               resolve();
             } else {
               const code = ack.error?.code ?? "UNKNOWN";
@@ -172,7 +177,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
                   : new ErebusError(
                       "Publish failed: the server could not process your publish request.",
                     );
-              setMsgStatus(id, { status: "failed", error: err });
+              setMsgStatus(localId, { status: "failed", error: err });
               reject(err);
             }
           },
@@ -185,7 +190,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
     for (let i = 0; i <= maxRetries; i++) {
       try {
         await attemptOnce();
-        return { id, success: true, attempts, error: null };
+        return { localId, success: true, attempts, error: null };
       } catch (e) {
         lastErr =
           e instanceof ErebusError
@@ -195,14 +200,14 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
           const delay = baseDelay * Math.pow(2, i);
           await new Promise((r) => setTimeout(r, delay));
           // Mark as re-sending for UI clarity
-          setMsgStatus(id, { status: "sending" });
+          setMsgStatus(localId, { status: "sending" });
         }
       }
     }
 
     // Exhausted retries
-    setMsgStatus(id, { status: "failed", error: lastErr });
-    return { id, success: false, attempts, error: lastErr };
+    setMsgStatus(localId, { status: "failed", error: lastErr });
+    return { localId, success: false, attempts, error: lastErr };
   }
 
   return {
