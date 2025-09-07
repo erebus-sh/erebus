@@ -146,11 +146,24 @@ export class ChannelV1
           `channel: ${client.channel}, topicCount: ${client.topics.length}`,
       );
 
+      const subscriptionTopics = client.topics.map((t) => t.topic);
+
+      // Appened subscriptionTopics from durable object storage
+      const subscriptionTopicsFromStorage =
+        await this.subscriptionManager.getActiveTopics(
+          client.projectId,
+          client.channel,
+        );
+      const allSubscriptionTopics = [
+        ...subscriptionTopics,
+        ...subscriptionTopicsFromStorage,
+      ];
+
       await this.subscriptionManager.bulkUnsubscribe(
         client.clientId,
         client.projectId,
         client.channel,
-        client.topics.map((t) => t.topic),
+        allSubscriptionTopics,
       );
 
       this.log("[CLOSE] Successfully unsubscribed from all topics");

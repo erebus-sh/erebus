@@ -117,6 +117,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
       );
 
       client.onPresence(topic, (presence) => {
+        console.log("[useChannelInternal] Received Presence", presence);
         setPresence((prev) => {
           /**
            * Update the presence map by setting the presence for the specific clientId.
@@ -232,6 +233,6 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     isError,
     error,
     isSubscribed,
-    presence,
+    presence: [...presence.entries()],
   };
 }

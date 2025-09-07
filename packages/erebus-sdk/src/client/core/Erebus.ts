@@ -47,13 +47,18 @@ export class ErebusClient {
 
             // If the user provided a grant cache layer, we call it.
             if (opts.grantCacheLayer) {
+              console.log("[ErebusClient] Using grant cache layer");
               const grantPromise = opts.grantCacheLayer();
               // grantCacheLayer returns a Promise<string | undefined>
               return grantPromise.then((grant) => {
                 if (grant) {
+                  console.log("[ErebusClient] Grant found, returning grant");
                   return grant;
                 }
                 // If no grant, just call the default token provider
+                console.log(
+                  "[ErebusClient] No grant, calling default token provider",
+                );
                 return authorize.generateToken(channel);
               });
             }
@@ -61,10 +66,12 @@ export class ErebusClient {
             // This will return a Promise<string>
             const token = authorize.generateToken(channel).then((token) => {
               if (opts.cacheGrant) {
+                console.log("[ErebusClient] Caching grant");
                 opts.cacheGrant(token);
               }
               return token;
             });
+            console.log("[ErebusClient] Returning token");
             return token;
           },
         });
