@@ -4,14 +4,14 @@ Welcome to the official Erebus SDK package. Please refer to the documentation to
 
 ## Install
 
-You can install erebus-sdk using your favorite package manager:
+You can install @erebus/sdk using your favorite package manager:
 
 ```bash
-npm install erebus-sdk
+npm install @erebus/sdk
 # or
-pnpm install erebus-sdk
+pnpm install @erebus/sdk
 # or
-bun add erebus-sdk
+bun add @erebus/sdk
 ```
 
 ## What is this?

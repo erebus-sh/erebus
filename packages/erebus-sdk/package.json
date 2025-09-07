@@ -1,11 +1,15 @@
 {
-  "name": "erebus-sdk",
-  "version": "0.0.42",
+  "name": "@erebus-sh/sdk",
+  "version": "0.0.54",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "clean": "rm -rf dist",
     "clean:types": "rm -rf dist/types",
@@ -34,6 +38,7 @@
     "zustand": "^4 || ^5"
   },
   "dependencies": {
+    "@changesets/cli": "^2.29.6",
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
     "consola": "^3.4.2",

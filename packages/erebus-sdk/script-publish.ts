@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 
 import { execSync } from "child_process";
-import { readFileSync, writeFileSync } from "fs";
 
 console.log("🚀 Starting publish process...");
 
@@ -11,21 +10,16 @@ try {
   execSync("bun run build", { stdio: "inherit" });
   console.log("✅ Build completed");
 
-  // Step 2: Auto-bump patch version
-  console.log("🔢 Bumping patch version...");
-  const packageJson = JSON.parse(readFileSync("package.json", "utf-8"));
-  const versionParts = packageJson.version.split(".");
-  const newPatchVersion = parseInt(versionParts[2]) + 1;
-  const newVersion = `${versionParts[0]}.${versionParts[1]}.${newPatchVersion}`;
-  packageJson.version = newVersion;
-  writeFileSync("package.json", JSON.stringify(packageJson, null, 2) + "\n");
-  console.log(
-    `✅ Version bumped from ${versionParts.join(".")} to ${newVersion}`,
-  );
+  // Step 2: Versioning with changeset
+  console.log("🔢 Running changeset version...");
+  execSync("bunx changeset version", { stdio: "inherit" });
+  console.log("✅ Version updated using changeset");
 
   // Step 3: Publish to npm
-  console.log("📤 Publishing to npm...");
-  execSync("bun publish --access public", { stdio: "inherit" });
+  const tag = process.argv.includes("--beta") ? "--tag beta" : "";
+  console.log(`📤 Publishing to npm ${tag || "(latest)"}...`);
+  execSync(`bunx changeset publish ${tag}`, { stdio: "inherit" });
+
   console.log("✅ Package published successfully!");
 } catch (error) {
   console.error("❌ Publish failed:", error);
