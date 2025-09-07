@@ -9,11 +9,19 @@ import { joinAndConnect } from "../utils/helpers";
 import type { PerMessageStatus, PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
 import type { MessageBody } from "@repo/schemas/messageBody";
+import type { Presence } from "@/client/core/types";
 
-export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
-  channelName: K,
-  schema: S,
-) {
+interface UseChannelInternalProps<S extends SchemaMap, K extends Topic<S>> {
+  channelName: K;
+  schema: S;
+  onPresence: (presence: Presence) => void;
+}
+
+export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
+  channelName,
+  schema,
+  onPresence,
+}: UseChannelInternalProps<S, K>) {
   const { client, topic } = useTopic();
   // topic comes from TopicProvider (the conversation room)
   // channelName specifies which schema to use for validation
@@ -108,12 +116,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>(
       );
 
       client.onPresence(topic, (presence) => {
-        // TODO: Complete this, it's easy
-        if (presence.status === "online") {
-          console.log("[useChannelInternal] Presence online", presence);
-        } else {
-          console.log("[useChannelInternal] Presence offline", presence);
-        }
+        onPresence(presence);
       });
     })();
 
