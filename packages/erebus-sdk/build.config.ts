@@ -29,6 +29,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   minify: true,
+  minifySyntax: true,
+  minifyWhitespace: true,
   treeshake: true,
   // Path aliases for @/* to ./src/*
   esbuildOptions(options) {

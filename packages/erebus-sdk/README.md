@@ -28,7 +28,7 @@ This SDK provides type safety you can trust, Zod at the core. And application in
 ## Quickstart example
 
 ```typescript
-import { createChannel } from "@/client/react";
+import { createChannel } from "@erebus-sh/sdk";
 import { z } from "zod";
 
 export const schema = {
