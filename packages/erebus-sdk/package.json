@@ -38,7 +38,6 @@
     "zustand": "^4 || ^5"
   },
   "dependencies": {
-    "@changesets/cli": "^2.29.6",
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
     "consola": "^3.4.2",
