@@ -32,9 +32,13 @@ export default defineConfig({
   treeshake: true,
   // Path aliases for @/* to ./src/*
   esbuildOptions(options) {
+    // Handle aliases
     options.alias = {
       "@/*": "./src/*",
     };
+    // Drop console and debugger
+    options.drop = ["console", "debugger"];
+    return options;
   },
   // Generate TypeScript declaration maps after build
   onSuccess: async () => {
