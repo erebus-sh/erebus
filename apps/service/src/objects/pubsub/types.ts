@@ -35,8 +35,6 @@ export interface MessageMetrics {
   duplicateCount: number;
   /** Number of errors encountered */
   errorCount: number;
-  /** Number of times execution yielded control */
-  yieldCount: number;
   /** Number of high backpressure situations */
   highBackpressureCount: number;
 }

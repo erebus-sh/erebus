@@ -96,7 +96,6 @@ export class MessageBroadcaster extends BaseService {
       skippedCount: 0,
       duplicateCount: 0,
       errorCount: 0,
-      yieldCount: 0,
       highBackpressureCount: 0,
     };
 
@@ -129,7 +128,7 @@ export class MessageBroadcaster extends BaseService {
     this.logDebug(
       `[PUBLISH_MESSAGE] Publish summary - sent: ${metrics.sentCount}, ` +
         `skipped: ${metrics.skippedCount}, duplicates: ${metrics.duplicateCount}, ` +
-        `errors: ${metrics.errorCount}, yields: ${metrics.yieldCount}, ` +
+        `errors: ${metrics.errorCount}, ` +
         `high_backpressure: ${metrics.highBackpressureCount}, ` +
         `duration: ${publishDuration.toFixed(2)}ms`,
     );
@@ -188,15 +187,6 @@ export class MessageBroadcaster extends BaseService {
 
       // Update metrics from batch results
       this.updateMetricsFromResults(metrics, batchResults);
-
-      // Yield control to event loop between batches
-      // Note from #V0ID: I have no fucking Idea what do this do, Cursor AI put it here,
-      // it seems to be a performance optimization of some sort with the async engine.
-      // Ama just keept real, i have no idea what do this do.
-      if (i + batchSize < clients.length) {
-        await this.yieldControl();
-        metrics.yieldCount++;
-      }
     }
   }
 
@@ -338,9 +328,6 @@ export class MessageBroadcaster extends BaseService {
     if (bufferedAmount > this.config.backpressureThresholdHigh) {
       // Socket is severely backed up, skip this send
       return { result: "skipped", reason: "high_backpressure" };
-    } else if (bufferedAmount > this.config.backpressureThresholdLow) {
-      // Moderate backpressure, yield control briefly
-      await this.yieldControl();
     }
 
     return null;
@@ -417,15 +404,6 @@ export class MessageBroadcaster extends BaseService {
     ]).catch((error) => {
       this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });
-  }
-
-  /**
-   * Yield control to the event loop to prevent blocking.
-   *
-   * @returns Promise that resolves on next tick
-   */
-  private async yieldControl(): Promise<void> {
-    return new Promise((resolve) => setTimeout(resolve, 0));
   }
 
   /**
@@ -556,11 +534,6 @@ export class MessageBroadcaster extends BaseService {
           errorCount++;
         }
       });
-
-      // Yield control between batches to prevent blocking
-      if (i + batchSize < clients.length) {
-        await this.yieldControl();
-      }
     }
 
     this.logDebug(
