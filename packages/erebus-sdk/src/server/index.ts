@@ -1,7 +1,6 @@
 // ========== SERVER APP ==========
 export {
   createApp,
-  startAuthServer,
   type AppVars,
   type AppType,
   type AuthorizeServer,

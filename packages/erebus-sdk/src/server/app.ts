@@ -1,7 +1,6 @@
 import { Hono } from "hono";
 import { logger } from "@/internal/logger/consola";
 
-import { serve } from "@hono/node-server";
 import { ErebusSession } from "@/service/session";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
@@ -159,21 +158,21 @@ export type AuthorizeServer = (
   req: Request,
 ) => ErebusSession | Promise<ErebusSession>;
 
-export const startAuthServer = async (
-  port: number,
-  authorize: AuthorizeServer,
-) => {
-  const app = createApp(authorize);
-  logger.info(`Attempting to start server on port ${port}...`);
-  const server = serve({
-    fetch: app.fetch,
-    port,
-  });
-  server.on("listening", () => {
-    logger.info(`Server successfully started and is running on port ${port}`);
-  });
-  server.on("error", (err: Error) => {
-    logger.error(`Server failed to start on port ${port}: ${err.message}`);
-  });
-  return server;
-};
+// export const startAuthServer = async (
+//   port: number,
+//   authorize: AuthorizeServer,
+// ) => {
+//   const app = createApp(authorize);
+//   logger.info(`Attempting to start server on port ${port}...`);
+//   const server = serve({
+//     fetch: app.fetch,
+//     port,
+//   });
+//   server.on("listening", () => {
+//     logger.info(`Server successfully started and is running on port ${port}`);
+//   });
+//   server.on("error", (err: Error) => {
+//     logger.error(`Server failed to start on port ${port}: ${err.message}`);
+//   });
+//   return server;
+// };
