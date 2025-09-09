@@ -1,11 +1,15 @@
-// Export everything from server modules
+// ========== SERVER APP ==========
+export {
+  createApp,
+  startAuthServer,
+  type AppVars,
+  type AppType,
+  type AuthorizeServer,
+} from "./app";
 
-// Export all from app.ts
-export * from "./app";
-
-// Export all from rpc (with explicit handling of conflicting types)
+// ========== RPC CLIENT ==========
 export { createRpcClient } from "./rpc";
 export type { AppType as RpcAppType } from "./rpc";
 
-// Export all from adapter/next
+// ========== ADAPTERS ==========
 export * from "./adapter/next";

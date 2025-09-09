@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.66",
+  "version": "0.0.74",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -42,6 +42,7 @@
     "@hono/zod-validator": "^0.7.2",
     "consola": "^3.4.2",
     "hono": "^4.9.1",
+    "http2": "^3.3.7",
     "jose": "^6.0.12",
     "ky": "^1.8.2",
     "nanoid": "^5.1.5",
@@ -58,9 +59,9 @@
       "require": "./dist/index.cjs"
     },
     "./client": {
-      "types": "./dist/client/core/Erebus.d.ts",
-      "import": "./dist/client/core/Erebus.mjs",
-      "require": "./dist/client/core/Erebus.cjs"
+      "types": "./dist/client/core/index.d.ts",
+      "import": "./dist/client/core/index.mjs",
+      "require": "./dist/client/core/index.cjs"
     },
     "./react": {
       "types": "./dist/client/react/index.d.ts",
@@ -68,9 +69,9 @@
       "require": "./dist/client/react/index.cjs"
     },
     "./server": {
-      "types": "./dist/server/app.d.ts",
-      "import": "./dist/server/app.mjs",
-      "require": "./dist/server/app.cjs"
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.mjs",
+      "require": "./dist/server/index.cjs"
     },
     "./server/next": {
       "types": "./dist/server/adapter/next/index.d.ts",
@@ -116,20 +117,23 @@
   "license": "MIT",
   "typesVersions": {
     "*": {
-      "client/*": [
-        "dist/client/*"
+      "client": [
+        "dist/client/core/index.d.ts"
       ],
-      "react/*": [
-        "dist/client/react/*"
+      "react": [
+        "dist/client/react/index.d.ts"
       ],
-      "server/*": [
-        "dist/server/*"
+      "server": [
+        "dist/server/index.d.ts"
       ],
-      "service/*": [
-        "dist/service/*"
+      "server/next": [
+        "dist/server/adapter/next/index.d.ts"
+      ],
+      "service": [
+        "dist/service/index.d.ts"
       ],
       "*": [
-        "dist/*"
+        "dist/index.d.ts"
       ]
     }
   },

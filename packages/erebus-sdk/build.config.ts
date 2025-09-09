@@ -1,62 +1,180 @@
 import { defineConfig } from "tsup";
-import glob from "fast-glob";
 
-export default defineConfig({
-  entry: await glob([
-    "./src/**/*.ts",
-    "!./src/**/*.test.ts",
-    "!./src/**/*.spec.ts",
-  ]),
-  format: ["esm", "cjs"],
-  dts: true,
-  external: [
-    // Dependencies
-    "@hono/node-server",
-    "@hono/zod-validator",
-    "consola",
-    "hono",
-    "jose",
-    "ky",
-    "nanoid",
-    "unbuild",
-    "zod",
-    // Peer dependencies
-    "typescript",
-    "react",
-    "zustand",
-  ],
-  splitting: false,
-  sourcemap: true,
-  clean: true,
-  minify: true,
-  minifySyntax: true,
-  minifyWhitespace: true,
-  treeshake: true,
-  // Path aliases for @/* to ./src/*
-  esbuildOptions(options) {
-    // Handle aliases
-    options.alias = {
-      "@/*": "./src/*",
-    };
-    // Drop console and debugger
-    options.drop = ["console", "debugger"];
-    return options;
+export default defineConfig([
+  // ---- Main entry point ----
+  {
+    entry: {
+      index: "./src/index.ts",
+    },
+    format: ["esm", "cjs"],
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : ".cjs",
+      };
+    },
+    dts: true,
+    target: "es2022",
+    external: [
+      "consola",
+      "ky",
+      "nanoid",
+      "zod",
+      "react",
+      "zustand",
+      "@hono/node-server",
+      "@hono/zod-validator",
+      "hono",
+      "jose",
+    ],
+    splitting: false,
+    sourcemap: true,
+    clean: true,
+    minify: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeshake: true,
+    esbuildOptions(options) {
+      options.alias = {
+        "@/*": "./src/*",
+      };
+      options.drop = ["console", "debugger"];
+      return options;
+    },
   },
-  // Generate TypeScript declaration maps after build
-  onSuccess: async () => {
-    const { execSync } = await import("child_process");
-    try {
-      execSync("tsc --emitDeclarationOnly --declaration", {
-        stdio: "inherit",
-        cwd: process.cwd(),
-      });
-      console.log("✅ TypeScript declaration maps generated successfully");
-    } catch (error) {
-      console.error(
-        "❌ Failed to generate TypeScript declaration maps:",
-        error,
-      );
-      process.exit(1);
-    }
+
+  // ---- Client Core ----
+  {
+    entry: {
+      "client/core/index": "./src/client/core/index.ts",
+    },
+    format: ["esm", "cjs"],
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : ".cjs",
+      };
+    },
+    dts: true,
+    target: "es2022",
+    external: ["consola", "ky", "nanoid", "zod"],
+    splitting: false,
+    sourcemap: true,
+    clean: false, // Don't clean since we have multiple builds
+    minify: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeshake: true,
+    esbuildOptions(options) {
+      options.alias = {
+        "@/*": "./src/*",
+      };
+      options.drop = ["console", "debugger"];
+      return options;
+    },
   },
-});
+
+  // ---- React Client ----
+  {
+    entry: {
+      "client/react/index": "./src/client/react/index.ts",
+    },
+    format: ["esm", "cjs"],
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : ".cjs",
+      };
+    },
+    dts: true,
+    target: "es2022",
+    external: ["consola", "ky", "nanoid", "zod", "react", "zustand"],
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    minify: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeshake: true,
+    esbuildOptions(options) {
+      options.alias = {
+        "@/*": "./src/*",
+      };
+      options.drop = ["console", "debugger"];
+      return options;
+    },
+  },
+
+  // ---- Service ----
+  {
+    entry: {
+      "service/index": "./src/service/index.ts",
+    },
+    format: ["esm", "cjs"],
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : ".cjs",
+      };
+    },
+    dts: true,
+    target: "es2022",
+    external: ["consola", "ky", "nanoid", "zod"],
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    minify: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeshake: true,
+    esbuildOptions(options) {
+      options.alias = {
+        "@/*": "./src/*",
+      };
+      options.drop = ["console", "debugger"];
+      return options;
+    },
+  },
+
+  // ---- Server SDK (Node.js with http2 support) ----
+  {
+    entry: {
+      "server/index": "./src/server/index.ts",
+      "server/adapter/next/index": "./src/server/adapter/next/index.ts",
+    },
+    format: ["esm", "cjs"],
+    outExtension({ format }) {
+      return {
+        js: format === "esm" ? ".mjs" : ".cjs",
+      };
+    },
+    dts: true,
+    target: "node21",
+    external: [
+      // Dependencies
+      "@hono/node-server",
+      "@hono/zod-validator",
+      "consola",
+      "hono",
+      "jose",
+      "ky",
+      "http2", // Explicitly externalize http2 for Node.js usage
+      "nanoid",
+      "zod",
+      // Peer dependencies
+      "typescript",
+      "react",
+      "zustand",
+    ],
+    splitting: false,
+    sourcemap: true,
+    clean: false,
+    minify: true,
+    minifySyntax: true,
+    minifyWhitespace: true,
+    treeshake: true,
+    esbuildOptions(options) {
+      options.alias = {
+        "@/*": "./src/*",
+      };
+      options.drop = ["console", "debugger"];
+      return options;
+    },
+  },
+]);
