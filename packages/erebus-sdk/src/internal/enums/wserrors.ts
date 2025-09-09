@@ -1,3 +1,5 @@
-import { WsErrors } from "@repo/shared/enums/wserrors";
+import { WsErrors as SharedWsErrors } from "@repo/shared/enums/wserrors";
 
-export { WsErrors };
+// Re-export as a local value to satisfy bundlers/dts processing
+export const WsErrors = SharedWsErrors;
+export type WsErrors = typeof SharedWsErrors;

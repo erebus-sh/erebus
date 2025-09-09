@@ -2,6 +2,7 @@
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusError } from "@/internal/error";
 import React from "react";
+import { createNoopPubSubClient } from "../utils/noopClient";
 
 type TopicCtx = {
   topic: string;
@@ -10,31 +11,16 @@ type TopicCtx = {
 
 type TopicContextType = TopicCtx | null;
 
-// SSR-safe context creation
-const TopicContext =
-  typeof window !== "undefined"
-    ? React.createContext<TopicContextType>(null)
-    : ({
-        Provider: ({ children }: { children: React.ReactNode }) => children,
-        Consumer: () => null,
-        displayName: "TopicContext",
-      } as unknown as React.Context<TopicContextType>);
+// Always create a real React context - handle SSR in the hook
+const TopicContext = React.createContext<TopicContextType>(null);
+TopicContext.displayName = "TopicContext";
 
 export { TopicContext };
 
 export function useTopic() {
   // SSR-safe: return a stub that throws at runtime usage, not during prerender
   if (typeof window === "undefined") {
-    return {
-      topic: "",
-      client: new Proxy({} as ErebusPubSubClient, {
-        get() {
-          throw new ErebusError(
-            "Topic/client are not available during server-side rendering. Call useTopic only in client components at runtime.",
-          );
-        },
-      }),
-    };
+    return { topic: "", client: createNoopPubSubClient() } as const;
   }
 
   const ctx = React.useContext(TopicContext);

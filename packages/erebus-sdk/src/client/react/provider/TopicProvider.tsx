@@ -4,6 +4,7 @@ import { useErebus } from "../context/ErebusContext";
 import { ErebusError } from "@/internal/error";
 import { TopicContext } from "../context/TopicContext";
 import React from "react";
+import { createNoopPubSubClient } from "../utils/noopClient";
 
 type Props<K extends string> = {
   children: React.ReactNode;
@@ -11,8 +12,11 @@ type Props<K extends string> = {
 };
 
 export function TopicProvider<K extends string>({ children, topic }: Props<K>) {
-  const { makeClient } = useErebus();
-  const client = makeClient();
+  const isServer = typeof window === "undefined";
+  const { makeClient } = isServer
+    ? { makeClient: () => createNoopPubSubClient() }
+    : useErebus();
+  const client = isServer ? createNoopPubSubClient() : makeClient();
 
   if (!client) {
     throw new ErebusError("TopicProvider must be used within a ErebusProvider");

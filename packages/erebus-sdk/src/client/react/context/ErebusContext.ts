@@ -3,33 +3,22 @@
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusError } from "@/internal/error";
 import React from "react";
+import { createNoopPubSubClient } from "../utils/noopClient";
 
 type ErebusContextType = {
   makeClient: () => ErebusPubSubClient;
 } | null;
 
-// SSR-safe context creation
-const ErebusContext =
-  typeof window !== "undefined"
-    ? React.createContext<ErebusContextType>(null)
-    : ({
-        Provider: ({ children }: { children: React.ReactNode }) => children,
-        Consumer: () => null,
-        displayName: "ErebusContext",
-      } as unknown as React.Context<ErebusContextType>);
+// Always create a real React context - handle SSR in the hook
+const ErebusContext = React.createContext<ErebusContextType>(null);
+ErebusContext.displayName = "ErebusContext";
 
 export { ErebusContext };
 
 export function useErebus() {
   // SSR-safe: return a stub that throws at runtime usage, not during prerender
   if (typeof window === "undefined") {
-    return {
-      makeClient: () => {
-        throw new ErebusError(
-          "Erebus client is not available during server-side rendering. Call useErebus only in client components at runtime.",
-        );
-      },
-    };
+    return { makeClient: () => createNoopPubSubClient() } as const;
   }
 
   const context = React.useContext(ErebusContext);

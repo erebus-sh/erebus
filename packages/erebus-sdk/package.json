@@ -1,10 +1,10 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.85",
+  "version": "0.0.98",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "private": false,
   "publishConfig": {
@@ -13,7 +13,7 @@
   "scripts": {
     "clean": "rm -rf dist",
     "clean:types": "rm -rf dist/types",
-    "build:sdk": "tsup --config build.config.ts",
+    "build:sdk": "tsdown --config build.config.ts",
     "bundler:build:types": "tsc --project tsconfig.json --emitDeclarationOnly",
     "bundler:build:types:check": "tsc --project tsconfig.json --noEmit",
     "check-types": "bun run bundler:build:types:check",
@@ -29,7 +29,7 @@
     "chalk": "^5.3.0",
     "jsdom": "^26.1.0",
     "prettier": "3.6.2",
-    "tsup": "^8.5.0",
+    "tsdown": "^0.14.2",
     "vitest": "^3.2.4"
   },
   "peerDependencies": {
@@ -55,32 +55,32 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
+      "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
     "./client": {
       "types": "./dist/client/core/index.d.ts",
-      "import": "./dist/client/core/index.mjs",
+      "import": "./dist/client/core/index.js",
       "require": "./dist/client/core/index.cjs"
     },
     "./react": {
       "types": "./dist/client/react/index.d.ts",
-      "import": "./dist/client/react/index.mjs",
+      "import": "./dist/client/react/index.js",
       "require": "./dist/client/react/index.cjs"
     },
     "./server": {
       "types": "./dist/server/index.d.ts",
-      "import": "./dist/server/index.mjs",
+      "import": "./dist/server/index.js",
       "require": "./dist/server/index.cjs"
     },
     "./server/next": {
       "types": "./dist/server/adapter/next/index.d.ts",
-      "import": "./dist/server/adapter/next/index.mjs",
+      "import": "./dist/server/adapter/next/index.js",
       "require": "./dist/server/adapter/next/index.cjs"
     },
     "./service": {
       "types": "./dist/service/index.d.ts",
-      "import": "./dist/service/index.mjs",
+      "import": "./dist/service/index.js",
       "require": "./dist/service/index.cjs"
     }
   },

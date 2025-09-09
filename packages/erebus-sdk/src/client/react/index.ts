@@ -1,3 +1,5 @@
+"use client";
+
 // ========== REACT HOOKS ==========
 // Main hooks for pubsub functionality in React
 export * from "./hooks";

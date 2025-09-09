@@ -5,6 +5,7 @@ import { ErebusContext } from "../context/ErebusContext";
 import type { ReactNode } from "react";
 import { ErebusClient, ErebusClientState } from "@/client/core/Erebus";
 import { getGrant, setGrant } from "../cache/localStorage";
+import { createNoopPubSubClient } from "../utils/noopClient";
 
 interface ErebusProviderProps {
   children: ReactNode;
@@ -19,6 +20,9 @@ export function ErebusProvider({
 }: ErebusProviderProps) {
   // Factory: each call gives you a new client bound to a channel
   const makeClient = (): ErebusPubSubClient => {
+    if (typeof window === "undefined") {
+      return createNoopPubSubClient();
+    }
     return ErebusClient.createClientSync({
       client: ErebusClientState.PubSub,
       authBaseUrl,
