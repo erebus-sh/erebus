@@ -2,20 +2,39 @@
 
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusError } from "@/internal/error";
-import { createContext, useContext } from "react";
+import React from "react";
 
-type ErebusContext = {
+type ErebusContextType = {
   makeClient: () => ErebusPubSubClient;
 } | null;
 
-export const ErebusContext = createContext<ErebusContext>(null);
+// SSR-safe context creation
+const ErebusContext =
+  typeof window !== "undefined"
+    ? React.createContext<ErebusContextType>(null)
+    : ({
+        Provider: ({ children }: { children: React.ReactNode }) => children,
+        Consumer: () => null,
+        displayName: "ErebusContext",
+      } as unknown as React.Context<ErebusContextType>);
+
+export { ErebusContext };
 
 export function useErebus() {
-  const context = useContext(ErebusContext);
+  // SSR-safe: return a stub that throws at runtime usage, not during prerender
+  if (typeof window === "undefined") {
+    return {
+      makeClient: () => {
+        throw new ErebusError(
+          "Erebus client is not available during server-side rendering. Call useErebus only in client components at runtime.",
+        );
+      },
+    };
+  }
+
+  const context = React.useContext(ErebusContext);
   if (!context) {
-    throw new ErebusError(
-      "useErebusContext must be used within a ErebusProvider",
-    );
+    throw new ErebusError("useErebus must be used within a ErebusProvider");
   }
   return context;
 }
