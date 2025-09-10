@@ -16,6 +16,7 @@ import { SequenceManager } from "./SequenceManager";
 import { ShardManager } from "./ShardManager";
 import { PublishMessageParams } from "./types";
 import { ErebusClient } from "./ErebusClient";
+import { WsErrors } from "@/enums/wserrors";
 
 /**
  * ChannelV1 - Main PubSub channel implementation extending ErebusPubSubService.
@@ -81,6 +82,11 @@ export class ChannelV1
    * Handle WebSocket connection upgrades with location hint processing.
    */
   async fetch(request: Request): Promise<Response> {
+    if (await this.isPaused()) {
+      this.log("[FETCH] Channel is paused, returning 403", "warn");
+      return new Response("Channel is paused", { status: 403 });
+    }
+
     this.log("[FETCH] WebSocket connection request received");
 
     const locationHint = request.headers.get("x-location-hint");
@@ -114,8 +120,15 @@ export class ChannelV1
 
   /**
    * Handle incoming WebSocket messages by delegating to MessageHandler.
+   * This is where all the message handling logic is implemented.
    */
   async webSocketMessage(ws: WebSocket, message: string): Promise<void> {
+    if (await this.isPaused()) {
+      this.log("[WEBSOCKET_MESSAGE] Channel is paused, returning 403", "warn");
+      ws.close(WsErrors.Forbidden, "Channel is paused");
+      return;
+    }
+
     await this.messageHandler.handleWebSocketMessage(ws, message);
   }
 
@@ -405,5 +418,26 @@ export class ChannelV1
    */
   protected getServiceName(): string {
     return "[CHANNEL_V1]";
+  }
+
+  /**
+   * Pause the channel
+   */
+  async pause(): Promise<void> {
+    await this.putStorageValue("paused", true);
+  }
+
+  /**
+   * Resume the channel
+   */
+  async resume(): Promise<void> {
+    await this.deleteStorageValue("paused");
+  }
+
+  /**
+   * Check if the channel is paused
+   */
+  async isPaused(): Promise<boolean> {
+    return (await this.getStorageValue("paused")) ?? false;
   }
 }

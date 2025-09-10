@@ -9,7 +9,9 @@ import { UsageWebhook } from "./services/webhooks/usage";
 import { UsagePayload } from "@repo/schemas/webhooks/usageRequest";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
+import { validator } from "hono/validator";
 import { nanoid } from "nanoid";
+import { pauseProjectId, unpauseProjectId } from "./handlers/commands";
 
 // API version configuration
 const API_VERSION = "v1";
@@ -116,71 +118,73 @@ const apiRouter = new Hono<{
 }>();
 
 // Route: POST /root/command - Webhook from server to Durable Object
-apiRouter.post("/root/command", async (c) => {
-  const rootApiKey = c.req.header("x-root-api-key");
-  const requestId = c.get("requestId");
+apiRouter.post(
+  "/root/command",
+  validator("json", (value) => RootCommandSchema.parse(value)),
+  async (c) => {
+    const rootApiKey = c.req.header("x-root-api-key");
+    const requestId = c.get("requestId");
 
-  if (!rootApiKey) {
-    console.log(
-      `[${requestId}] Authentication failed: No root API key provided`,
-    );
-    return c.json(
-      {
-        error: "Authentication required: Root API key must be provided",
-      },
-      401,
-    );
-  }
-
-  if (rootApiKey !== c.env.ROOT_API_KEY) {
-    console.log(
-      `[${requestId}] Authentication failed: Invalid root API key provided`,
-    );
-    return c.json(
-      {
-        error: "Authentication failed: Invalid root API key provided",
-      },
-      401,
-    );
-  }
-
-  const command = RootCommandSchema.safeParse(await c.req.json());
-  if (!command.success) {
-    console.log(`[${requestId}] Invalid command format:`, command.error);
-    return c.json(
-      {
-        error: "Invalid request: Command format is not valid",
-      },
-      400,
-    );
-  }
-
-  /**
-   * Use getChannelsForProjectId to get all the channels for the project id
-   */
-  switch (command.data.command) {
-    /**
-     * we usage limits hit, we pause it by call stub in every avaliable
-     * do instance, they are all stored in redis, so we can just grab them
-     * and loop on them
-     */
-    case "pause_project_id":
-      throw new Error("Not implemented");
-    case "unpause_project_id":
-      throw new Error("Not implemented");
-    default:
+    if (!rootApiKey) {
       console.log(
-        `[${requestId}] Unsupported command type:`,
-        command.data.command,
+        `[${requestId}] Authentication failed: No root API key provided`,
       );
       return c.json(
         {
-          error: "Invalid request: Unsupported command type",
+          error: "Authentication required: Root API key must be provided",
         },
-        400,
+        401,
       );
-  }
-});
+    }
+
+    if (rootApiKey !== c.env.ROOT_API_KEY) {
+      console.log(
+        `[${requestId}] Authentication failed: Invalid root API key provided`,
+      );
+      return c.json(
+        {
+          error: "Authentication failed: Invalid root API key provided",
+        },
+        401,
+      );
+    }
+
+    const command = c.req.valid("json");
+    /**
+     * Use getChannelsForProjectId to get all the channels for the project id
+     */
+    switch (command.command) {
+      /**
+       * when usage limits hit, we pause it by call stub in every avaliable
+       * do instance, they are all stored in redis, so we can just grab them
+       * and loop on them
+       */
+      case "pause_project_id":
+        await pauseProjectId({
+          projectId: command.projectId,
+          channel: command.channel,
+          env: c.env,
+        });
+      case "unpause_project_id":
+        await unpauseProjectId({
+          projectId: command.projectId,
+          channel: command.channel,
+          env: c.env,
+        });
+      default:
+        console.log(
+          `[${requestId}] Unsupported command type:`,
+          command.command,
+        );
+        return c.json(
+          {
+            error: "Invalid request: Unsupported command type",
+          },
+          400,
+        );
+    }
+  },
+);
 
 // Route: WebSocket upgrade for /pubsub/*
 apiRouter.get("/pubsub/*", async (c) => {
