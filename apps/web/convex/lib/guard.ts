@@ -1,6 +1,6 @@
 import { api } from "../_generated/api";
 import { ConvexError } from "convex/values";
-import { DataModel, Id } from "../_generated/dataModel";
+import { DataModel, Doc, Id } from "../_generated/dataModel";
 import { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
 // Helper function to get authenticated user
@@ -175,18 +175,18 @@ export async function getValidatedAndAuthorizedKey(
 // Query-compatible guard functions
 export async function getAuthenticatedUserForQuery(
   ctx: GenericQueryCtx<DataModel>,
-) {
+): Promise<Doc<"users">> {
   const user = await ctx.runQuery(api.users.query.getMe);
   if (!user || !user._id) {
     throw new ConvexError("User not found");
   }
-  return user;
+  return user as Doc<"users">;
 }
 
 export async function getValidatedProjectWithOwnershipForQuery(
   ctx: GenericQueryCtx<DataModel>,
   projectId: Id<"projects">,
-) {
+): Promise<{ user: Doc<"users">; project: Doc<"projects"> }> {
   const user = await getAuthenticatedUserForQuery(ctx);
   const project = await ctx.db.get(projectId);
   if (!project) throw new ConvexError("Project not found");
@@ -201,7 +201,7 @@ export async function getValidatedProjectWithOwnershipForQuery(
 export async function getValidatedProjectBySlugWithOwnershipForQuery(
   ctx: GenericQueryCtx<DataModel>,
   slug: string,
-) {
+): Promise<{ user: Doc<"users">; project: Doc<"projects"> }> {
   const user = await getAuthenticatedUserForQuery(ctx);
   const project = await ctx.runQuery(api.projects.query.getProjectBySlug, {
     slug,
@@ -218,7 +218,7 @@ export async function getValidatedProjectBySlugWithOwnershipForQuery(
 export async function getValidatedActiveKeyForQuery(
   ctx: GenericQueryCtx<DataModel>,
   secretKey: string,
-) {
+): Promise<Doc<"api_keys">> {
   const key = await ctx.db
     .query("api_keys")
     .withIndex("by_secret_key", (q) => q.eq("key", secretKey))

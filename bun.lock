@@ -112,7 +112,7 @@
         "next": "^15.5.0",
         "next-themes": "^0.4.6",
         "prism-react-renderer": "2.0.0",
-        "radix-ui": "^1.4.2",
+        "radix-ui": "^1.4.3",
         "react": "^19.1.1",
         "react-dom": "^19.1.1",
         "react-loader-spinner": "^6.1.6",
@@ -148,7 +148,7 @@
     },
     "packages/erebus-sdk": {
       "name": "@erebus-sh/sdk",
-      "version": "0.0.87",
+      "version": "0.0.98",
       "dependencies": {
         "@hono/node-server": "^1.18.2",
         "@hono/zod-validator": "^0.7.2",

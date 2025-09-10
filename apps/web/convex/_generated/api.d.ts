@@ -11,6 +11,8 @@
 import type * as aggregaters_usageAggregater from "../aggregaters/usageAggregater.js";
 import type * as aggregaters_utils from "../aggregaters/utils.js";
 import type * as analytics_query from "../analytics/query.js";
+import type * as audit_log_mutation from "../audit_log/mutation.js";
+import type * as audit_log_query from "../audit_log/query.js";
 import type * as auth from "../auth.js";
 import type * as console_mutation from "../console/mutation.js";
 import type * as helper_action from "../helper/action.js";
@@ -22,6 +24,7 @@ import type * as lib_jwt from "../lib/jwt.js";
 import type * as projects_mutation from "../projects/mutation.js";
 import type * as projects_query from "../projects/query.js";
 import type * as tables_api_keys from "../tables/api_keys.js";
+import type * as tables_audit_log from "../tables/audit_log.js";
 import type * as tables_index from "../tables/index.js";
 import type * as tables_projects from "../tables/projects.js";
 import type * as tables_usage from "../tables/usage.js";
@@ -52,6 +55,8 @@ declare const fullApi: ApiFromModules<{
   "aggregaters/usageAggregater": typeof aggregaters_usageAggregater;
   "aggregaters/utils": typeof aggregaters_utils;
   "analytics/query": typeof analytics_query;
+  "audit_log/mutation": typeof audit_log_mutation;
+  "audit_log/query": typeof audit_log_query;
   auth: typeof auth;
   "console/mutation": typeof console_mutation;
   "helper/action": typeof helper_action;
@@ -63,6 +68,7 @@ declare const fullApi: ApiFromModules<{
   "projects/mutation": typeof projects_mutation;
   "projects/query": typeof projects_query;
   "tables/api_keys": typeof tables_api_keys;
+  "tables/audit_log": typeof tables_audit_log;
   "tables/index": typeof tables_index;
   "tables/projects": typeof tables_projects;
   "tables/usage": typeof tables_usage;
