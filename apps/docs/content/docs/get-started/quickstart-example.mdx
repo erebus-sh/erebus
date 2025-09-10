@@ -18,8 +18,8 @@ First create a api endpoint to generate a token for the client using your own ap
 <Tabs items={["next-js"]}>
   <Tab value="next-js">
  ```typescript title="/app/api/generate-token/route.ts"
-import { ErebusService, Access } from "erebus-sdk/service";
-import { createRouteHandler } from "erebus-sdk/server/next";
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+import { createRouteHandler } from "@erebus-sh/sdk/server/next";
 import { cookies } from "next/headers";
 
 export const { POST } = createRouteHandler({
@@ -47,7 +47,7 @@ export const { POST } = createRouteHandler({
 </Step>
 <Step>
  ```typescript title="/erebus/client.ts"
-import { createErebus } from "erebus-sdk/react";
+import { createErebus } from "@erebus-sh/sdk/react";
 import { z } from "zod";
 
 const { useSubscribe } = createErebus({

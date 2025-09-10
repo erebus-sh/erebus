@@ -24,7 +24,7 @@ const tabs: TabData[] = [
     name: "code",
     label: "Code",
     content: [
-      "import { Erebus } from 'erebus-sdk';",
+      "import { Erebus } from '@erebus-sh/sdk';",
       "",
       "const erebus = new Erebus({",
       "  apiKey: 'your-api-key',",

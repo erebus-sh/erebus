@@ -23,8 +23,10 @@
     "@repo/web": "workspace:*",
     "@upstash/redis": "^1.35.3",
     "cloudflare": "^4.5.0",
+    "hono": "^4.9.6",
     "jose": "^6.0.12",
     "ky": "^1.8.2",
+    "nanoid": "^5.1.5",
     "ulid": "^3.0.1",
     "vitest": "~3.2.0",
     "zod": "^4.0.17"

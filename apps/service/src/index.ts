@@ -7,10 +7,253 @@ import { HandlerProps } from "./types/handlerProps";
 import { QueueEnvelopeSchema } from "@repo/schemas/queueEnvelope";
 import { UsageWebhook } from "./services/webhooks/usage";
 import { UsagePayload } from "@repo/schemas/webhooks/usageRequest";
+import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
+import { nanoid } from "nanoid";
+
+// API version configuration
+const API_VERSION = "v1";
+const API_BASE_PATH = `/${API_VERSION}`;
+
+// Define the Hono app with proper Cloudflare types
+type HonoVariables = {
+  requestId: string;
+  locationHint: DurableObjectLocationHint;
+  cf: IncomingRequestCfProperties;
+};
+
+const app = new Hono<{
+  Bindings: Env;
+  Variables: HonoVariables;
+}>();
+
+// Middleware to add request ID to every request
+const requestIdMiddleware = createMiddleware<{
+  Bindings: Env;
+  Variables: HonoVariables;
+}>(async (c, next) => {
+  const requestId = nanoid();
+  c.set("requestId", requestId);
+  await next();
+});
+
+// Middleware for comprehensive logging and location hint extraction
+const loggingMiddleware = createMiddleware<{
+  Bindings: Env;
+  Variables: HonoVariables;
+}>(async (c, next) => {
+  const request = c.req.raw;
+  const { cf } = request;
+  const url = new URL(request.url);
+  const path = url.pathname;
+  const method = request.method;
+  const upgrade = request.headers.get("upgrade");
+  const requestId = c.get("requestId");
+
+  const continentCode = cf?.continent as ContinentCode | undefined;
+  const latitude = Number(cf?.latitude);
+  const longitude = Number(cf?.longitude);
+
+  // Store cf properties for later use
+  c.set("cf", cf as IncomingRequestCfProperties);
+
+  // Calculate location hint
+  const hasPoint = !Number.isNaN(latitude) && !Number.isNaN(longitude);
+  const locationHint = getLocationHint({
+    continentCode,
+    point: hasPoint ? { lat: latitude, lon: longitude } : undefined,
+  });
+  c.set("locationHint", locationHint);
+
+  // Comprehensive log of request details
+  console.log(`[FETCH] [${requestId}] Incoming request details:`, {
+    url: request.url,
+    path,
+    method,
+    upgrade,
+    headers: Object.fromEntries(request.headers.entries()),
+    cf: {
+      continent: continentCode,
+      latitude: cf?.latitude,
+      longitude: cf?.longitude,
+      country: cf?.country,
+      region: cf?.region,
+      city: cf?.city,
+      colo: cf?.colo,
+      timezone: cf?.timezone,
+      postalCode: cf?.postalCode,
+      metroCode: cf?.metroCode,
+      regionCode: cf?.regionCode,
+      asOrganization: cf?.asOrganization,
+      asn: cf?.asn,
+      clientTcpRtt: cf?.clientTcpRtt,
+      requestPriority: cf?.requestPriority,
+      tlsCipher: cf?.tlsCipher,
+      tlsClientAuth: cf?.tlsClientAuth,
+      tlsVersion: cf?.tlsVersion,
+      edgeRequestKeepAliveStatus: cf?.edgeRequestKeepAliveStatus,
+    },
+    parsed: {
+      continentCode,
+      latitude,
+      longitude,
+    },
+    locationHint,
+    timestamp: new Date().toISOString(),
+  });
+
+  await next();
+});
+
+// Apply middlewares globally
+app.use("*", requestIdMiddleware);
+app.use("*", loggingMiddleware);
+
+// Create a scoped router for versioned routes
+const apiRouter = new Hono<{
+  Bindings: Env;
+  Variables: HonoVariables;
+}>();
+
+// Route: POST /root/command - Webhook from server to Durable Object
+apiRouter.post("/root/command", async (c) => {
+  const rootApiKey = c.req.header("x-root-api-key");
+  const requestId = c.get("requestId");
+
+  if (!rootApiKey) {
+    console.log(
+      `[${requestId}] Authentication failed: No root API key provided`,
+    );
+    return c.json(
+      {
+        error: "Authentication required: Root API key must be provided",
+      },
+      401,
+    );
+  }
+
+  if (rootApiKey !== c.env.ROOT_API_KEY) {
+    console.log(
+      `[${requestId}] Authentication failed: Invalid root API key provided`,
+    );
+    return c.json(
+      {
+        error: "Authentication failed: Invalid root API key provided",
+      },
+      401,
+    );
+  }
+
+  const command = RootCommandSchema.safeParse(await c.req.json());
+  if (!command.success) {
+    console.log(`[${requestId}] Invalid command format:`, command.error);
+    return c.json(
+      {
+        error: "Invalid request: Command format is not valid",
+      },
+      400,
+    );
+  }
+
+  /**
+   * Use getChannelsForProjectId to get all the channels for the project id
+   */
+  switch (command.data.command) {
+    /**
+     * we usage limits hit, we pause it by call stub in every avaliable
+     * do instance, they are all stored in redis, so we can just grab them
+     * and loop on them
+     */
+    case "pause_project_id":
+      throw new Error("Not implemented");
+    case "unpause_project_id":
+      throw new Error("Not implemented");
+    default:
+      console.log(
+        `[${requestId}] Unsupported command type:`,
+        command.data.command,
+      );
+      return c.json(
+        {
+          error: "Invalid request: Unsupported command type",
+        },
+        400,
+      );
+  }
+});
+
+// Route: WebSocket upgrade for /pubsub/*
+apiRouter.get("/pubsub/*", async (c) => {
+  const request = c.req.raw;
+  const upgrade = request.headers.get("upgrade");
+  const requestId = c.get("requestId");
+
+  if (upgrade !== "websocket") {
+    console.log(
+      `[${requestId}] WebSocket upgrade required for /${API_VERSION}/pubsub`,
+    );
+    return c.json(
+      {
+        error: "WebSocket upgrade required for this service",
+      },
+      400,
+    );
+  }
+
+  const handlerProps: HandlerProps = {
+    request,
+    env: c.env,
+    locationHint: c.get("locationHint"),
+  };
+
+  console.log(`[${requestId}] Routing to pubsub handler`);
+  return await pubsub(handlerProps);
+});
+
+// Route: WebSocket upgrade for /state/*
+apiRouter.get("/state/*", async (c) => {
+  const request = c.req.raw;
+  const upgrade = request.headers.get("upgrade");
+  const requestId = c.get("requestId");
+
+  if (upgrade !== "websocket") {
+    console.log(
+      `[${requestId}] WebSocket upgrade required for /${API_VERSION}/state`,
+    );
+    return c.json(
+      {
+        error: "WebSocket upgrade required for this service",
+      },
+      400,
+    );
+  }
+
+  console.log(`[${requestId}] /${API_VERSION}/state/ not implemented yet`);
+  throw new Error("Not implemented /" + API_VERSION + "/state/");
+});
+
+// Mount the versioned API router
+app.route(API_BASE_PATH, apiRouter);
+
+// 404 handler for all other routes
+app.notFound((c) => {
+  const requestId = c.get("requestId");
+  console.log(
+    `[${requestId}] Endpoint not found: ${c.req.method} ${c.req.path}`,
+  );
+  return c.json({ error: "Endpoint not found" }, 404);
+});
+
+// Error handler
+app.onError((err, c) => {
+  const requestId = c.get("requestId");
+  console.error(`[${requestId}] Unhandled error:`, err);
+  return c.json({ error: "Internal server error" }, 500);
+});
 
 export default {
   /**
-   * WebSocket service handler for real-time communication.
+   * WebSocket service handler for real-time communication using Hono.
    *
    * This handler only manages WebSocket connections. All user-related logic—
    * such as authentication or database interactions—
@@ -19,195 +262,10 @@ export default {
    *
    * @param request - Incoming client request
    * @param env - Environment bindings from wrangler.jsonc
+   * @param ctx - Execution context
    * @returns Response to establish or reject the WebSocket connection
    */
-  async fetch(request, env): Promise<Response> {
-    /**
-     * Extract general request information.
-     */
-    const { cf } = request;
-    const url = new URL(request.url);
-    const path = url.pathname;
-    const method = request.method;
-    const upgrade = request.headers.get("upgrade");
-
-    const continentCode = cf?.continent;
-    const latitude = Number(cf?.latitude);
-    const longitude = Number(cf?.longitude);
-
-    // Comprehensive log of request details
-    console.log("[FETCH] Incoming request details:", {
-      url: request.url,
-      path,
-      method,
-      upgrade,
-      headers: Object.fromEntries(request.headers.entries()),
-      cf: {
-        continent: continentCode,
-        latitude: cf?.latitude,
-        longitude: cf?.longitude,
-        country: cf?.country,
-        region: cf?.region,
-        city: cf?.city,
-        colo: cf?.colo,
-        timezone: cf?.timezone,
-        postalCode: cf?.postalCode,
-        metroCode: cf?.metroCode,
-        regionCode: cf?.regionCode,
-        asOrganization: cf?.asOrganization,
-        asn: cf?.asn,
-        clientTcpRtt: cf?.clientTcpRtt,
-        requestPriority: cf?.requestPriority,
-        tlsCipher: cf?.tlsCipher,
-        tlsClientAuth: cf?.tlsClientAuth,
-        tlsVersion: cf?.tlsVersion,
-        edgeRequestKeepAliveStatus: cf?.edgeRequestKeepAliveStatus,
-      },
-      parsed: {
-        continentCode,
-        latitude,
-        longitude,
-      },
-      timestamp: new Date().toISOString(),
-    });
-
-    /**
-     * Locations
-     *
-     *	wnam	Western North America
-     *	enam	Eastern North America
-     *	sam		South America 2
-     *	weur	Western Europe
-     *	eeur	Eastern Europe
-     *	apac	Asia-Pacific
-     *	oc		Oceania
-     *	afr		Africa 2
-     *	me		Middle East 2
-     */
-    const hasPoint = !Number.isNaN(latitude) && !Number.isNaN(longitude);
-    const locationHint = getLocationHint({
-      continentCode,
-      point: hasPoint ? { lat: latitude, lon: longitude } : undefined,
-    });
-
-    /**
-     * If the request is POST and the path starts with /v1/root/command, it's means it's a webhook from the server to Durable Object.
-     * We need to handle it here.
-     */
-    if (method === "POST" && path === "/v1/root/command") {
-      const rootApiKey = request.headers.get("x-root-api-key");
-      if (!rootApiKey) {
-        return new Response(
-          JSON.stringify({
-            error: "Authentication required: Root API key must be provided",
-          }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      if (rootApiKey !== env.ROOT_API_KEY) {
-        return new Response(
-          JSON.stringify({
-            error: "Authentication failed: Invalid root API key provided",
-          }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      const command = RootCommandSchema.safeParse(await request.json());
-      if (!command.success) {
-        return new Response(
-          JSON.stringify({
-            error: "Invalid request: Command format is not valid",
-          }),
-          {
-            status: 401,
-            headers: { "Content-Type": "application/json" },
-          },
-        );
-      }
-
-      /**
-       * Use getChannelsForProjectId to get all the channels for the project id
-       */
-      switch (command.data.command) {
-        /**
-         * we usage limits hit, we pause it by call stub in every avaliable
-         * do instance, they are all stored in redis, so we can just grab them
-         * and loop on them
-         */
-        case "pause_project_id":
-          throw new Error("Not implemented");
-        case "unpause_project_id":
-          throw new Error("Not implemented");
-        default:
-          return new Response(
-            JSON.stringify({
-              error: "Invalid request: Unsupported command type",
-            }),
-            {
-              status: 401,
-              headers: { "Content-Type": "application/json" },
-            },
-          );
-      }
-    }
-
-    /**
-     * The RFC State that every WebSocket connection [Opening Handshake](https://datatracker.ietf.org/doc/html/rfc6455#section-1.3)
-     * starts with a GET request and an upgrade header.
-     */
-    if (method !== "GET") {
-      // Explicitly guard the method so POST /v1/pubsub (or anything else) doesn't reach the DO
-      return new Response(
-        JSON.stringify({ error: "Method not allowed for this endpoint" }),
-        {
-          status: 405,
-          headers: {
-            Allow: "GET",
-            "Content-Type": "application/json",
-          },
-        },
-      );
-    }
-    if (upgrade !== "websocket") {
-      return new Response(
-        JSON.stringify({
-          error: "WebSocket upgrade required for this service",
-        }),
-        {
-          status: 400,
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-    }
-
-    /**
-     *
-     * Here we choose our gateway to the real-time layer.
-     */
-    const handlerProps: HandlerProps = {
-      request,
-      env,
-      locationHint,
-    };
-    if (path.startsWith("/v1/pubsub/") || path.startsWith("/v1/pubsub")) {
-      return await pubsub(handlerProps);
-    } else if (path.startsWith("/v1/state/") || path.startsWith("/v1/state")) {
-      throw new Error("Not implemented /v1/state/");
-    }
-
-    return new Response(JSON.stringify({ error: "Endpoint not found" }), {
-      status: 404,
-      headers: { "Content-Type": "application/json" },
-    });
-  },
+  fetch: app.fetch.bind(app),
 
   /**
    * This queue is now only used for webhooks, there is multiple type of envelopes

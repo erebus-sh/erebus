@@ -52,7 +52,7 @@ const sidebarItems = [
     href: "/keys",
   },
   {
-    label: "Audit",
+    label: "Audit Logs",
     icon: FileTextIcon,
     shortLabel: "Audit",
     href: "/audit",
