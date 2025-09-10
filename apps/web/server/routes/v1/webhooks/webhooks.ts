@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { zValidator } from "@hono/zod-validator";
+import { validator } from "hono/validator";
+
 import { UsageEventSchema } from "@repo/schemas/webhooks/usageRequest";
 import { fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -40,35 +41,39 @@ export const webhooksRoute = new Hono()
     );
     await next();
   })
-  .post("/usage", zValidator("json", z.array(UsageEventSchema)), async (c) => {
-    const body = await c.req.valid("json");
-    console.log("Received usage webhook:", body);
+  .post(
+    "/usage",
+    validator("json", (value) => z.array(UsageEventSchema).parse(value)),
+    async (c) => {
+      const body = await c.req.valid("json");
+      console.log("Received usage webhook:", body);
 
-    try {
-      // Process each usage event in the array
-      // Transform the incoming usage events to match the Convex mutation schema
-      await fetchMutation(api.usage.mutation.trackUsage, {
-        payload: body.map((event) => ({
-          projectId: event.data.projectId as Id<"projects">,
-          event: event.event,
-          payloadLength: event.data.payloadLength,
-          apiKeyId: event.data.keyId as Id<"api_keys">,
-        })),
-      });
+      try {
+        // Process each usage event in the array
+        // Transform the incoming usage events to match the Convex mutation schema
+        await fetchMutation(api.usage.mutation.trackUsage, {
+          payload: body.map((event) => ({
+            projectId: event.data.projectId as Id<"projects">,
+            event: event.event,
+            payloadLength: event.data.payloadLength,
+            apiKeyId: event.data.keyId as Id<"api_keys">,
+          })),
+        });
 
-      // Return success response
-      return c.json({
-        success: true,
-        message: `Processed ${body.length} usage events successfully`,
-      });
-    } catch (error) {
-      console.error("Error processing usage webhook:", error);
-      return c.json(
-        {
-          success: false,
-          error: error instanceof Error ? error.message : "Unknown error",
-        },
-        500,
-      );
-    }
-  });
+        // Return success response
+        return c.json({
+          success: true,
+          message: `Processed ${body.length} usage events successfully`,
+        });
+      } catch (error) {
+        console.error("Error processing usage webhook:", error);
+        return c.json(
+          {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+          },
+          500,
+        );
+      }
+    },
+  );

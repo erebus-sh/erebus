@@ -82,7 +82,6 @@
         "@convex-dev/aggregate": "^0.1.23",
         "@convex-dev/auth": "^0.0.87",
         "@edge-runtime/vm": "^5.0.0",
-        "@hono/zod-validator": "^0.7.2",
         "@mdx-js/loader": "^3.1.0",
         "@mdx-js/react": "^3.1.0",
         "@next/mdx": "^15.5.0",

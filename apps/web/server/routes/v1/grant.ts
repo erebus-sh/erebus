@@ -3,12 +3,12 @@ import { fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { grantRequestSchema } from "@repo/schemas/request/grantChannelRequest";
 import { sign } from "@/lib/jwt";
-import { zValidator } from "@hono/zod-validator";
 import { Grant, Access } from "@repo/schemas/grant";
 import { ConvexError } from "convex/values";
 import { ratelimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/redis";
 import { sha256 } from "@/utils/hash";
+import { validator } from "hono/validator";
 
 // Allow "*" for topics, otherwise only letters, numbers, and underscores
 const TOPIC_RE = /^([A-Za-z0-9_]+|\*)$/;
@@ -112,7 +112,7 @@ async function setCachedGrant(
 
 export const grantRoute = new Hono().post(
   "/grant-channel",
-  zValidator("json", grantRequestSchema),
+  validator("json", (value) => grantRequestSchema.parse(value)),
   async (c) => {
     // Get the validated, typed request body
     const { secret_key, channel, topics, userId, expiresAt } =
@@ -129,7 +129,7 @@ export const grantRoute = new Hono().post(
       );
     }
 
-    if (topics.length === 0) {
+    if (topics.length === 0 || !topics) {
       return c.json({ error: "At least one topic is required" }, 400);
     }
 
