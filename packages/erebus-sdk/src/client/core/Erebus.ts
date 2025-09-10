@@ -11,6 +11,7 @@ export interface ErebusClientOptions {
   cacheGrant?: (grant: string) => void;
   authBaseUrl: string;
   wsBaseUrl?: string;
+  enableCaching?: boolean; // Optional, defaults to true
 }
 
 export class ErebusClient {
@@ -38,32 +39,49 @@ export class ErebusClient {
   static createClientSync(opts: ErebusClientOptions): ErebusPubSubClient {
     switch (opts.client) {
       case ErebusClientState.PubSub:
+        const enableCaching = opts.enableCaching !== false; // Default to true
         const pubSubClient = new ErebusPubSubClient({
           wsUrl: opts.wsBaseUrl
             ? `${opts.wsBaseUrl}/v1/pubsub`
             : "wss://gateway.erebus.sh/v1/pubsub",
           tokenProvider: (channel: string) => {
             const authorize = new Authorize(opts.authBaseUrl);
+            console.log("[ErebusClient] Authorize created");
 
-            // If the user provided a grant cache layer, we call it.
+            // If caching is disabled, always get a fresh token
+            if (!enableCaching) {
+              console.log(
+                "[ErebusClient] Caching disabled, getting fresh token",
+              );
+              return authorize.generateToken(channel);
+            }
+
+            // If the user provided a grant cache layer, we call it first
             if (opts.grantCacheLayer) {
               console.log("[ErebusClient] Using grant cache layer");
               const grantPromise = opts.grantCacheLayer();
               // grantCacheLayer returns a Promise<string | undefined>
               return grantPromise.then((grant) => {
                 if (grant) {
-                  console.log("[ErebusClient] Grant found, returning grant");
+                  console.log("[ErebusClient] Cached grant found, using it");
                   return grant;
                 }
-                // If no grant, just call the default token provider
+                // If no cached grant, get fresh token and cache it
                 console.log(
-                  "[ErebusClient] No grant, calling default token provider",
+                  "[ErebusClient] No cached grant, getting fresh token",
                 );
-                return authorize.generateToken(channel);
+                return authorize.generateToken(channel).then((token) => {
+                  if (opts.cacheGrant) {
+                    console.log("[ErebusClient] Caching fresh grant");
+                    opts.cacheGrant(token);
+                  }
+                  return token;
+                });
               });
             }
 
-            // This will return a Promise<string>
+            // No external cache layer, just get fresh token and optionally cache it
+            console.log("[ErebusClient] No cache layer, getting fresh token");
             const token = authorize.generateToken(channel).then((token) => {
               if (opts.cacheGrant) {
                 console.log("[ErebusClient] Caching grant");
@@ -71,7 +89,6 @@ export class ErebusClient {
               }
               return token;
             });
-            console.log("[ErebusClient] Returning token");
             return token;
           },
         });

@@ -120,24 +120,17 @@ export class GrantManager implements IGrantManager {
    * Get token with caching logic
    */
   async getTokenWithCache(channel: string): Promise<string> {
-    // Prefer cached grant; if missing, ask provider and cache it
-    let grantJWT = this.getCachedGrant();
-    if (!grantJWT) {
-      logger.info(
-        `[${this.#connectionId}] No cached grant, requesting fresh token`,
-        { channel },
-      );
-      const fresh = await this.getToken(channel);
-      grantJWT = fresh;
-      if (grantJWT) {
-        logger.info(`[${this.#connectionId}] Fresh token received, caching it`);
-        this.setCachedGrant(grantJWT);
-      }
-    } else {
-      logger.info(`[${this.#connectionId}] Using cached grant`, {
-        channel,
-      });
+    // Always try to get a fresh token from the provider first
+    // The provider will handle its own caching logic (external cache)
+    logger.info(`[${this.#connectionId}] Requesting token from provider`, {
+      channel,
+    });
+    const fresh = await this.getToken(channel);
+    if (fresh) {
+      logger.info(`[${this.#connectionId}] Token received from provider`);
+      // Cache it internally as well for redundancy
+      this.setCachedGrant(fresh);
     }
-    return grantJWT;
+    return fresh;
   }
 }
