@@ -1,54 +1,39 @@
-import { HandlerProps } from "@/types/handlerProps";
-import { getShards } from "@/services/channelShards";
-import { DistributedKey } from "@/lib/distributedKey";
+import { getChannelsForProjectId } from "@/services/channelShards";
 import { Env } from "@/env";
 
 interface ProjectIdCommandProps {
   projectId: string;
-  channel: string;
   env: Env;
 }
 
-async function getShardsForProjectId(
-  env: Env,
-  projectId: string,
-  channel: string,
-) {
-  const distributedId = DistributedKey.stringify({
-    projectId,
-    resource: channel,
-    resourceType: "channel",
-    version: "v1",
-  });
-  return await getShards(env, distributedId);
+async function getChannels(env: Env, projectId: string) {
+  return await getChannelsForProjectId(env, projectId);
 }
 
 export async function pauseProjectId({
   projectId,
-  channel,
   env,
 }: ProjectIdCommandProps) {
-  const availableShards = await getShardsForProjectId(env, projectId, channel);
+  const availableChannels = await getChannels(env, projectId);
 
   await Promise.all(
-    availableShards.map((shard) => {
-      const shardManager = env.CHANNEL.getByName(shard);
-      return shardManager.pause();
+    availableChannels.map((channel) => {
+      const stub = env.CHANNEL.getByName(channel);
+      return stub.pause();
     }),
   );
 }
 
 export async function unpauseProjectId({
   projectId,
-  channel,
   env,
 }: ProjectIdCommandProps) {
-  const availableShards = await getShardsForProjectId(env, projectId, channel);
+  const availableChannels = await getChannels(env, projectId);
 
   await Promise.all(
-    availableShards.map((shard) => {
-      const shardManager = env.CHANNEL.getByName(shard);
-      return shardManager.resume();
+    availableChannels.map((channel) => {
+      const stub = env.CHANNEL.getByName(channel);
+      return stub.resume();
     }),
   );
 }

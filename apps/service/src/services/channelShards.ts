@@ -5,6 +5,8 @@ import { DistributedKey } from "@/lib/distributedKey";
 export const shardsKey = (channelDistributedId: string) =>
   `shards:${channelDistributedId}`;
 
+export const projectIdKey = (projectId: string) => `projectId:${projectId}`;
+
 /**
  * Registers a channelDistributedId under a given projectId and registers a locationHint (shard)
  * for the same channelDistributedId in a single Redis transaction.

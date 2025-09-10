@@ -162,13 +162,11 @@ apiRouter.post(
       case "pause_project_id":
         await pauseProjectId({
           projectId: command.projectId,
-          channel: command.channel,
           env: c.env,
         });
       case "unpause_project_id":
         await unpauseProjectId({
           projectId: command.projectId,
-          channel: command.channel,
           env: c.env,
         });
       default:
