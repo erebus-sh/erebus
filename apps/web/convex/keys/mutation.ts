@@ -73,7 +73,7 @@ export const revokeKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to revoke a non-existent API key`,
+        description: `User ${user.name} attempted to revoke a non-existent API key ${args.keyId}`,
         actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError("API key not found");
@@ -87,7 +87,7 @@ export const revokeKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to revoke a disabled API key`,
+        description: `User ${user.name} attempted to revoke a disabled API key ${key.label}`,
         actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError(
@@ -103,7 +103,7 @@ export const revokeKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to revoke a revoked API key`,
+        description: `User ${user.name} attempted to revoke a revoked API key ${key.label}`,
         actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError("Key is already revoked");
@@ -155,7 +155,7 @@ export const updateKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to update a non-existent API key`,
+        description: `User ${user.name} attempted to update a non-existent API key ${args.keyId}`,
         actionDescription: `attempted to update api key`,
       });
       throw new ConvexError("API key not found");
@@ -169,7 +169,7 @@ export const updateKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to update a disabled API key`,
+        description: `User ${user.name} attempted to update a disabled API key ${key.label}`,
         actionDescription: `attempted to update api key`,
       });
       throw new ConvexError(
@@ -185,7 +185,7 @@ export const updateKey = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to update a revoked API key`,
+        description: `User ${user.name} attempted to update a revoked API key ${key.label}`,
         actionDescription: `attempted to update api key`,
       });
       throw new ConvexError("Key is already revoked and cannot be updated");
@@ -200,7 +200,7 @@ export const updateKey = mutation({
       entityId: args.keyId,
       user: user as Doc<"users">,
       status: true,
-      description: `User ${user.name} updated API key title to ${args.title}`,
+      description: `User ${user.name} updated API key ${key.label} title to ${args.title}`,
       actionDescription: `updated api key`,
     });
     return true;
@@ -232,7 +232,7 @@ export const toggleKeyStatus = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to toggle status of a non-existent API key`,
+        description: `User ${user.name} attempted to toggle status of a non-existent API key ${args.keyId}`,
         actionDescription: `attempted to toggle status of api key`,
       });
       throw new ConvexError("API key not found");
@@ -247,7 +247,7 @@ export const toggleKeyStatus = mutation({
         entityId: args.keyId,
         user: user as Doc<"users">,
         status: false,
-        description: `User ${user.name} attempted to toggle status of a revoked API key`,
+        description: `User ${user.name} attempted to toggle status of a revoked API key ${key.label}`,
         actionDescription: `attempted to toggle status of api key`,
       });
       throw new ConvexError("Cannot toggle status of revoked key");
@@ -263,7 +263,7 @@ export const toggleKeyStatus = mutation({
       entityId: args.keyId,
       user: user as Doc<"users">,
       status: true,
-      description: `User ${user.name} toggled API key status to ${newStatus}`,
+      description: `User ${user.name} toggled API key ${key.label} status to ${newStatus}`,
       actionDescription: `toggled api key status`,
     });
     return newStatus;
