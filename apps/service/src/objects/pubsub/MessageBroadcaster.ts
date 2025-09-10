@@ -2,7 +2,10 @@ import { Access } from "@repo/schemas/grant";
 import { GrantSchema } from "@repo/schemas/grant";
 import { MessageBody } from "@repo/schemas/messageBody";
 import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
-import { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import {
+  PacketEnvelope,
+  PacketEnvelopeSchema,
+} from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -467,13 +470,16 @@ export class MessageBroadcaster extends BaseService {
     // Prepare two variants:
     // - generic packet for other subscribers (only clientId/topic/status)
     // - enriched packet for the sender/self including the full subscribers list
-    const genericPacketSerialized = MessageBroadcaster.TEXT_ENCODER.encode(
-      JSON.stringify(presencePacket),
-    );
+    const genericPacketSerialized = JSON.stringify(presencePacket);
 
-    const selfPacketSerialized = MessageBroadcaster.TEXT_ENCODER.encode(
-      JSON.stringify({ ...presencePacket, subscribers: subscribers ?? [] }),
-    );
+    const selfPacketSerialized = subscribers?.map((subscriber) => {
+      return {
+        packetType: "presence",
+        clientId: subscriber,
+        topic: presencePacket.topic,
+        status: presencePacket.status,
+      };
+    });
 
     // Track broadcast metrics
     let sentCount = 0;
@@ -492,7 +498,7 @@ export class MessageBroadcaster extends BaseService {
             return false;
           }
 
-          // Optional: restrict broadcast to the provided subscribers (room members)
+          // Restrict broadcast to the provided subscribers (room members)
           if (subscribers && subscribers.length > 0) {
             if (!subscribers.includes(client.clientId)) {
               return false;
@@ -510,7 +516,12 @@ export class MessageBroadcaster extends BaseService {
 
           // Send the appropriate presence packet
           if (selfClient && selfClient.clientId === client.clientId) {
-            selfClient.send(selfPacketSerialized);
+            /**
+             * TODO: This is very bad, but I ain't fixing it right now >:(
+             */
+            for (const packet of selfPacketSerialized ?? []) {
+              selfClient.sendJSON(packet);
+            }
           } else {
             client.send(genericPacketSerialized);
           }

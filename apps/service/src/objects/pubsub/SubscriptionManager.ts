@@ -61,6 +61,10 @@ export class SubscriptionManager extends BaseService {
 
     let wasAlreadySubscribed = false;
 
+    /**
+     * Transaction to ensure atomicity of the subscription operation
+     * It checks if the client is already subscribed and if the channel has reached the maximum number of subscribers
+     */
     await this.transaction(async (txn) => {
       // Get current subscribers within transaction
       const current = (await txn.get<string[]>(key)) ?? [];
@@ -90,10 +94,6 @@ export class SubscriptionManager extends BaseService {
     });
 
     this.logDebug(`[SUBSCRIBE] Subscription transaction completed`);
-
-    // Small delay to prevent race condition when multiple clients connect simultaneously
-    // This ensures all concurrent subscription transactions complete before presence updates
-    await new Promise((resolve) => setTimeout(resolve, 10));
 
     // Always send presence update, even if client was already subscribed
     // This handles cases like page refreshes where the client needs to re-establish presence
