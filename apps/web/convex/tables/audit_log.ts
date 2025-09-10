@@ -8,13 +8,14 @@ export const audit_log_action = v.union(
 );
 
 export const audit_log = defineTable({
-  actorId: v.string(), // who did it
+  actorId: v.id("users"), // who did it
   action: audit_log_action, // what happened
   entityType: v.optional(v.string()), // resource type
   entityId: v.optional(v.string()), // resource id
-  projectId: v.optional(v.string()), // scope: which project this event belongs to
-  description: v.optional(v.string()), // human-readable summary
-  status: v.optional(v.boolean()), // success/failure
+  projectId: v.optional(v.id("projects")), // scope: which project this event belongs to
+  description: v.string(), // human-readable summary
+  actionDescription: v.string(), // human-readable summary of the action
+  status: v.boolean(), // success/failure
   createdAt: v.number(), // timestamp
 })
   .index("by_actorId", ["actorId"])

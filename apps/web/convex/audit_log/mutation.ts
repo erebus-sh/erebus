@@ -12,6 +12,7 @@ export const createAuditLogInternal = internalMutation({
     entityId: v.string(),
     status: v.boolean(),
     description: v.string(),
+    actionDescription: v.string(),
   },
   handler: async (ctx, args): Promise<boolean> => {
     // Ensure the project exists (auth is enforced by callers for internal usage)
@@ -26,6 +27,7 @@ export const createAuditLogInternal = internalMutation({
       projectId: project._id,
       status: args.status,
       description: args.description,
+      actionDescription: args.actionDescription,
       createdAt: Date.now(),
     });
 

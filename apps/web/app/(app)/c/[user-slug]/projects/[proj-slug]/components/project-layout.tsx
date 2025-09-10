@@ -6,7 +6,7 @@ import {
   PanelLeft,
   KeyIcon,
   BarChart3,
-  FileText,
+  FileTextIcon,
   Wifi,
   ChevronLeft,
   Info,
@@ -52,10 +52,10 @@ const sidebarItems = [
     href: "/keys",
   },
   {
-    label: "Logs",
-    icon: FileText,
-    shortLabel: "Logs",
-    href: "/logs",
+    label: "Audit",
+    icon: FileTextIcon,
+    shortLabel: "Audit",
+    href: "/audit",
   },
   {
     label: "WebSocket Inspector",

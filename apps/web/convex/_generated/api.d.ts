@@ -35,6 +35,7 @@ import type * as usage_triggers from "../usage/triggers.js";
 import type * as user_profile_query from "../user_profile/query.js";
 import type * as users_query from "../users/query.js";
 import type * as utils_api_key from "../utils/api_key.js";
+import type * as utils_audit from "../utils/audit.js";
 import type * as utils_shuffle from "../utils/shuffle.js";
 
 import type {
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "user_profile/query": typeof user_profile_query;
   "users/query": typeof users_query;
   "utils/api_key": typeof utils_api_key;
+  "utils/audit": typeof utils_audit;
   "utils/shuffle": typeof utils_shuffle;
 }>;
 declare const fullApiWithMounts: typeof fullApi;

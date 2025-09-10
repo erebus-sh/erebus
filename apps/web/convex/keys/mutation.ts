@@ -40,6 +40,7 @@ export const createKey = mutation({
       status: true,
       user: user as Doc<"users">,
       description: `User ${user.name} created API key ${args.title}`,
+      actionDescription: `created api key`,
     });
 
     return api_key;
@@ -73,6 +74,7 @@ export const revokeKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to revoke a non-existent API key`,
+        actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError("API key not found");
     }
@@ -86,6 +88,7 @@ export const revokeKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to revoke a disabled API key`,
+        actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError(
         "Cannot revoke a disabled key. Please re-enable the key first.",
@@ -101,6 +104,7 @@ export const revokeKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to revoke a revoked API key`,
+        actionDescription: `attempted to revoke api key`,
       });
       throw new ConvexError("Key is already revoked");
     }
@@ -118,6 +122,7 @@ export const revokeKey = mutation({
       user: user as Doc<"users">,
       status: true,
       description: `User ${user.name} revoked API key ${key.label}`,
+      actionDescription: `revoked api key`,
     });
     return true;
   },
@@ -151,6 +156,7 @@ export const updateKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to update a non-existent API key`,
+        actionDescription: `attempted to update api key`,
       });
       throw new ConvexError("API key not found");
     }
@@ -164,6 +170,7 @@ export const updateKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to update a disabled API key`,
+        actionDescription: `attempted to update api key`,
       });
       throw new ConvexError(
         "Cannot update a disabled key. Please re-enable the key first.",
@@ -179,6 +186,7 @@ export const updateKey = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to update a revoked API key`,
+        actionDescription: `attempted to update api key`,
       });
       throw new ConvexError("Key is already revoked and cannot be updated");
     }
@@ -193,6 +201,7 @@ export const updateKey = mutation({
       user: user as Doc<"users">,
       status: true,
       description: `User ${user.name} updated API key title to ${args.title}`,
+      actionDescription: `updated api key`,
     });
     return true;
   },
@@ -224,6 +233,7 @@ export const toggleKeyStatus = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to toggle status of a non-existent API key`,
+        actionDescription: `attempted to toggle status of api key`,
       });
       throw new ConvexError("API key not found");
     }
@@ -238,6 +248,7 @@ export const toggleKeyStatus = mutation({
         user: user as Doc<"users">,
         status: false,
         description: `User ${user.name} attempted to toggle status of a revoked API key`,
+        actionDescription: `attempted to toggle status of api key`,
       });
       throw new ConvexError("Cannot toggle status of revoked key");
     }
@@ -253,6 +264,7 @@ export const toggleKeyStatus = mutation({
       user: user as Doc<"users">,
       status: true,
       description: `User ${user.name} toggled API key status to ${newStatus}`,
+      actionDescription: `toggled api key status`,
     });
     return newStatus;
   },

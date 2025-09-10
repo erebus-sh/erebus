@@ -1,12 +1,13 @@
 import { query } from "../_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getValidatedProjectBySlugWithOwnershipForQuery } from "../lib/guard";
+import type { AuditProps } from "../../components/audit";
 
 export const getAuditLogsForProject = query({
   args: {
     projectSlug: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<AuditProps[]> => {
     const { project } = await getValidatedProjectBySlugWithOwnershipForQuery(
       ctx,
       args.projectSlug,
@@ -18,6 +19,33 @@ export const getAuditLogsForProject = query({
       .order("desc")
       .take(100);
 
-    return results;
+    if (!results) {
+      throw new ConvexError("No audit logs found");
+    }
+
+    const auditLogs: AuditProps[] = await Promise.all(
+      results.map(async (result) => {
+        const user = await ctx.db.get(result.actorId);
+        if (!user) {
+          throw new ConvexError("User not found");
+        }
+        if (typeof user.name !== "string") {
+          throw new ConvexError("User name missing");
+        }
+        if (typeof result.description !== "string") {
+          throw new ConvexError("Audit log description missing");
+        }
+        return {
+          id: String(result._id),
+          date: new Date(result.createdAt).toISOString(),
+          title: user.name,
+          action: result.actionDescription,
+          description: result.description,
+          image: user.image!,
+        };
+      }),
+    );
+
+    return auditLogs;
   },
 });

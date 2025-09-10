@@ -8,46 +8,9 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from "@/components/ui/timeline";
+import { formatRelativeTime } from "@/utils/timeLanguage";
 
-const items = [
-  {
-    id: 1,
-    date: "15 minutes ago",
-    title: "Hannah Kandell",
-    action: "opened a new issue",
-    description:
-      "I'm having trouble with the new component library. It's not rendering properly.",
-    image: "/avatar-40-01.jpg",
-  },
-  {
-    id: 2,
-    date: "10 minutes ago",
-    title: "Chris Tompson",
-    action: "commented on",
-    description:
-      "Hey Hannah, I'm having trouble with the new component library. It's not rendering properly.",
-    image: "/avatar-40-02.jpg",
-  },
-  {
-    id: 3,
-    date: "5 minutes ago",
-    title: "Emma Davis",
-    action: "assigned you to",
-    description:
-      "The new component library is not rendering properly. Can you take a look?",
-    image: "/avatar-40-03.jpg",
-  },
-  {
-    id: 4,
-    date: "2 minutes ago",
-    title: "Alex Morgan",
-    action: "closed the issue",
-    description: "The issue has been fixed. Please review the changes.",
-    image: "/avatar-40-05.jpg",
-  },
-];
-
-interface AuditProps {
+export interface AuditProps {
   id: string;
   date: string;
   title: string;
@@ -56,7 +19,7 @@ interface AuditProps {
   image: string;
 }
 
-export default function Audit(items: AuditProps[]) {
+export default function Audit({ items }: { items: AuditProps[] }) {
   return (
     <Timeline>
       {items.map((item, index) => (
@@ -83,7 +46,9 @@ export default function Audit(items: AuditProps[]) {
           </TimelineHeader>
           <TimelineContent className="text-foreground mt-2 rounded-lg border px-4 py-3">
             {item.description}
-            <TimelineDate className="mt-1 mb-0">{item.date}</TimelineDate>
+            <TimelineDate className="mt-1 mb-0">
+              {formatRelativeTime(item.date)}
+            </TimelineDate>
           </TimelineContent>
         </TimelineItem>
       ))}

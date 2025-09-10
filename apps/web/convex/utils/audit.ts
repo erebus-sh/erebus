@@ -16,10 +16,19 @@ export async function audit(
     entityId: string;
     status: boolean;
     description: string;
+    actionDescription: string;
   },
 ): Promise<void> {
-  const { user, project, action, entityType, entityId, status, description } =
-    params;
+  const {
+    user,
+    project,
+    action,
+    entityType,
+    entityId,
+    status,
+    description,
+    actionDescription,
+  } = params;
   await ctx.runMutation(internal.audit_log.mutation.createAuditLogInternal, {
     projectSlug: project.slug,
     action,
@@ -28,5 +37,6 @@ export async function audit(
     entityId,
     status,
     description,
+    actionDescription,
   });
 }
