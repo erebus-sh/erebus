@@ -18,6 +18,7 @@ export const polar = new Polar(components.polar, {
       email: user.email,
     };
   },
+  server: process.env.POLAR_SERVER! as "sandbox" | "production",
 });
 
 export const syncProducts = action({
