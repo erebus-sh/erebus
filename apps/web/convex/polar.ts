@@ -9,7 +9,7 @@ export const polar = new Polar(components.polar, {
     standard: process.env.POLAR_PRODUCT_STANDARD!,
   },
   getUserInfo: async (ctx): Promise<{ userId: string; email: string }> => {
-    const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
+    const user = await ctx.runQuery(api.users.query.getMe);
     if (!user || !user._id || typeof user.email !== "string") {
       throw new ConvexError("User not found or email is invalid");
     }
