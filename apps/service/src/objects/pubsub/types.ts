@@ -101,6 +101,8 @@ export interface StorageKeys {
  * Constants used throughout the pubsub system
  */
 export const PUBSUB_CONSTANTS = {
+  /** Version of the pubsub system */
+  VERSION: "1",
   /** Maximum number of subscribers per topic */
   MAX_SUBSCRIBERS_PER_TOPIC: 5120,
   /** Message TTL in days */

@@ -7,6 +7,7 @@ const RequestId = z.string().min(1).optional();
 /** Client → Server */
 const ConnectPacket = z.object({
   packetType: z.literal("connect"),
+  version: z.literal("1"),
   grantJWT: z.string().min(1),
 });
 

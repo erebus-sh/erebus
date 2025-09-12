@@ -10,7 +10,7 @@ import { WsErrors } from "@/enums/wserrors";
 import { BaseService } from "./BaseService";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageBuffer } from "./MessageBuffer";
-import { ServiceContext } from "./types";
+import { PUBSUB_CONSTANTS, ServiceContext } from "./types";
 import { ErebusClient } from "./ErebusClient";
 
 /**
@@ -228,6 +228,17 @@ export class MessageHandler extends BaseService {
     }
 
     try {
+      // Check version
+      if (envelope.version !== PUBSUB_CONSTANTS.VERSION) {
+        this.logError(`[WS_CONNECT] Invalid version: ${envelope.version}`);
+        this.closeWebSocketWithError(
+          ws,
+          WsErrors.VersionMismatch,
+          "Invalid version current server version: " + PUBSUB_CONSTANTS.VERSION,
+        );
+        return;
+      }
+
       // Verify JWT signature and extract payload
       const verified = await verify(envelope.grantJWT, this.env.PUBLIC_KEY_JWK);
       if (!verified) {

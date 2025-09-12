@@ -14,4 +14,5 @@ export enum WsErrors {
   Conflict = 4409,
   PreconditionFailed = 4412,
   InternalServerError = 4500,
+  VersionMismatch = 4413,
 }

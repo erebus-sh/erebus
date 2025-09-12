@@ -122,3 +122,5 @@ export type Presence = {
   timestamp: number;
   subscribers?: string[]; // Optional array of subscriber client IDs (for enriched self presence)
 };
+
+export const VERSION = "1" as const;

@@ -1,10 +1,11 @@
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { MessageBody } from "@repo/schemas/messageBody";
-import type {
-  AckCallback,
-  PendingPublish,
-  SubscriptionCallback,
-  PendingSubscription,
+import {
+  type AckCallback,
+  type PendingPublish,
+  type SubscriptionCallback,
+  type PendingSubscription,
+  VERSION,
 } from "../types";
 import type {
   ConnectionConfig,
@@ -195,7 +196,11 @@ export class PubSubConnection {
     });
 
     // Send connect packet
-    this.#connectionManager.send({ packetType: "connect", grantJWT });
+    this.#connectionManager.send({
+      packetType: "connect",
+      version: VERSION,
+      grantJWT,
+    });
 
     // Start heartbeat
     this.#heartbeatManager.start();

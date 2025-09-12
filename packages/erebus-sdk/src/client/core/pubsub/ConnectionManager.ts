@@ -11,6 +11,9 @@ import { encodeEnvelope } from "@/client/core/wire";
 import { logger } from "@/internal/logger/consola";
 import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
 import { backoff } from "../backoff";
+import { WsErrors } from "@repo/shared/enums/wserrors";
+import { ErebusError } from "@/internal/error";
+import { VERSION } from "../types";
 
 export class BackpressureError extends Error {}
 export class NotConnectedError extends Error {}
@@ -357,12 +360,18 @@ export class ConnectionManager implements IConnectionManager {
       this.#handleMessage(ev);
     });
 
-    ws.addEventListener("close", () => {
+    ws.addEventListener("close", (event: CloseEvent) => {
       this.#log("warn", "ws close encountered", { retry: this.#retry });
       logger.warn(`[${this.#connectionId}] WebSocket close encountered`, {
         retry: this.#retry,
         state: this.#state,
       });
+
+      if (event.code === WsErrors.VersionMismatch) {
+        throw new ErebusError(
+          `Version mismatch: ${event.reason} current client version: ${VERSION}`,
+        );
+      }
 
       // Only attempt reconnect if we're not already closed and auto-reconnect is enabled
       if (this.#state !== "closed" && this.#autoReconnect) {
