@@ -63,7 +63,7 @@ const pricingTiers: PricingTier[] = [
       "Custom domain support",
     ],
     cta: {
-      text: "Start Free Trial",
+      text: "Get Started",
       variant: "default",
     },
     popular: true,
