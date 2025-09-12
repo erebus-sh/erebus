@@ -73,6 +73,12 @@ export interface StorageKeys {
     channelName: string,
     topic: string,
   ) => string;
+  /** Prefix for messages: `msg:${projectId}:${channelName}:${topic}:` */
+  messagePrefix: (
+    projectId: string,
+    channelName: string,
+    topic: string,
+  ) => string;
   /** Key for messages: `msg:${projectId}:${channelName}:${topic}:${seq}` */
   message: (
     projectId: string,
@@ -109,6 +115,8 @@ export const PUBSUB_CONSTANTS = {
   DEFAULT_STORAGE_LIST_LIMIT: 1000,
   /** Pruning limit per iteration */
   PRUNE_LIMIT_PER_ITERATION: 128,
+  /** Maximum number of messages per topic */
+  MAX_BUFFERED_MESSAGES_PER_TOPIC: 100,
 } as const;
 
 /**
@@ -127,6 +135,8 @@ export const DEFAULT_BROADCAST_CONFIG: BroadcastConfig = {
 export const STORAGE_KEYS: StorageKeys = {
   subscribers: (projectId: string, channelName: string, topic: string) =>
     `subs:${projectId}:${channelName}:${topic}`,
+  messagePrefix: (projectId: string, channelName: string, topic: string) =>
+    `msg:${projectId}:${channelName}:${topic}:`,
   message: (
     projectId: string,
     channelName: string,
@@ -202,7 +212,9 @@ export interface GetMessagesParams {
   /** Topic name */
   topic: string;
   /** Get messages after this sequence (exclusive) */
-  afterSeq: string;
+  afterSeq?: string;
+  /** Get messages before this sequence (exclusive) */
+  beforeSeq?: string;
   /** Maximum number of messages to return */
   limit?: number;
 }

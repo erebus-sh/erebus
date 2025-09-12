@@ -56,14 +56,52 @@ export class MessageBuffer extends BaseService {
       `[BUFFER_MESSAGE] Storage key: ${messageKey}, expires at: ${new Date(exp).toISOString()}`,
     );
 
-    // Store message with TTL wrapper
+    // Append-by-key
     await this.putStorageValue(messageKey, JSON.stringify(record));
     this.logVerbose(`[BUFFER_MESSAGE] Message stored successfully`);
+
+    // Enforce per-topic cap by deleting oldest keys beyond the limit
+    await this.enforceMaxBufferedMessages(projectId, channelName, topic);
 
     // Trigger opportunistic cleanup asynchronously
     this.logVerbose(`[BUFFER_MESSAGE] Starting opportunistic prune`);
     await this.pruneExpiredMessages(projectId, channelName, topic);
     this.logVerbose(`[BUFFER_MESSAGE] Prune completed`);
+  }
+
+  /**
+   * Enforce maximum buffered messages per topic by trimming oldest messages.
+   */
+  private async enforceMaxBufferedMessages(
+    projectId: string,
+    channelName: string,
+    topic: string,
+  ): Promise<void> {
+    const prefix = STORAGE_KEYS.messagePrefix(projectId, channelName, topic);
+    const limit = PUBSUB_CONSTANTS.MAX_BUFFERED_MESSAGES_PER_TOPIC;
+
+    // List current messages (ULID-ordered lexicographically)
+    const iter = await this.listStorage<string>({
+      prefix,
+      limit: PUBSUB_CONSTANTS.DEFAULT_STORAGE_LIST_LIMIT,
+    });
+
+    const total = iter.size;
+    if (total <= limit) return;
+
+    const toDelete = total - limit;
+    let deleted = 0;
+    for (const [key] of iter) {
+      await this.deleteStorageValue(key);
+      deleted++;
+      if (deleted >= toDelete) break;
+    }
+
+    if (this.env.DEBUG) {
+      console.log(
+        `[MESSAGE_BUFFER] [ENFORCE_MAX] topic=${topic} total=${total} kept=${limit} deleted=${deleted}`,
+      );
+    }
   }
 
   /**
@@ -88,10 +126,72 @@ export class MessageBuffer extends BaseService {
     } = params;
 
     this.logDebug(
-      `[GET_MESSAGES] Retrieving messages after seq: ${afterSeq}, topic: ${topic}, limit: ${limit}`,
+      `[GET_MESSAGES_AFTER] Retrieving messages after seq: ${afterSeq}, topic: ${topic}, limit: ${limit}`,
     );
 
-    const prefix = `msg:${projectId}:${channelName}:${topic}:`;
+    return this._getMessages({
+      projectId,
+      channelName,
+      topic,
+      boundarySeq: afterSeq,
+      isAfter: true,
+      limit,
+    });
+  }
+
+  /**
+   * Retrieve messages for a topic before a specific sequence with TTL enforcement.
+   *
+   * This method:
+   * - Lists messages by prefix (lexicographically ordered by ULID)
+   * - Filters messages before the specified sequence
+   * - Enforces TTL and lazily deletes expired messages
+   * - Returns messages in reverse chronological order (newest to oldest)
+   *
+   * @param params - Parameters for message retrieval
+   * @returns Promise resolving to array of messages in reverse chronological order
+   */
+  async getMessagesBefore(params: GetMessagesParams): Promise<MessageBody[]> {
+    const {
+      projectId,
+      channelName,
+      topic,
+      beforeSeq,
+      limit = PUBSUB_CONSTANTS.DEFAULT_MESSAGE_LIMIT,
+    } = params;
+
+    this.logDebug(
+      `[GET_MESSAGES_BEFORE] Retrieving messages before seq: ${beforeSeq}, topic: ${topic}, limit: ${limit}`,
+    );
+
+    return this._getMessages({
+      projectId,
+      channelName,
+      topic,
+      boundarySeq: beforeSeq,
+      isAfter: false,
+      limit,
+    });
+  }
+
+  /**
+   * Internal helper method to retrieve messages with shared logic.
+   *
+   * @param params - Internal parameters for message retrieval
+   * @returns Promise resolving to array of messages
+   */
+  private async _getMessages(params: {
+    projectId: string;
+    channelName: string;
+    topic: string;
+    boundarySeq?: string;
+    isAfter: boolean;
+    limit: number;
+  }): Promise<MessageBody[]> {
+    const { projectId, channelName, topic, boundarySeq, isAfter, limit } =
+      params;
+
+    const prefix = STORAGE_KEYS.messagePrefix(projectId, channelName, topic);
     const messages: MessageBody[] = [];
     const now = Date.now();
 
@@ -109,14 +209,27 @@ export class MessageBuffer extends BaseService {
     let expiredCount = 0;
     let skippedCount = 0;
 
-    // Process messages in chronological order (ULID keys are naturally ordered)
-    for (const [key, value] of iter) {
+    // Convert iterator to array for easier processing
+    const entries = Array.from(iter);
+
+    // For "before" queries, we want to process messages in reverse order
+    // to get the newest messages first when collecting results
+    const processOrder = isAfter ? entries : entries.reverse();
+
+    // Process messages
+    for (const [key, value] of processOrder) {
       const seq = key.slice(prefix.length);
 
-      // Skip messages that are not strictly after the requested sequence
-      if (afterSeq && seq <= afterSeq) {
-        skippedCount++;
-        continue;
+      // Apply sequence filtering based on direction
+      if (boundarySeq) {
+        if (isAfter && seq <= boundarySeq) {
+          skippedCount++;
+          continue;
+        }
+        if (!isAfter && seq >= boundarySeq) {
+          skippedCount++;
+          continue;
+        }
       }
 
       try {
@@ -150,6 +263,10 @@ export class MessageBuffer extends BaseService {
         skippedCount++;
       }
     }
+
+    // For "after" queries: messages are naturally in chronological order (oldest to newest)
+    // For "before" queries: messages were processed in reverse, so they're in reverse chronological order (newest to oldest)
+    // This matches the expected behavior described in the method comments
 
     this.logDebug(
       `[GET_MESSAGES] Retrieval summary - processed: ${processedCount}, ` +
@@ -308,7 +425,7 @@ export class MessageBuffer extends BaseService {
   ): Promise<void> {
     this.logVerbose(`[PRUNE_MESSAGES] Starting prune - topic: ${topic}`);
 
-    const prefix = `msg:${projectId}:${channelName}:${topic}:`;
+    const prefix = STORAGE_KEYS.messagePrefix(projectId, channelName, topic);
     const now = Date.now();
 
     this.logVerbose(
