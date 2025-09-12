@@ -26,7 +26,7 @@ export const getMeWithSubscription = query({
     return {
       ...user,
       periodEnd: subscription?.currentPeriodEnd,
-      isActive:
+      isSubscribitionActive:
         subscription?.status === "active" || subscription?.endedAt === null,
     };
   },

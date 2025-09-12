@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import LogoBare from "@/components/navbar-components/logo-bare";
 import { useNavStackStore } from "@/stores/navigation";
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   NavigationMenu,
@@ -28,6 +28,7 @@ import {
   NavigationMenuLink,
 } from "../ui/navigation-menu";
 import SettingsMenu from "../navbar-components/settings-menu";
+import Banner from "../Banner";
 
 export default function NavbarConsole() {
   const { navStack, pushPage } = useNavStackStore();
@@ -35,6 +36,12 @@ export default function NavbarConsole() {
   const userSlug = params["user-slug"] as string;
   const projectSlug = params["proj-slug"] as string;
   const user = useQuery(api.users.query.getMeWithSubscription);
+  const generateCustomerPortalUrl = useAction(
+    api.polar.generateCustomerPortalUrl,
+  );
+  const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(
+    null,
+  );
 
   const navigationLinks = [
     { href: `/c/${userSlug}`, label: "Dashboard" },
@@ -63,6 +70,11 @@ export default function NavbarConsole() {
         href: `/c/${userSlug}/projects/${projectSlug}`,
       });
     }
+
+    (async () => {
+      const result = await generateCustomerPortalUrl();
+      setCustomerPortalUrl(result.url);
+    })();
 
     // Only run on mount or when slug changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,6 +164,13 @@ export default function NavbarConsole() {
           />
         </div>
       </div>
+      {!user?.isSubscribitionActive && (
+        <Banner
+          text="Your subscription has not been updated. Please check your details and try again."
+          textLink="Subscribe"
+          textLinkHref={customerPortalUrl!}
+        />
+      )}
     </header>
   );
 }
