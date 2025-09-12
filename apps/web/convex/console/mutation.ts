@@ -15,7 +15,7 @@ export const createUserSlug = mutation({
     const FN = "createUserSlug";
     logWithTag("start", FN, "Starting createUserSlug mutation");
 
-    const user = await ctx.runQuery(api.users.query.getMe);
+    const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
     logWithTag("user", FN, "Fetched user", user);
 
     if (!user || !user._id) {

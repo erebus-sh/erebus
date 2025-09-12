@@ -27,7 +27,7 @@ export const getProjectBySlug = query({
     slug: v.optional(v.string()),
   },
   handler: async (ctx, args): Promise<Doc<"projects"> | null> => {
-    const user = await ctx.runQuery(api.users.query.getMe);
+    const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
     if (!user || !user._id) return null;
 
     if (!args.slug || args.slug === "" || args.slug.length === 0) {

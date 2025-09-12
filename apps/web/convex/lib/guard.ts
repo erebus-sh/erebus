@@ -5,7 +5,7 @@ import { GenericMutationCtx, GenericQueryCtx } from "convex/server";
 
 // Helper function to get authenticated user
 export async function getAuthenticatedUser(ctx: GenericMutationCtx<DataModel>) {
-  const user = await ctx.runQuery(api.users.query.getMe);
+  const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
   if (!user || !user._id) {
     throw new Error("User not found");
   }
@@ -176,7 +176,7 @@ export async function getValidatedAndAuthorizedKey(
 export async function getAuthenticatedUserForQuery(
   ctx: GenericQueryCtx<DataModel>,
 ): Promise<Doc<"users">> {
-  const user = await ctx.runQuery(api.users.query.getMe);
+  const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
   if (!user || !user._id) {
     throw new ConvexError("User not found");
   }

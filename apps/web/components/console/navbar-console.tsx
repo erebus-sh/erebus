@@ -34,7 +34,7 @@ export default function NavbarConsole() {
   const params = useParams();
   const userSlug = params["user-slug"] as string;
   const projectSlug = params["proj-slug"] as string;
-  const user = useQuery(api.users.query.getMe);
+  const user = useQuery(api.users.query.getMeWithSubscription);
 
   const navigationLinks = [
     { href: `/c/${userSlug}`, label: "Dashboard" },

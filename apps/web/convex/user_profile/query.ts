@@ -8,7 +8,7 @@ export const getUserProfileBySlug = query({
     slug: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.runQuery(api.users.query.getMe);
+    const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
     if (!user || !user._id) throw new ConvexError("User not found");
 
     const profile = await ctx.db
