@@ -11,6 +11,7 @@ import {
   ChevronLeft,
   Info,
   LayoutDashboard,
+  Settings,
 } from "lucide-react";
 import { useSidebarStore } from "../store/sidebar";
 import { useCallback } from "react";
@@ -56,6 +57,12 @@ const sidebarItems = [
     icon: FileTextIcon,
     shortLabel: "Audit",
     href: "/audit",
+  },
+  {
+    label: "Settings",
+    icon: Settings,
+    shortLabel: "Settings",
+    href: "/settings",
   },
   {
     label: "WebSocket Inspector",

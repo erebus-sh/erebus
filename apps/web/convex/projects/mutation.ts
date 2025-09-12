@@ -115,6 +115,12 @@ export const updateProjectWebhookUrl = mutation({
         if (!url.hostname.includes(".")) {
           throw new ConvexError("Webhook URL must have a valid domain name");
         }
+
+        // Check if it's a base URL (no path or just trailing slash)
+        const pathname = url.pathname;
+        if (pathname && pathname !== "/" && pathname.length > 1) {
+          throw new ConvexError("Webhook URL must be a base URL");
+        }
       } catch (error) {
         if (error instanceof ConvexError) {
           throw error;
@@ -123,6 +129,8 @@ export const updateProjectWebhookUrl = mutation({
           "Invalid webhook URL format. Must be a valid HTTPS URL",
         );
       }
+    } else {
+      throw new ConvexError("Webhook URL must be a valid HTTPS URL");
     }
 
     const oldWebhookUrl = project.webhookUrl || "";

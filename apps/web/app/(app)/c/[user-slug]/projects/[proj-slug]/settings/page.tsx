@@ -1,32 +1,5 @@
 "use client";
 
-/**
- * Project Settings Page
- *
- * This page allows users to configure their project settings including:
- *
- * 1. Project Name:
- *    - Updates the display name of the project
- *    - Validates length (3-100 characters)
- *    - Logs changes to audit trail
- *
- * 2. Webhook URL:
- *    - Configures endpoint for message flow forwarding
- *    - Used for storing/preserving message flow in project scope
- *    - Messages are forwarded to this endpoint for further processing or archival
- *    - Validates HTTPS URL format with proper domain
- *    - Allows empty value to disable webhook forwarding
- *    - Logs changes to audit trail
- *
- * Features:
- * - Real-time form validation
- * - Loading states during updates
- * - Success/error toast notifications
- * - Prevents submission when no changes made
- * - Displays project metadata (slug, creation date, status, region)
- * - Consistent design with other project pages
- */
-
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
 import { useQueryWithState } from "@/utils/query";
@@ -49,6 +22,10 @@ export default function SettingsPage() {
   const [webhookDomain, setWebhookDomain] = useState("");
   const [isUpdatingName, setIsUpdatingName] = useState(false);
   const [isUpdatingWebhook, setIsUpdatingWebhook] = useState(false);
+  const [webhookValidation, setWebhookValidation] = useState<{
+    isValid: boolean;
+    message: string;
+  }>({ isValid: true, message: "" });
 
   // Query to get current project data
   const {
@@ -75,6 +52,69 @@ export default function SettingsPage() {
     }
   }, [project]);
 
+  // Real-time webhook URL validation
+  const validateWebhookUrl = (url: string) => {
+    if (url.trim() === "") {
+      setWebhookValidation({ isValid: true, message: "" });
+      return;
+    }
+
+    try {
+      const parsedUrl = new URL(url);
+
+      // Must be HTTPS
+      if (parsedUrl.protocol !== "https:") {
+        setWebhookValidation({
+          isValid: false,
+          message: "Must use HTTPS protocol",
+        });
+        return;
+      }
+
+      // Must have a valid hostname
+      if (!parsedUrl.hostname || parsedUrl.hostname.length < 3) {
+        setWebhookValidation({
+          isValid: false,
+          message: "Must have a valid domain name",
+        });
+        return;
+      }
+
+      // Hostname must contain at least one dot (for domain)
+      if (!parsedUrl.hostname.includes(".")) {
+        setWebhookValidation({
+          isValid: false,
+          message: "Must have a valid domain name",
+        });
+        return;
+      }
+
+      // Check if it's a base URL (no path or just trailing slash)
+      const pathname = parsedUrl.pathname;
+      if (pathname && pathname !== "/" && pathname.length > 1) {
+        setWebhookValidation({
+          isValid: false,
+          message: "Only base URLs allowed (e.g., https://example.com)",
+        });
+        return;
+      }
+
+      setWebhookValidation({ isValid: true, message: "Valid webhook URL" });
+    } catch (error) {
+      setWebhookValidation({
+        isValid: false,
+        message: "Invalid URL format",
+      });
+    }
+  };
+
+  // Handle webhook URL input change with real-time validation
+  const handleWebhookChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setWebhookDomain(value);
+    validateWebhookUrl(value);
+  };
+
   const handleUpdateProjectName = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectName.trim() || projectName === project?.title) return;
@@ -97,6 +137,12 @@ export default function SettingsPage() {
   const handleUpdateWebhookDomain = async (e: React.FormEvent) => {
     e.preventDefault();
     if (webhookDomain === (project?.webhookUrl || "")) return;
+
+    // Don't submit if validation fails
+    if (!webhookValidation.isValid) {
+      toast.error("Please fix the webhook URL format before saving");
+      return;
+    }
 
     setIsUpdatingWebhook(true);
     try {
@@ -247,7 +293,7 @@ export default function SettingsPage() {
               Configure the webhook endpoint URL for storing and preserving
               message flow in your project scope. Messages will be forwarded to
               this endpoint for further processing or archival. Must be a valid
-              base HTTPS URL (e.g., https://example.com/).
+              base HTTPS URL (e.g., https://example.com).
             </p>
           </CardHeader>
           <CardContent>
@@ -257,21 +303,36 @@ export default function SettingsPage() {
                 <Input
                   id="webhook-domain"
                   value={webhookDomain}
-                  onChange={(e) => setWebhookDomain(e.target.value)}
-                  placeholder="https://example.com/webhook"
+                  onChange={handleWebhookChange}
+                  placeholder="https://example.com"
                   type="url"
+                  className={
+                    webhookDomain && !webhookValidation.isValid
+                      ? "border-destructive"
+                      : ""
+                  }
                 />
-                <p className="text-xs text-muted-foreground">
-                  Enter a valid HTTPS URL (e.g., https://example.com/webhook) to
-                  receive message flow data. Leave empty to disable webhook
-                  forwarding.
-                </p>
+                {webhookDomain && (
+                  <p
+                    className={`text-xs ${webhookValidation.isValid ? "text-green-600" : "text-destructive"}`}
+                  >
+                    {webhookValidation.message}
+                  </p>
+                )}
+                {!webhookDomain && (
+                  <p className="text-xs text-muted-foreground">
+                    Enter a valid base HTTPS URL (e.g., https://example.com) to
+                    receive message flow data. Leave empty to disable webhook
+                    forwarding.
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"
                 disabled={
                   isUpdatingWebhook ||
-                  webhookDomain === (project?.webhookUrl || "")
+                  webhookDomain === (project?.webhookUrl || "") ||
+                  (webhookDomain !== "" && !webhookValidation.isValid)
                 }
                 className="w-fit"
               >

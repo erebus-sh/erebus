@@ -4,10 +4,12 @@ import { useState } from "react";
 import ProjectLayout from "./components/project-layout";
 import { useNavStackStore } from "@/stores/navigation";
 import { useSidebarStore } from "./store/sidebar";
+
 import KeysPage from "./keys/page";
 import UsagePage from "./usage/page";
 import DashboardPage from "./dashboard/page";
 import AuditPage from "./audit/page";
+import SettingsPage from "./settings/page";
 
 export default function ProjectsPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -19,7 +21,7 @@ export default function ProjectsPage() {
       mobileMenuOpen={mobileMenuOpen}
       setMobileMenuOpen={setMobileMenuOpen}
     >
-      {["keys", "usage", "dashboard", "audit"].map((item) => {
+      {["keys", "usage", "dashboard", "audit", "settings"].map((item) => {
         let PageComponent: React.ComponentType<any> | undefined;
         if (item === "keys") {
           PageComponent = KeysPage;
@@ -29,6 +31,8 @@ export default function ProjectsPage() {
           PageComponent = DashboardPage;
         } else if (item === "audit") {
           PageComponent = AuditPage;
+        } else if (item === "settings") {
+          PageComponent = SettingsPage;
         } else {
           PageComponent = DashboardPage;
         }
