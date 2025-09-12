@@ -10,9 +10,9 @@ import { ConvexError } from "convex/values";
  * by calling the Polar SDK to fetch real-time usage data. Actions are the only
  * Convex functions that can make external API calls and perform side effects.
  */
-export const getUserWithMeters = action({
+export const getUserMeters = action({
   handler: async (ctx) => {
-    const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
+    const user = await ctx.runQuery(api.users.query.getMe);
     if (!user || !user._id) throw new ConvexError("User not found");
 
     const meters = await getMetersForUserId(user._id);
@@ -21,7 +21,6 @@ export const getUserWithMeters = action({
       balance: meters.balance,
       consumedUnits: meters.consumedUnits,
       creditedUnits: meters.creditedUnits,
-      ...user,
     };
   },
 });
