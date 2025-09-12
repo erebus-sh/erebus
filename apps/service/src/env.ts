@@ -3,6 +3,7 @@ import { ChannelV1 } from "@/objects/pubsub/channel";
 export interface Env {
   EREBUS_QUEUE: Queue;
   CHANNEL: DurableObjectNamespace<ChannelV1>;
+  CACHE: KVNamespace;
   PUBLIC_KEY_JWK: string;
   DEBUG: boolean;
   EREBUS_DEBUG_VERBOSE?: boolean; // Gate verbose logging in hot paths
