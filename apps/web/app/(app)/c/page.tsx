@@ -4,7 +4,7 @@
  * we redirect to the slug page.
  */
 
-import { fetchMutation } from "convex/nextjs";
+import { fetchMutation, fetchQuery } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { redirect } from "next/navigation";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
@@ -14,8 +14,20 @@ export const dynamic = "force-dynamic";
 
 export default async function ConsolePage() {
   let createUserSlug: string | null = null;
+  const token = await convexAuthNextjsToken();
+
+  // Check if the user have an active subscription
+  const user = await fetchQuery(
+    api.users.query.getMeWithSubscription,
+    {},
+    { token },
+  );
+  if (user?.isSubscribitionActive) {
+    // Redirect to the pricing page
+    redirect(`/pricing`);
+  }
+
   try {
-    const token = await convexAuthNextjsToken();
     const createUserSlugResult = await fetchMutation(
       api.console.mutation.createUserSlug,
       {},
