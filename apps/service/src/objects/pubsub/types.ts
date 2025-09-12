@@ -187,6 +187,8 @@ export interface PublishMessageParams {
   seq: string;
   /** Ingress timestamp for performance tracking */
   tIngress: number;
+  /** Webhook URL */
+  webhookUrl: string;
 }
 
 /**

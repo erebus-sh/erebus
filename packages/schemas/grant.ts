@@ -22,6 +22,7 @@ export const GrantSchema = z.object({
   // Project data
   project_id: z.string(),
   key_id: z.string(),
+  webhook_url: z.string(),
 
   // Channel data
   channel: z.string(),

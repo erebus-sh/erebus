@@ -67,6 +67,10 @@ export class ErebusClient {
     return this._grant.userId;
   }
 
+  get webhookUrl(): string {
+    return this._grant.webhook_url;
+  }
+
   get projectId(): string {
     return this._grant.project_id;
   }

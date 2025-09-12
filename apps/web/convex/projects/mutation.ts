@@ -4,6 +4,7 @@ import { api } from "../_generated/api";
 import slugify from "slugify";
 import {
   getAuthenticatedUser,
+  getValidatedProjectBySlugWithOwnership,
   getValidatedProjectWithOwnership,
 } from "../lib/guard";
 
@@ -80,5 +81,23 @@ export const deleteProject = mutation({
     return {
       success: true,
     };
+  },
+});
+
+export const updateProjectWebhookUrl = mutation({
+  args: {
+    projectSlug: v.string(),
+    webhookUrl: v.string(),
+  },
+  handler: async (ctx, args): Promise<boolean> => {
+    const { projectSlug, webhookUrl } = args;
+    const { project } = await getValidatedProjectBySlugWithOwnership(
+      ctx,
+      projectSlug,
+    );
+    await ctx.db.patch(project._id, {
+      webhookUrl,
+    });
+    return true;
   },
 });

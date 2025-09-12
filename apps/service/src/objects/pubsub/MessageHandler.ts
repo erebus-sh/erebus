@@ -36,6 +36,7 @@ export interface MessageBroadcastCoordinator {
     channelName: string,
     tIngress: number,
     tEnqueued: number,
+    webhookUrl: string,
   ): Promise<BroadcastResult>;
 }
 
@@ -542,6 +543,7 @@ export class MessageHandler extends BaseService {
           client.channel,
           tIngress,
           tEnqueued,
+          client.webhookUrl,
         );
 
       // Send success ACK if requested

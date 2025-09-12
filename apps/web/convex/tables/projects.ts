@@ -11,6 +11,7 @@ export const projects = defineTable({
   title: v.string(),
   status: projectStatus,
   region: region,
+  webhookUrl: v.optional(v.string()),
   createdAt: v.number(),
 })
   .index("by_user", ["userId"])

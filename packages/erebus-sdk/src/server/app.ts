@@ -4,6 +4,8 @@ import { logger } from "@/internal/logger/consola";
 import { ErebusSession } from "@/service/session";
 import { zValidator } from "@hono/zod-validator";
 import { z } from "zod";
+import { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
+import { verifyHmac } from "@repo/shared/utils/hmac";
 
 export type AppVars = {
   reqId: string;
@@ -107,7 +109,7 @@ const routes = new Hono<{ Variables: AppVars }>()
    * it calls Erebus service to generate the token
    */
   .post(
-    "/api/generate-token",
+    "/api/pubsub/grant",
     zValidator(
       "json",
       z.object({
@@ -147,6 +149,43 @@ const routes = new Hono<{ Variables: AppVars }>()
 
       return c.json({
         grant_jwt: token,
+      });
+    },
+  )
+  .post(
+    "/api/pubsub/fire-webhook",
+    zValidator("json", FireWebhookSchema),
+    async (c) => {
+      const { messageBody, hmac } = c.req.valid("json");
+      const secret = process.env["WEBHOOK_SECRET"];
+      if (!secret) {
+        console.error(
+          "[pubsub][fire-webhook] WEBHOOK_SECRET is not set please, set the secret key in the environment variables",
+        );
+        return c.json(
+          {
+            error:
+              "WEBHOOK_SECRET is not set please, set the secret key in the environment variables",
+          },
+          500,
+        );
+      }
+      if (!verifyHmac(JSON.stringify(messageBody), secret, hmac)) {
+        console.error(
+          "[pubsub][fire-webhook] Invalid HMAC please, check the HMAC is correct",
+        );
+        return c.json(
+          {
+            error: "Invalid HMAC please, check the HMAC is correct",
+          },
+          401,
+        );
+      }
+      console.log(
+        "[pubsub][fire-webhook] HMAC verified, proceeding to next middleware",
+      );
+      return c.json({
+        ok: true,
       });
     },
   );

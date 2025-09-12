@@ -208,6 +208,7 @@ export class ChannelV1
     topic: string,
     seq: string,
     tIngress: number,
+    webhookUrl: string,
   ): Promise<void> {
     const params: PublishMessageParams = {
       messageBody,
@@ -219,6 +220,7 @@ export class ChannelV1
       topic,
       seq,
       tIngress,
+      webhookUrl,
     };
 
     await this.messageBroadcaster.publishMessage(params);
@@ -308,6 +310,7 @@ export class ChannelV1
     channelName: string,
     tIngress: number,
     tEnqueued: number,
+    webhookUrl: string,
   ): Promise<BroadcastResult> {
     const broadcastStartTime = monoNow();
 
@@ -366,6 +369,7 @@ export class ChannelV1
       topic,
       seq,
       tIngress,
+      webhookUrl,
     );
 
     // Prepare remote shard broadcasts
@@ -386,6 +390,7 @@ export class ChannelV1
             topic,
             seq,
             tIngress,
+            webhookUrl,
           ),
         );
       }

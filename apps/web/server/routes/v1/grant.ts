@@ -9,6 +9,7 @@ import { ratelimit } from "@/lib/ratelimit";
 import { redis } from "@/lib/redis";
 import { sha256 } from "@/utils/hash";
 import { validator } from "hono/validator";
+import { Doc } from "@/convex/_generated/dataModel";
 
 // Allow "*" for topics, otherwise only letters, numbers, and underscores
 const TOPIC_RE = /^([A-Za-z0-9_]+|\*)$/;
@@ -193,10 +194,10 @@ export const grantRoute = new Hono().post(
     }
 
     // Resolve project first (authentication)
-    let projectId: string;
+    let project: Doc<"projects">;
     try {
       // Fetch projectId from Convex query
-      projectId = await fetchQuery(api.keys.query.getProjectIdByKey, {
+      project = await fetchQuery(api.keys.query.getProjectByKey, {
         secret_key,
       });
     } catch (error: unknown) {
@@ -218,7 +219,7 @@ export const grantRoute = new Hono().post(
     }
 
     // Validate projectId structure
-    if (typeof projectId !== "string" || !projectId) {
+    if (typeof project._id !== "string" || !project._id) {
       return c.json(
         {
           error:
@@ -241,7 +242,7 @@ export const grantRoute = new Hono().post(
         success,
         reset: resetTime,
         remaining: remainingCount,
-      } = await ratelimit.limit(`grant:${projectId}:${userId}`);
+      } = await ratelimit.limit(`grant:${project._id}:${userId}`);
       limitOk = success;
       reset = resetTime;
       remaining = remainingCount;
@@ -327,7 +328,8 @@ export const grantRoute = new Hono().post(
 
     // Create grant with consistent time units (seconds)
     const grant: Grant = {
-      project_id: projectId,
+      project_id: project._id,
+      webhook_url: project.webhookUrl || "",
       key_id: keyId,
       channel,
       topics: normalizedTopics,

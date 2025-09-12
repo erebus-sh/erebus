@@ -21,6 +21,7 @@
     "@repo/schemas": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/web": "workspace:*",
+    "@erebus-sh/sdk": "workspace:*",
     "cloudflare": "^4.5.0",
     "hono": "^4.9.6",
     "jose": "^6.0.12",

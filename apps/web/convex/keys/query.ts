@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
 import {
@@ -6,14 +6,18 @@ import {
   getValidatedProjectBySlugWithOwnershipForQuery,
 } from "../lib/guard";
 
-export const getProjectIdByKey = query({
+export const getProjectByKey = query({
   args: {
     secret_key: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Doc<"projects">> => {
     const { secret_key } = args;
     const key = await getValidatedActiveKeyForQuery(ctx, secret_key);
-    return key.projectId;
+    const project = await ctx.db.get(key.projectId);
+    if (!project) {
+      throw new ConvexError("Project not found");
+    }
+    return project;
   },
 });
 

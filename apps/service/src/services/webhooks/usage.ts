@@ -16,14 +16,8 @@ function isValidBaseUrl(url: string): boolean {
   }
 }
 
-function isValidUsageWebhookPath(path: string): boolean {
-  // Only allow the exact path for usage webhook
-  return path === "/api/v1/webhooks/usage";
-}
-
 export class UsageWebhook {
   private readonly client: ReturnType<typeof createRpcClient>;
-  private readonly usagePath = "/api/v1/webhooks/usage";
   private readonly secret: string;
 
   constructor(baseUrl: string, env: Env) {
@@ -37,16 +31,6 @@ export class UsageWebhook {
   }
 
   async send(payloads: UsagePayload[]): Promise<void> {
-    // Strictly check that the path is correct before sending
-    if (
-      !isValidUsageWebhookPath(this.usagePath) ||
-      typeof this.client.api?.v1?.webhooks?.usage?.$post !== "function"
-    ) {
-      throw new Error(
-        "UsageWebhook: Invalid usage webhook path or client method not found.",
-      );
-    }
-
     const hmac = await generateHmac(JSON.stringify(payloads), this.secret);
 
     await this.client.api.v1.webhooks.usage.$post(

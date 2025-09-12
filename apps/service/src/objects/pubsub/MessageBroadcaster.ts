@@ -1,11 +1,6 @@
-import { Access } from "@repo/schemas/grant";
-import { GrantSchema } from "@repo/schemas/grant";
 import { MessageBody } from "@repo/schemas/messageBody";
-import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
-import {
-  PacketEnvelope,
-  PacketEnvelopeSchema,
-} from "@repo/schemas/packetEnvelope";
+import { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
+import { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -18,7 +13,8 @@ import {
 import { BaseService } from "./BaseService";
 import { MessageBuffer } from "./MessageBuffer";
 import { ErebusClient } from "./ErebusClient";
-
+import { generateHmac } from "@repo/shared/utils/hmac";
+import { createRpcClient } from "@erebus-sh/sdk/server";
 /**
  * Manages message broadcasting to WebSocket connections with advanced performance optimizations.
  *
@@ -78,6 +74,7 @@ export class MessageBroadcaster extends BaseService {
       channelName,
       topic,
       seq,
+      webhookUrl,
     } = params;
 
     const publishStartTime = monoNow();
@@ -145,6 +142,7 @@ export class MessageBroadcaster extends BaseService {
       topic,
       seq,
       subscriberClientIds,
+      webhookUrl,
     );
   }
 
@@ -385,6 +383,7 @@ export class MessageBroadcaster extends BaseService {
     topic: string,
     seq: string,
     subscriberClientIds: string[],
+    webhookUrl: string,
   ): Promise<void> {
     await Promise.all([
       // Buffer the message for persistence
@@ -404,9 +403,44 @@ export class MessageBroadcaster extends BaseService {
         keyId,
         messageBody.payload.length,
       ),
+      this.fireWebhook(webhookUrl, keyId, messageBody),
     ]).catch((error) => {
       this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });
+  }
+
+  /**
+   * Fire a webhook request to the project's webhook URL so they can receive and process the message.
+   * The webhook allows projects to store messages in their own database or perform custom processing.
+   *
+   * @param webhookUrl Webhook URL to fire
+   * @param keyId Key ID for the HMAC
+   * @param messageBody Message body to fire
+   */
+  private async fireWebhook(
+    webhookUrl: string,
+    keyId: string,
+    messageBody: MessageBody,
+  ): Promise<void> {
+    const hmac = await generateHmac(JSON.stringify(messageBody), keyId);
+    const payload: FireWebhookSchema = {
+      messageBody: [messageBody],
+      hmac,
+    };
+
+    const url = new URL(webhookUrl);
+
+    const client = createRpcClient(url.origin);
+    const response = await client.api.pubsub["fire-webhook"].$post({
+      json: payload,
+    });
+    if (!response.ok) {
+      this.logDebug(
+        `[FIRE_WEBHOOK] Failed to fire webhook: ${response.statusText}`,
+      );
+    } else {
+      this.logDebug(`[FIRE_WEBHOOK] Successfully fired webhook`);
+    }
   }
 
   /**
