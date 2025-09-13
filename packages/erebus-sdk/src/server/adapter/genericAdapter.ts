@@ -2,22 +2,25 @@ import { createApp } from "@/server/app";
 import type { ErebusSession } from "@/service/session";
 import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
 
-export type Authorize<T extends Request> = (
+export type Authorize<T = Request> = (
   channel: string,
   ctx?: { req: T },
 ) => ErebusSession | Promise<ErebusSession>;
 
 export type FireWebhook = (webHookMessage: FireWebhookSchema) => Promise<void>;
 
-export async function getSessionFromRequest<T extends Request>(
+export async function getSessionFromRequest<T = Request>(
   req: T,
   authorize: Authorize<T>,
   fireWebhook: FireWebhook,
 ): Promise<ErebusSession | undefined> {
   let channel = "";
 
+  // Type-safe way to handle different request types
+  const requestLike = req as Request;
+
   try {
-    const body = (await req.clone().json()) as { channel?: unknown };
+    const body = (await requestLike.clone().json()) as { channel?: unknown };
     if (typeof body.channel === "string") {
       channel = body.channel;
     }
@@ -25,8 +28,11 @@ export async function getSessionFromRequest<T extends Request>(
     // If parsing fails, channel remains empty
   }
 
-  if (req.method === "POST" && req.url === "/api/erebus/pubsub/fire-webhook") {
-    const webHookMessage = await req.json();
+  if (
+    requestLike.method === "POST" &&
+    requestLike.url === "/api/erebus/pubsub/fire-webhook"
+  ) {
+    const webHookMessage = await requestLike.json();
     await fireWebhook(webHookMessage);
     return undefined;
   } else {
@@ -34,7 +40,7 @@ export async function getSessionFromRequest<T extends Request>(
   }
 }
 
-export function createGenericAdapter<T extends Request>({
+export function createGenericAdapter<T = Request>({
   authorize,
   fireWebhook,
 }: {
@@ -46,7 +52,7 @@ export function createGenericAdapter<T extends Request>({
     // Create a new app instance with the session injected
     const app = createApp(session);
 
-    return await app.fetch(req);
+    return await app.fetch(req as Request);
   };
 
   return {
