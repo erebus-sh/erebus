@@ -5,7 +5,7 @@ description: Guiding you through the process of using Erebus.
 import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 
-# Quickstart Example - Publish and Subscribe to a channel with next.js
+# Quickstart Example - Publish and Subscribe to a channel with next.js using the React SDK (Alpha)
 To start using Erebus you only need three things:
 - An API endpoint that creates tokens for your clients using your API keys
 - A client file where you declare your channels and their types
@@ -131,7 +131,6 @@ export default function ChatLayout({
 "use client";
 
 import { useChannel } from "@/erebus/client";
-import { useState } from "react";
 
 export default function ChatPage() {
   {/**
