@@ -1,4 +1,4 @@
-import { mutation } from "../_generated/server";
+import { internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 import { getValidatedActiveKeyById } from "../lib/guard";
 import {
@@ -23,7 +23,7 @@ export const schemaPayload = v.array(
   }),
 );
 
-export const trackUsage = mutation({
+export const trackUsage = internalMutation({
   args: {
     payload: schemaPayload,
   },
@@ -61,33 +61,31 @@ export const trackUsage = mutation({
 
     // Update aggregates for each inserted record
     await Promise.all(
-      insertedIds.map(
-        async ({ id, projectId, event, payloadLength, apiKeyId }) => {
-          // Get the full document for aggregate insertion
-          const doc = await ctx.db.get(id);
-          if (!doc) return;
+      insertedIds.map(async ({ id, event, payloadLength }) => {
+        // Get the full document for aggregate insertion
+        const doc = await ctx.db.get(id);
+        if (!doc) return;
 
-          // Insert into main usage aggregate
-          await usageAggregate.insert(ctx, doc);
+        // Insert into main usage aggregate
+        await usageAggregate.insert(ctx, doc);
 
-          // Insert into event-based aggregate
-          await usageByEventAggregate.insert(ctx, doc);
+        // Insert into event-based aggregate
+        await usageByEventAggregate.insert(ctx, doc);
 
-          // Insert into time-based aggregate
-          await usageByTimeAggregate.insert(ctx, doc);
+        // Insert into time-based aggregate
+        await usageByTimeAggregate.insert(ctx, doc);
 
-          // Insert into event-time aggregate
-          await usageByEventTimeAggregate.insert(ctx, doc);
+        // Insert into event-time aggregate
+        await usageByEventTimeAggregate.insert(ctx, doc);
 
-          // Insert into API key based aggregate
-          await usageByApiKeyAggregate.insert(ctx, doc);
+        // Insert into API key based aggregate
+        await usageByApiKeyAggregate.insert(ctx, doc);
 
-          // Insert into payload length aggregate (only for message events)
-          if (event === "websocket.message" && payloadLength) {
-            await usageByPayloadAggregate.insert(ctx, doc);
-          }
-        },
-      ),
+        // Insert into payload length aggregate (only for message events)
+        if (event === "websocket.message" && payloadLength) {
+          await usageByPayloadAggregate.insert(ctx, doc);
+        }
+      }),
     );
 
     // Improved logging: log each usage event tracked
@@ -99,19 +97,41 @@ export const trackUsage = mutation({
       },
     );
 
-    // Return a summary of what was inserted
+    // Group inserted records by projectId and calculate counts
+    const projectSummary = insertedIds.reduce(
+      (acc, { projectId, event, payloadLength }) => {
+        if (!acc[projectId]) {
+          acc[projectId] = {
+            projectId,
+            totalRows: 0,
+            eventCounts: {},
+            totalPayloadLength: 0,
+          };
+        }
+
+        acc[projectId].totalRows++;
+        acc[projectId].eventCounts[event] =
+          (acc[projectId].eventCounts[event] || 0) + 1;
+        acc[projectId].totalPayloadLength += payloadLength;
+
+        return acc;
+      },
+      {} as Record<
+        string,
+        {
+          projectId: string;
+          totalRows: number;
+          eventCounts: Record<string, number>;
+          totalPayloadLength: number;
+        }
+      >,
+    );
+
+    // Return a summary of what was inserted, grouped by project
     return {
       success: true,
-      count: insertedIds.length,
-      inserted: insertedIds.map(
-        ({ id, projectId, event, payloadLength, apiKeyId }) => ({
-          id,
-          projectId,
-          event,
-          payloadLength,
-          apiKeyId,
-        }),
-      ),
+      totalCount: insertedIds.length,
+      projects: Object.values(projectSummary),
       timestamp,
     };
   },

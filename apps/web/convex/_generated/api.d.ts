@@ -32,6 +32,7 @@ import type * as tables_index from "../tables/index.js";
 import type * as tables_projects from "../tables/projects.js";
 import type * as tables_usage from "../tables/usage.js";
 import type * as tables_user_profiles from "../tables/user_profiles.js";
+import type * as usage_action from "../usage/action.js";
 import type * as usage_mutation from "../usage/mutation.js";
 import type * as usage_query from "../usage/query.js";
 import type * as usage_triggers from "../usage/triggers.js";
@@ -81,6 +82,7 @@ declare const fullApi: ApiFromModules<{
   "tables/projects": typeof tables_projects;
   "tables/usage": typeof tables_usage;
   "tables/user_profiles": typeof tables_user_profiles;
+  "usage/action": typeof usage_action;
   "usage/mutation": typeof usage_mutation;
   "usage/query": typeof usage_query;
   "usage/triggers": typeof usage_triggers;

@@ -1,5 +1,5 @@
 import { api } from "../_generated/api";
-import { query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
 import { Doc } from "../_generated/dataModel";
 import { ConvexError, v } from "convex/values";
 import { getAuthenticatedUserForQuery } from "../lib/guard";
@@ -55,6 +55,17 @@ export const getProjectBySlug = query({
       throw new ConvexError("Project not found or not owned by user");
     }
 
+    return project;
+  },
+});
+
+export const getProjectById = internalQuery({
+  args: {
+    id: v.id("projects"),
+  },
+  handler: async (ctx, args): Promise<Doc<"projects"> | null> => {
+    const project = await ctx.db.get(args.id);
+    if (!project) throw new ConvexError("Project not found");
     return project;
   },
 });
