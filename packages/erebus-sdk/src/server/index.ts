@@ -12,3 +12,4 @@ export type { AppType as RpcAppType } from "./rpc";
 
 // ========== ADAPTERS ==========
 export * from "./adapter/next";
+export * from "./adapter/genericAdapter";
