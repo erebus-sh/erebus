@@ -1,7 +1,7 @@
 import { ServiceContext } from "./types";
-import { Env } from "@/env";
-import { AckPacketType } from "@repo/schemas/packetEnvelope";
-import { QueueEnvelope } from "@repo/schemas/queueEnvelope";
+import type { Env } from "@/env";
+import type { AckPacketType } from "@repo/schemas/packetEnvelope";
+import type { QueueEnvelope } from "@repo/schemas/queueEnvelope";
 import { ErebusClient } from "./ErebusClient";
 
 /**

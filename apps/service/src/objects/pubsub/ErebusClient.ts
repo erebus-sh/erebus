@@ -1,5 +1,5 @@
-import { Grant, GrantSchema, Access } from "@repo/schemas/grant";
-import { AckPacketType } from "@repo/schemas/packetEnvelope";
+import { type Grant, GrantSchema, Access } from "@repo/schemas/grant";
+import type { AckPacketType } from "@repo/schemas/packetEnvelope";
 
 /**
  * ErebusClient - A type-safe wrapper around WebSocket connections that encapsulates
