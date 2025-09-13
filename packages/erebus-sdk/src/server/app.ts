@@ -109,7 +109,7 @@ const routes = new Hono<{ Variables: AppVars }>()
    * it calls Erebus service to generate the token
    */
   .post(
-    "/api/pubsub/grant",
+    "/api/erebus/pubsub/grant",
     zValidator(
       "json",
       z.object({
@@ -153,7 +153,7 @@ const routes = new Hono<{ Variables: AppVars }>()
     },
   )
   .post(
-    "/api/pubsub/fire-webhook",
+    "/api/erebus/pubsub/fire-webhook",
     zValidator("json", FireWebhookSchema),
     async (c) => {
       const { messageBody, hmac } = c.req.valid("json");
