@@ -140,7 +140,9 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
 
   async function publish(
     payload: PayloadT,
-    opts: PublishOptions = {},
+    opts: PublishOptions = {
+      withAck: true,
+    },
   ): Promise<{
     localId: string;
     success: boolean;
@@ -173,29 +175,36 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
         attempts += 1;
         setMsgStatus(localId, { attempts });
 
-        client.publishWithAck({
-          topic,
-          messageBody: JSON.stringify(payload),
-          onAck: (ack) => {
-            if (ack.success) {
-              setMsgStatus(localId, { status: "success", error: null });
-              resolve();
-            } else {
-              const code = ack.error?.code ?? "UNKNOWN";
-              const err =
-                code === "TIMEOUT"
-                  ? new ErebusError(
-                      "Publish failed: the server timed out processing your publish request.",
-                    )
-                  : new ErebusError(
-                      "Publish failed: the server could not process your publish request.",
-                    );
-              setMsgStatus(localId, { status: "failed", error: err });
-              reject(err);
-            }
-          },
-          // If your client supports an explicit per-send timeout, pass opts.timeoutMs here
-        });
+        if (opts.withAck) {
+          client.publishWithAck({
+            topic,
+            messageBody: JSON.stringify(payload),
+            onAck: (ack) => {
+              if (ack.success) {
+                setMsgStatus(localId, { status: "success", error: null });
+                resolve();
+              } else {
+                const code = ack.error?.code ?? "UNKNOWN";
+                const err =
+                  code === "TIMEOUT"
+                    ? new ErebusError(
+                        "Publish failed: the server timed out processing your publish request.",
+                      )
+                    : new ErebusError(
+                        "Publish failed: the server could not process your publish request.",
+                      );
+                setMsgStatus(localId, { status: "failed", error: err });
+                reject(err);
+              }
+            },
+            // If your client supports an explicit per-send timeout, pass opts.timeoutMs here
+          });
+        } else {
+          client.publish({
+            topic,
+            messageBody: JSON.stringify(payload),
+          });
+        }
       });
 
     // Retry with exponential backoff (jitter optional)
