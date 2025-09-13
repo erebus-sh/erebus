@@ -45,7 +45,7 @@ export async function generateMetadata(
   if (!page) notFound();
 
   return {
-    title: page.data.title,
+    title: page.data.title + " | Erebus",
     description: page.data.description,
   };
 }
