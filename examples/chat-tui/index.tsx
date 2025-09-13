@@ -19,6 +19,7 @@ interface BunRequest extends Request {
 const client = ErebusClient.createClientSync({
   client: ErebusClientState.PubSub,
   authBaseUrl: "http://localhost:3000",
+  wsBaseUrl: "ws://localhost:3000",
 });
 
 // Database setup

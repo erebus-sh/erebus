@@ -1,4 +1,6 @@
 import { defineConfig } from "tsdown";
+import strip from "@rollup/plugin-strip";
+import typescript from "@rollup/plugin-typescript";
 
 export default defineConfig({
   entry: {
@@ -21,6 +23,7 @@ export default defineConfig({
   format: ["esm", "cjs"],
   dts: true,
   platform: "neutral",
+  // Remove console and debugger on production build
   external: [
     // Dependencies
     "@hono/node-server",
@@ -39,6 +42,12 @@ export default defineConfig({
   ],
   sourcemap: true,
   clean: true,
-  minify: true,
+  minify: {
+    compress: {
+      dropConsole: true,
+      dropDebugger: true,
+    },
+  },
   treeshake: true,
+  plugins: [typescript(), strip()],
 });

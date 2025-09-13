@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.106",
+  "version": "0.0.110",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -40,6 +40,8 @@
   "dependencies": {
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
+    "@rollup/plugin-strip": "^3.0.4",
+    "@rollup/plugin-typescript": "^12.1.4",
     "consola": "^3.4.2",
     "hono": "^4.9.1",
     "http2": "^3.3.7",
