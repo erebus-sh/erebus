@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { ingestMetersForUserId } from "../polar/meters";
@@ -19,6 +19,7 @@ export const schemaPayload = v.array(
 export const trackUsage = action({
   args: {
     payload: schemaPayload,
+    actionSecret: v.string(),
   },
   handler: async (
     ctx,
@@ -34,6 +35,12 @@ export const trackUsage = action({
     }>;
     timestamp: number;
   }> => {
+    if (args.actionSecret !== process.env.ACTION_SECRET) {
+      throw new ConvexError(
+        "Access denied: The provided secret key is invalid. Please verify your credentials or contact support if you believe this is an error.",
+      );
+    }
+
     const result = await ctx.runMutation(internal.usage.mutation.trackUsage, {
       payload: args.payload,
     });

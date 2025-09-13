@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { validator } from "hono/validator";
 
 import { UsageEventSchema } from "@repo/schemas/webhooks/usageRequest";
-import { fetchMutation } from "convex/nextjs";
+import { fetchAction, fetchMutation } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { verifyHmac } from "@repo/shared/utils/hmac";
 import { Id } from "@/convex/_generated/dataModel";
@@ -51,13 +51,14 @@ export const webhooksRoute = new Hono()
       try {
         // Process each usage event in the array
         // Transform the incoming usage events to match the Convex mutation schema
-        await fetchMutation(api.usage.mutation.trackUsage, {
+        await fetchAction(api.usage.action.trackUsage, {
           payload: body.map((event) => ({
             projectId: event.data.projectId as Id<"projects">,
             event: event.event,
             payloadLength: event.data.payloadLength,
             apiKeyId: event.data.keyId as Id<"api_keys">,
           })),
+          actionSecret: process.env.ACTION_SECRET!,
         });
 
         // Return success response
