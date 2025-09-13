@@ -5,7 +5,7 @@ import SelectInput from "ink-select-input";
 import { Database } from "bun:sqlite";
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 import { createGenericAdapter } from "@erebus-sh/sdk/server";
-import { ErebusService } from "@erebus-sh/sdk/service";
+import { Access, ErebusService } from "@erebus-sh/sdk/service";
 
 // Type for Bun's enhanced Request with cookies
 interface BunRequest extends Request {
@@ -415,6 +415,10 @@ const app = createGenericAdapter<BunRequest>({
     const session = await service.prepareSession({
       userId,
     });
+
+    session.join(channel);
+    session.allow("test_topic", Access.ReadWrite);
+
     return session;
   },
   fireWebhook: async (webHookMessage) => {
