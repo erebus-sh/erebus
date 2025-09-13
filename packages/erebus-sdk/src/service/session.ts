@@ -48,6 +48,13 @@ export class ErebusSession {
       throw new ErebusError("Channel name must be less than 64 characters.");
     }
 
+    // if already joined, throw an error
+    if (this.grantRequest.channel) {
+      throw new ErebusError(
+        "Channel already joined. Please call join(channel) only once.",
+      );
+    }
+
     this.grantRequest.channel = channel;
   }
 

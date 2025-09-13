@@ -43,7 +43,7 @@ const pricingTiers: PricingTier[] = [
       "Basic monitoring dashboard",
     ],
     cta: {
-      text: "Get Started",
+      text: "Sign Up",
       variant: "secondary",
     },
   },

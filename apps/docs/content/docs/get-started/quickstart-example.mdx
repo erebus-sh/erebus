@@ -6,38 +6,50 @@ import { Step, Steps } from 'fumadocs-ui/components/steps';
 
 
 # Quickstart Example - Publish and Subscribe to a channel with next.js
-To start using Erebus, all you need is three components:
-- API Endpoint to generate a token for the client using your own api keys
-- A client files you declare types and channels in
-- A page to subscribe to the channel
+To start using Erebus you only need three things:
+- An API endpoint that creates tokens for your clients using your API keys
+- A client file where you declare your channels and their types
+- A page that subscribes to the channel
 
 <Steps>
 
 <Step>
-First create a api endpoint to generate a token for the client using your own api keys.
+First create an API endpoint that issues a token for the client using your API keys.
 <Tabs items={["next-js"]}>
   <Tab value="next-js">
- ```typescript title="/app/api/generate-token/route.ts"
+ ```typescript title="/app/api/erebus/[...all]/route.ts"
 import { ErebusService, Access } from "@erebus-sh/sdk/service";
 import { createRouteHandler } from "@erebus-sh/sdk/server/next";
 import { cookies } from "next/headers";
 
 export const { POST } = createRouteHandler({
   authorize: async (channel, ctx) => {
+    // Get user ID from cookies or headers
     const ckis = await cookies();
     const userId = ckis.get("x-User-Id")?.value;
     if (!userId) {
       throw new Error("Missing user id");
     }
+
+    // Create a new service instance
     const service = new ErebusService({
+      // Replace with your own secret_api_key
       secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
-      base_url: "http://localhost:3000",
     });
+
+    // Prepare a session for the user id
     const session = await service.prepareSession({
       userId,
     });
+
+    // Allow one single channel for the user
     session.join(channel);
+
+    // Allow one single topic or multiple topics for the user up to 64 topics
+    // Give it Read or Write or ReadWrite access
     session.allow("rm_123", Access.ReadWrite);
+
+    // Return the session instance
     return session;
   },
 });
@@ -47,48 +59,89 @@ export const { POST } = createRouteHandler({
 </Step>
 <Step>
  ```typescript title="/erebus/client.ts"
-import { createErebus } from "@erebus-sh/sdk/react";
+"use client";
+import { createChannel } from "@erebus-sh/sdk/react";
 import { z } from "zod";
 
-const { useSubscribe } = createErebus({
-  room: z.object({
+// Create typed schemas for the channels you want to use
+export const schema = {
+  chat: z.object({
     message: z.string(),
     sentAt: z.number(),
   }),
-});
+};
 
-export default useSubscribe;
+// Create a channel hook
+export const useChannel = createChannel(schema);
 ```
 </Step>
 
-
 <Step>
- ```typescript title="app/page.tsx"
+ ```typescript title="app/layout.tsx"
+import "./globals.css";
+import { ErebusProvider } from "@erebus-sh/sdk/react";
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+    {/*
+    Wrap your entire app in ErebusProvider
+    You can pass your own authBaseUrl and wsBaseUrl
+    If you leave them out the defaults will be used (recommended)
+    */}
+      <ErebusProvider>
+        <body
+          className="antialiased"
+        >
+          {children}
+        </body>
+      </ErebusProvider>
+    </html>
+  );
+}
+
+```
+</Step>
+<Step>
+ ```typescript title="app/chat/layout.tsx"
+import { TopicProvider } from "@erebus-sh/sdk/react";
+
+export default function ChatLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  {/*
+  Wrap the path where you want to use Erebus in TopicProvider
+  Think of it as a room inside a channel
+  You can set the topic to whatever fits your app
+  If the user is not allowed to read the channel they cannot subscribe to its topics
+  */}
+  return <TopicProvider topic="room123">{children}</TopicProvider>;
+}
+
+```
+</Step>
+<Step>
+ ```typescript title="app/chat/page.tsx"
 "use client";
 
+import { useChannel } from "@/erebus/client";
 import { useState } from "react";
-import useSubscribe from "@/erebus/client";
 
-export default function Home() {
-  const [input, setInput] = useState("");
-  const topic = "rm_123";
-
-  const {
-    messages,
-    publishAck,
-    subscriptionStatus,
-    connectionStatus,
-    isReady,
-  } = useSubscribe("room", topic, (presence) => {
-    if (presence.status === "online") {
-      console.log(`Client ${presence.clientId} is online at ${presence.timestamp} in topic ${presence.topic}`);
-    } else {
-      console.log(`Client ${presence.clientId} is offline at ${presence.timestamp} in topic ${presence.topic}`);
-    }
-  });
+export default function ChatPage() {
+  {/**
+  Use the useChannel hook to access publish, presence, messages, isError, and error
+  The hook is fully typed and auto completes based on the schema you defined
+  */}
+  const { publish, presence, messages, isError, error } = useChannel("chat");
   return (
     ...
-  )
+  );
 }
 ```
 </Step>
