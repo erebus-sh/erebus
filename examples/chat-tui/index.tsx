@@ -4,7 +4,8 @@ import TextInput from "ink-text-input";
 import SelectInput from "ink-select-input";
 import { Database } from "bun:sqlite";
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
-import { createApp } from "@erebus-sh/sdk/server";
+import { createGenericAdapter } from "@erebus-sh/sdk/server";
+import { ErebusService } from "@erebus-sh/sdk/service";
 
 // Erebus client
 const client = ErebusClient.createClientSync({
@@ -393,7 +394,22 @@ const TUI = () => {
 
 render(<TUI />);
 
-const app = createApp();
+const app = createGenericAdapter({
+  authorize: async (channel, ctx) => {
+    const service = new ErebusService({
+      secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
+      base_url: "http://localhost:3000",
+    });
+
+    const session = await service.prepareSession({
+      userId: "1",
+    });
+    return session;
+  },
+  fireWebhook: async (webHookMessage) => {
+    console.log(webHookMessage);
+  },
+});
 
 Bun.serve({
   port: 3000,
