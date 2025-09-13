@@ -1,4 +1,3 @@
-import { handle } from "hono/vercel";
 import { createApp } from "@/server/app";
 import type { ErebusSession } from "@/service/session";
 import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
@@ -10,14 +9,14 @@ export type Authorize = (
 
 export type FireWebhook = (webHookMessage: FireWebhookSchema) => Promise<void>;
 
-export function createRouteHandler({
+export function createGenericAdapter({
   authorize,
   fireWebhook,
 }: {
   authorize: Authorize;
   fireWebhook: FireWebhook;
 }) {
-  const createHandler = async (req: Request): Promise<Response> => {
+  const fetch = async (req: Request): Promise<Response> => {
     let channel = "";
 
     try {
@@ -42,11 +41,10 @@ export function createRouteHandler({
     // Create a new app instance with the session injected
     const app = createApp(session);
 
-    const h = handle(app);
-    return await h(req);
+    return await app.fetch(req);
   };
 
   return {
-    POST: createHandler,
+    fetch,
   };
 }
