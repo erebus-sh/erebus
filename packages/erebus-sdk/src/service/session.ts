@@ -40,7 +40,7 @@ export class ErebusSession {
 
     if (!/^[A-Za-z0-9_]+$/.test(channel)) {
       throw new ErebusError(
-        "Channel name must not contain spaces or special characters. Only letters, numbers, and underscores are allowed.",
+        `Channel name ${channel} must not contain spaces or special characters. Only letters, numbers, and underscores are allowed.`,
       );
     }
 

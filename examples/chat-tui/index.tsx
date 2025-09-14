@@ -49,6 +49,31 @@ database.run(`
   INSERT OR IGNORE INTO users (username, password) VALUES ('user', 'user');
 `);
 
+// In-memory session store for TUI
+const sessionStore = new Map<
+  string,
+  { userId: string; username: string; lastActivity: number }
+>();
+let currentUserId: string | null = null;
+
+// Session cleanup function
+const cleanupExpiredSessions = () => {
+  const now = Date.now();
+  const SESSION_TIMEOUT = 30 * 60 * 1000; // 30 minutes
+
+  for (const [userId, session] of sessionStore.entries()) {
+    if (now - session.lastActivity > SESSION_TIMEOUT) {
+      sessionStore.delete(userId);
+      if (currentUserId === userId) {
+        currentUserId = null;
+      }
+    }
+  }
+};
+
+// Run cleanup every 5 minutes
+setInterval(cleanupExpiredSessions, 5 * 60 * 1000);
+
 // Types
 interface User {
   id: string;
@@ -357,12 +382,24 @@ const TUI = () => {
 
   const handleLogin = useCallback((loggedInUser: User) => {
     setUser(loggedInUser);
+    // Store session in memory for TUI
+    currentUserId = loggedInUser.id;
+    sessionStore.set(loggedInUser.id, {
+      userId: loggedInUser.id,
+      username: loggedInUser.username,
+      lastActivity: Date.now(),
+    });
   }, []);
 
   const handleLogout = useCallback(() => {
     setUser(null);
     setSelectedChat(null);
     setChats([]);
+    // Clear session from memory
+    if (currentUserId) {
+      sessionStore.delete(currentUserId);
+      currentUserId = null;
+    }
   }, []);
 
   const handleSelectChat = useCallback((chat: Chat) => {
@@ -413,21 +450,25 @@ const app = createGenericAdapter({
   authorize: async (channel: string, ctx: { req: Request }) => {
     console.log("authorize", channel, ctx);
     console.log("ctx.req", ctx.req);
+    console.log("Current user ID:", currentUserId);
+    console.log("Session store size:", sessionStore.size);
 
-    // Get authenticated user from request context
-    const cookieHeader =
-      ctx.req.headers.get("cookie") || ctx.req.headers.get("cookies");
-    if (!cookieHeader) {
-      throw new Error("Cookie header is required");
+    // Get authenticated user from in-memory session store
+    if (!currentUserId) {
+      console.log("No current user ID found");
+      throw new Error("No active session found. Please login first.");
     }
-    const cookieMap = new Bun.CookieMap(cookieHeader);
-    const userId = cookieMap.get("x-user-id");
 
-    console.log(cookieHeader);
-
-    if (!userId) {
-      throw new Error("User ID is required make sure to login");
+    const sessionData = sessionStore.get(currentUserId);
+    if (!sessionData) {
+      console.log("No session data found for user:", currentUserId);
+      throw new Error("Session expired or not found. Please login again.");
     }
+
+    // Update last activity
+    sessionData.lastActivity = Date.now();
+
+    console.log("Using session for user:", sessionData.username);
 
     const service = new ErebusService({
       secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
@@ -436,7 +477,7 @@ const app = createGenericAdapter({
 
     // Prepare the session and create instance of ErebusSession
     const session = await service.prepareSession({
-      userId: userId as string, // We know userId is not null after the check above
+      userId: sessionData.userId,
     });
 
     // First join the channel
@@ -485,6 +526,26 @@ Bun.serve({
       headers: Object.fromEntries(req.headers.entries()),
       body: req.body ? "[body present]" : "[no body]",
     });
-    return app.fetch(req);
+
+    // Inject current user session into the request context
+    // This allows the authorize handler to access the current user
+    const modifiedReq = new Request(req, {
+      headers: {
+        ...Object.fromEntries(req.headers.entries()),
+        "x-current-user-id": currentUserId || "",
+        "x-current-username": currentUserId
+          ? sessionStore.get(currentUserId)?.username || ""
+          : "",
+      },
+    });
+
+    console.log("Injected user session:", {
+      userId: currentUserId,
+      username: currentUserId
+        ? sessionStore.get(currentUserId)?.username
+        : "none",
+    });
+
+    return app.fetch(modifiedReq);
   },
 });
