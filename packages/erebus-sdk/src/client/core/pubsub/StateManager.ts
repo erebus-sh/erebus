@@ -64,6 +64,10 @@ export class StateManager {
     this.#updateActivity();
   }
 
+  getChannel(): string | null {
+    return this.#channel;
+  }
+
   // Subscription State Management
   get subscriptionCount(): number {
     return this.#subscriptions.size;

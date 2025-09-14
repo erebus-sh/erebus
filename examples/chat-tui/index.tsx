@@ -262,9 +262,17 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
 
     loadMessages();
 
+    client.subscribe(chat.name, (message) => {
+      console.log(message);
+    });
+
     // Refresh messages every second
     const interval = setInterval(loadMessages, 1000);
-    return () => clearInterval(interval);
+    return () => {
+      client.unsubscribe(chat.name);
+
+      clearInterval(interval);
+    };
   }, [chat.id]);
 
   const handleSendMessage = useCallback(() => {

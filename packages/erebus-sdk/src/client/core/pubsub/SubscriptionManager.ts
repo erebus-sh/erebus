@@ -34,7 +34,7 @@ export class SubscriptionManager implements ISubscriptionManager {
     return this.#subs.size;
   }
 
-  subscribe(topic: string): void {
+  subscribe(topic: string): boolean {
     logger.info(`[${this.#connectionId}] Subscribe to topic`, { topic });
 
     // Validate topic
@@ -48,14 +48,24 @@ export class SubscriptionManager implements ISubscriptionManager {
     this.#subscribedTopics.add(topic);
     this.#unsubscribedTopics.delete(topic); // Remove from unsubscribed if it was there
 
+    // Check if the topic is already subscribed
+    if (this.#subs.has(topic)) {
+      logger.info(`[${this.#connectionId}] Topic already subscribed`, {
+        topic,
+      });
+      return false; // already subscribed
+    }
+
     this.#subs.add(topic);
     logger.info(`[${this.#connectionId}] Topic added to subscriptions`, {
       topic,
       totalSubs: this.#subs.size,
     });
+
+    return true;
   }
 
-  unsubscribe(topic: string): void {
+  unsubscribe(topic: string): boolean {
     logger.info(`[${this.#connectionId}] Unsubscribe from topic`, { topic });
 
     // Validate topic
@@ -63,6 +73,14 @@ export class SubscriptionManager implements ISubscriptionManager {
       const error = "Invalid topic: must be a non-empty string";
       logger.error(`[${this.#connectionId}] ${error}`, { topic });
       throw new Error(error);
+    }
+
+    // Check if the topic is already unsubscribed
+    if (!this.#subs.has(topic)) {
+      logger.info(`[${this.#connectionId}] Topic already unsubscribed`, {
+        topic,
+      });
+      return false; // already unsubscribed
     }
 
     // Optimistically mark as unsubscribed
@@ -74,6 +92,8 @@ export class SubscriptionManager implements ISubscriptionManager {
       topic,
       totalSubs: this.#subs.size,
     });
+
+    return true;
   }
 
   isSubscribed(topic: string): boolean {

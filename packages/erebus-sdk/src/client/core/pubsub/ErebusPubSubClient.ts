@@ -101,6 +101,14 @@ export class ErebusPubSubClientNew {
       throw new Error(error);
     }
 
+    if (this.#stateManager.getChannel() === channel) {
+      consola.info(`[Erebus:${instanceId}] Channel already joined`, {
+        channel,
+      });
+      logger.info("Channel already joined", { channel });
+      return;
+    }
+
     // Update both state manager and connection
     this.#stateManager.setChannel(channel);
     this.#conn.setChannel(channel);

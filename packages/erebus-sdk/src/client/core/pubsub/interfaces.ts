@@ -104,8 +104,8 @@ export interface ISubscriptionManager {
   readonly unsubscribedTopics: string[];
   readonly subscriptionCount: number;
 
-  subscribe(topic: string): void;
-  unsubscribe(topic: string): void;
+  subscribe(topic: string): boolean;
+  unsubscribe(topic: string): boolean;
   isSubscribed(topic: string): boolean;
   getSubscriptionStatus(topic: string): SubscriptionStatus;
   clear(): void;

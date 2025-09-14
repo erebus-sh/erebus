@@ -246,7 +246,12 @@ export class PubSubConnection {
       timeout: timeoutMs,
     });
 
-    this.#subscriptionManager.subscribe(topic);
+    if (!this.#subscriptionManager.subscribe(topic)) {
+      logger.info(`[${this.#connectionId}] Topic already subscribed`, {
+        topic,
+      });
+      return;
+    }
 
     if (this.isConnected) {
       logger.info(
@@ -326,7 +331,12 @@ export class PubSubConnection {
       timeout: timeoutMs,
     });
 
-    this.#subscriptionManager.unsubscribe(topic);
+    if (!this.#subscriptionManager.unsubscribe(topic)) {
+      logger.info(`[${this.#connectionId}] Topic already unsubscribed`, {
+        topic,
+      });
+      return;
+    }
 
     if (this.isConnected) {
       logger.info(
