@@ -20,7 +20,9 @@ export class Authorize {
     console.log("[AUTHORIZE] generateToken called with channel:", channel);
     try {
       console.log("[AUTHORIZE] Making POST request to generate-token endpoint");
-      const response = await this.client["api"]["pubsub"]["grant"].$post({
+      const response = await this.client["api"]["erebus"]["pubsub"][
+        "grant"
+      ].$post({
         json: {
           channel,
         },

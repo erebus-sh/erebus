@@ -72,7 +72,6 @@ interface Message {
 // Login Component
 const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(async () => {
@@ -81,14 +80,9 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       return;
     }
 
-    if (!password.trim()) {
-      setError("Password is required");
-      return;
-    }
-
     const req = new Request("http://localhost:4919/login", {
       method: "POST",
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username }),
     });
     const res = await fetch(req);
     const { username: loggedInUsername } = (await res.json()) as {
@@ -99,9 +93,8 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       onLogin({ id: loggedInUsername, username: loggedInUsername });
     } else {
       setError("Invalid credentials");
-      setPassword("");
     }
-  }, [username, password, onLogin]);
+  }, [username, onLogin]);
 
   return (
     <Box flexDirection="column" padding={1}>
