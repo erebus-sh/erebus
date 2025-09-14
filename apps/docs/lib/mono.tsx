@@ -2,19 +2,36 @@ import { ImageResponse } from "next/og";
 import type { ReactNode } from "react";
 import fs from "node:fs/promises";
 import type { ImageResponseOptions } from "next/server";
+import path from "node:path";
 
 export interface GenerateProps {
   title: ReactNode;
   description?: ReactNode;
 }
 
-const font = await fs.readFile("./lib/og/JetBrainsMono-Regular.ttf");
-const fontBold = await fs.readFile("./lib/og/JetBrainsMono-Bold.ttf");
-
 export async function generateOGImage(
   options: GenerateProps & Partial<ImageResponseOptions>,
 ): Promise<ImageResponse> {
   const { title, description, ...rest } = options;
+
+  // Load your local font files
+  const fontPathRegular = path.join(
+    process.cwd(),
+    "public",
+    "fonts",
+    "JetBrainsMono-Regular.ttf",
+  );
+  const fontPathBold = path.join(
+    process.cwd(),
+    "public",
+    "fonts",
+    "JetBrainsMono-Bold.ttf",
+  );
+
+  const [fontRegularData, fontBoldData] = await Promise.all([
+    fs.readFile(fontPathRegular),
+    fs.readFile(fontPathBold),
+  ]);
 
   return new ImageResponse(
     generate({
@@ -27,12 +44,12 @@ export async function generateOGImage(
       fonts: [
         {
           name: "Mono",
-          data: font,
+          data: fontRegularData,
           weight: 400,
         },
         {
           name: "Mono",
-          data: fontBold,
+          data: fontBoldData,
           weight: 600,
         },
       ],
