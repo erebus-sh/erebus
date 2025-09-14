@@ -1,4 +1,4 @@
-import { generateOGImage } from "fumadocs-ui/og";
+import { generateOGImage } from "@/lib/mono";
 import { source } from "@/lib/source";
 import { notFound } from "next/navigation";
 
@@ -13,7 +13,6 @@ export async function GET(
   return generateOGImage({
     title: page.data.title,
     description: page.data.description,
-    site: "Erebus",
   });
 }
 
