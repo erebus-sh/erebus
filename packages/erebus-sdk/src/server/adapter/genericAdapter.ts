@@ -4,7 +4,7 @@ import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
 
 export type Authorize<T = Request> = (
   channel: string,
-  ctx?: { req: T },
+  ctx: { req: T },
 ) => ErebusSession | Promise<ErebusSession>;
 
 export type FireWebhook = (webHookMessage: FireWebhookSchema) => Promise<void>;

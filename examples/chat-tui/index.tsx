@@ -6,14 +6,7 @@ import { Database } from "bun:sqlite";
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 import { createGenericAdapter } from "@erebus-sh/sdk/server";
 import { Access, ErebusService } from "@erebus-sh/sdk/service";
-
-// Type for Bun's enhanced Request with cookies
-interface BunRequest extends Request {
-  cookies: {
-    get(name: string): string | null;
-    set(name: string, value: string): void;
-  };
-}
+import type { BunRequest } from "bun";
 
 // Erebus client
 const client = ErebusClient.createClientSync({
@@ -263,7 +256,7 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
     loadMessages();
 
     client.subscribe(chat.name, (message) => {
-      console.log(message);
+      setMessages((prev) => [...prev, message]);
     });
 
     // Refresh messages every second
@@ -414,18 +407,22 @@ render(<TUI />);
 const app = createGenericAdapter<BunRequest>({
   authorize: async (channel, ctx) => {
     // Extract user ID from cookies for proper authorization
-    const userId = ctx?.req.cookies.get("x-user-id") || "1";
+    const userId = ctx.req.cookies.get("x-user-id") || "1";
 
     const service = new ErebusService({
       secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
       base_url: "http://localhost:3000",
     });
 
+    // Prepare the session and create instance of ErebusSession
     const session = await service.prepareSession({
       userId,
     });
 
+    // First join the channel
     session.join(channel);
+
+    // Then allow the topic
     session.allow("test_topic", Access.ReadWrite);
 
     return session;
@@ -440,7 +437,7 @@ Bun.serve({
   routes: {
     "/login": {
       POST: async (req) => {
-        const bunReq = req as BunRequest;
+        const bunReq = req;
         const cookies = bunReq.cookies;
         cookies.set("x-user-id", "1");
         return Response.json({ success: true });
