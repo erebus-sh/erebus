@@ -74,16 +74,10 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isPasswordMode, setIsPasswordMode] = useState(false);
 
   const handleSubmit = useCallback(async () => {
     if (!username.trim()) {
       setError("Username is required");
-      return;
-    }
-
-    if (!isPasswordMode) {
-      setIsPasswordMode(true);
       return;
     }
 
@@ -107,7 +101,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       setError("Invalid credentials");
       setPassword("");
     }
-  }, [username, password, isPasswordMode, onLogin]);
+  }, [username, password, onLogin]);
 
   return (
     <Box flexDirection="column" padding={1}>
@@ -122,19 +116,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
         onSubmit={handleSubmit}
         placeholder="Enter username"
       />
-      {isPasswordMode && (
-        <>
-          <Box height={1} />
-          <Text color="yellow">Password:</Text>
-          <TextInput
-            value={password}
-            onChange={setPassword}
-            onSubmit={handleSubmit}
-            placeholder="Enter password"
-            mask="*"
-          />
-        </>
-      )}
+
       {error && (
         <>
           <Box height={1} />
@@ -457,6 +439,9 @@ Bun.serve({
 
         // Very secure authentication :P
         const { username } = (await bunReq.json()) as { username: string };
+
+        console.log("login", username);
+
         const cookies = bunReq.cookies;
         cookies.set("x-user-id", username);
         return Response.json({ success: true, username });

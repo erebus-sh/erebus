@@ -37,15 +37,24 @@ export async function generateStaticParams() {
   return source.generateParams();
 }
 
-export async function generateMetadata(
-  props: PageProps<"/docs/[[...slug]]">,
-): Promise<Metadata> {
-  const params = await props.params;
-  const page = source.getPage(params.slug);
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug?: string[] }>;
+}) {
+  const { slug = [] } = await params;
+  const page = source.getPage(slug);
   if (!page) notFound();
-
+  const image = ["/docs-og", ...slug, "image.png"].join("/");
   return {
-    title: page.data.title + " | Erebus",
+    title: page.data.title,
     description: page.data.description,
+    openGraph: {
+      images: image,
+    },
+    twitter: {
+      card: "summary_large_image",
+      images: image,
+    },
   };
 }
