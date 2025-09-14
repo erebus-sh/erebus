@@ -17,7 +17,8 @@ import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import Link from "next/link";
 import { products } from "@/convex/products";
-
+import { useQueryWithState } from "@/utils/query";
+import { useRouter } from "next/navigation";
 interface PricingTier {
   name: string;
   price: string;
@@ -104,13 +105,27 @@ const pricingTiers: PricingTier[] = [
 
 export default function Pricing({ id }: { id: string }) {
   const generateCheckoutLinkAction = useAction(api.polar.generateCheckoutLink);
-
+  const { data: user, isPending: isUserPending } = useQueryWithState(
+    api.users.query.getMe,
+  );
+  const router = useRouter();
   const handleCheckout = useCallback(
     async (productId: string) => {
       if (!productId) {
         toast.error(
           "Pro is coming soon. Want early access or to discuss enterprise? Contact us!",
         );
+        return;
+      }
+
+      if (isUserPending) {
+        toast.error("Please wait and try again in a moment.");
+        return;
+      }
+
+      if (!user) {
+        toast.error("Please login or create an account to continue.");
+        router.push("/login");
         return;
       }
 
@@ -134,7 +149,7 @@ export default function Pricing({ id }: { id: string }) {
         toast.error("Failed to start checkout process. Please try again.");
       }
     },
-    [generateCheckoutLinkAction],
+    [generateCheckoutLinkAction, user, isUserPending],
   );
 
   return (
