@@ -2,25 +2,22 @@ import { createApp } from "@/server/app";
 import type { ErebusSession } from "@/service/session";
 import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
 
-export type Authorize<T = Request> = (
+export type Authorize = (
   channel: string,
-  ctx: { req: T },
+  ctx: { req: Request },
 ) => ErebusSession | Promise<ErebusSession>;
 
 export type FireWebhook = (webHookMessage: FireWebhookSchema) => Promise<void>;
 
-export async function getSessionFromRequest<T>(
-  req: T,
-  authorize: Authorize<T>,
+export async function getSessionFromRequest(
+  req: Request,
+  authorize: Authorize,
   fireWebhook: FireWebhook,
 ): Promise<ErebusSession | undefined> {
   let channel = "";
 
-  // Cast to Request-like object for method access
-  const requestLike = req as any;
-
   try {
-    const body = (await requestLike.clone().json()) as { channel?: unknown };
+    const body = (await req.clone().json()) as { channel?: unknown };
     if (typeof body.channel === "string") {
       channel = body.channel;
     }
@@ -30,12 +27,12 @@ export async function getSessionFromRequest<T>(
 
   // Check if this is a webhook request
   const isWebhookRequest =
-    requestLike.method === "POST" &&
-    (requestLike.url === "/api/erebus/pubsub/fire-webhook" ||
-      requestLike.url.endsWith("/api/erebus/pubsub/fire-webhook"));
+    req.method === "POST" &&
+    (req.url === "/api/erebus/pubsub/fire-webhook" ||
+      req.url.endsWith("/api/erebus/pubsub/fire-webhook"));
 
   if (isWebhookRequest) {
-    const webHookMessage = await requestLike.json();
+    const webHookMessage = await req.json();
     await fireWebhook(webHookMessage);
     return undefined;
   } else {
@@ -43,21 +40,19 @@ export async function getSessionFromRequest<T>(
   }
 }
 
-export function createGenericAdapter<T = Request>({
+export function createAdapter({
   authorize,
   fireWebhook,
 }: {
-  authorize: Authorize<T>;
+  authorize: Authorize;
   fireWebhook: FireWebhook;
 }) {
-  const fetch = async (req: T): Promise<Response> => {
+  const fetch = async (req: Request): Promise<Response> => {
     const session = await getSessionFromRequest(req, authorize, fireWebhook);
     // Create a new app instance with the session injected
     const app = createApp(session);
 
-    // Since most request types (like BunRequest) extend Request,
-    // we can safely cast to Request for the Hono app
-    return await app.fetch(req as unknown as Request);
+    return await app.fetch(req);
   };
 
   return {

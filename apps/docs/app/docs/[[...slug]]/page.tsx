@@ -47,7 +47,7 @@ export async function generateMetadata({
   if (!page) notFound();
   const image = ["/docs-og", ...slug, "image.png"].join("/");
   return {
-    title: page.data.title,
+    title: page.data.title + " | Erebus",
     description: page.data.description,
     openGraph: {
       images: image,

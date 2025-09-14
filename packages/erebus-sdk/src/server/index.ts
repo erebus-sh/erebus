@@ -12,4 +12,8 @@ export type { AppType as RpcAppType } from "./rpc";
 
 // ========== ADAPTERS ==========
 export * from "./adapter/next";
-export * from "./adapter/genericAdapter";
+export {
+  createAdapter as createGenericAdapter,
+  type Authorize,
+  type FireWebhook,
+} from "./adapter/genericAdapter";

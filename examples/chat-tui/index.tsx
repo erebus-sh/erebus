@@ -6,7 +6,6 @@ import { Database } from "bun:sqlite";
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 import { createGenericAdapter } from "@erebus-sh/sdk/server";
 import { Access, ErebusService } from "@erebus-sh/sdk/service";
-import type { BunRequest } from "bun";
 
 // Configuration
 const BASE_URL = process.env.BASE_URL || "http://localhost:4919";
@@ -75,13 +74,20 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(async () => {
+    console.log("[handleSubmit] Submit to TUI");
     if (!username.trim()) {
       setError("Username is required");
       return;
     }
 
+    console.log("[handleSubmit] Username login with", username);
+
     const req = new Request("http://localhost:4919/login", {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include",
       body: JSON.stringify({ username }),
     });
     const res = await fetch(req);
@@ -89,7 +95,19 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       username: string;
     };
 
+    console.log("[handleSubmit] Request comming back", req);
+    console.log(
+      "[handleSubmit] Response headers",
+      Object.fromEntries(res.headers.entries()),
+    );
+
     if (loggedInUsername) {
+      console.log(
+        "[handleSubmit] Set-Cookie header",
+        res.headers.get("set-cookie"),
+      );
+      console.log("[handleSubmit] User ID comming back", loggedInUsername);
+
       onLogin({ id: loggedInUsername, username: loggedInUsername });
     } else {
       setError("Invalid credentials");
@@ -391,11 +409,21 @@ const TUI = () => {
 
 render(<TUI />);
 
-const app = createGenericAdapter<BunRequest>({
-  authorize: async (channel: string, ctx: { req: BunRequest }) => {
+const app = createGenericAdapter({
+  authorize: async (channel: string, ctx: { req: Request }) => {
     console.log("authorize", channel, ctx);
+    console.log("ctx.req", ctx.req);
+
     // Get authenticated user from request context
-    const userId = ctx.req.cookies.get("x-user-id");
+    const cookieHeader =
+      ctx.req.headers.get("cookie") || ctx.req.headers.get("cookies");
+    if (!cookieHeader) {
+      throw new Error("Cookie header is required");
+    }
+    const cookieMap = new Bun.CookieMap(cookieHeader);
+    const userId = cookieMap.get("x-user-id");
+
+    console.log(cookieHeader);
 
     if (!userId) {
       throw new Error("User ID is required make sure to login");
@@ -408,7 +436,7 @@ const app = createGenericAdapter<BunRequest>({
 
     // Prepare the session and create instance of ErebusSession
     const session = await service.prepareSession({
-      userId,
+      userId: userId as string, // We know userId is not null after the check above
     });
 
     // First join the channel
@@ -428,23 +456,35 @@ Bun.serve({
   port: 0x1337, // 4919
   routes: {
     "/login": {
-      POST: async (req: BunRequest) => {
+      POST: async (req) => {
         const bunReq = req;
+        const cookies = bunReq.cookies;
 
         // Very secure authentication :P
         const { username } = (await bunReq.json()) as { username: string };
 
         console.log("login", username);
 
-        const cookies = bunReq.cookies;
-        cookies.set("x-user-id", username);
-        return Response.json({ success: true, username });
+        cookies.set("x-user-id", username, {
+          httpOnly: true,
+          secure: false, // Set to true in production with HTTPS
+          sameSite: "lax",
+          path: "/",
+        });
+
+        const response = Response.json({ success: true, username });
+
+        return response;
       },
     },
   },
   fetch: (req: Request) => {
-    // Cast Request to BunRequest for our adapter
-    // In Bun, the fallback fetch receives Request, but routes receive BunRequest
-    return app.fetch(req as any as BunRequest);
+    console.log("fetch", {
+      method: req.method,
+      url: req.url,
+      headers: Object.fromEntries(req.headers.entries()),
+      body: req.body ? "[body present]" : "[no body]",
+    });
+    return app.fetch(req);
   },
 });
