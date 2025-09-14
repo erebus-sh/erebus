@@ -9,8 +9,8 @@ import { Access, ErebusService } from "@erebus-sh/sdk/service";
 import type { BunRequest } from "bun";
 
 // Configuration
-const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
-const WS_BASE_URL = process.env.WS_BASE_URL || "ws://localhost:3000";
+const BASE_URL = process.env.BASE_URL || "http://localhost:4919";
+const WS_BASE_URL = process.env.WS_BASE_URL || "ws://localhost:8787";
 const SECRET_API_KEY =
   process.env.SECRET_API_KEY ||
   "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1";
@@ -393,6 +393,7 @@ render(<TUI />);
 
 const app = createGenericAdapter<BunRequest>({
   authorize: async (channel, ctx) => {
+    console.log("authorize", channel, ctx);
     // Get authenticated user from request context
     const userId = ctx.req.cookies.get("x-user-id");
 

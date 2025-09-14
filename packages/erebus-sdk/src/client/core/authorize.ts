@@ -35,7 +35,7 @@ export class Authorize {
           response.statusText,
         );
         throw new Error(
-          `The auth call failed: ${response.status} ${response.statusText} ${await response.text()}`,
+          `The auth call failed: ${response.status} ${response.statusText}\nresponse: ${await response.text()}\nPath: ${response.url}`,
         );
       }
 
