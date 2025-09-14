@@ -11,6 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ExternalLink } from "lucide-react";
+import { polar } from "@/convex/polar";
+import { useCallback } from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { toast } from "sonner";
 
 interface PricingTier {
   name: string;
@@ -26,6 +31,7 @@ interface PricingTier {
   };
   popular?: boolean;
   highlight?: boolean;
+  productId?: string;
 }
 
 const pricingTiers: PricingTier[] = [
@@ -46,6 +52,7 @@ const pricingTiers: PricingTier[] = [
       text: "Sign Up",
       variant: "secondary",
     },
+    productId: polar.products.freemium,
   },
   {
     name: "Standard",
@@ -67,6 +74,7 @@ const pricingTiers: PricingTier[] = [
       variant: "default",
     },
     popular: true,
+    productId: polar.products.standard,
   },
   {
     name: "Pro",
@@ -94,6 +102,40 @@ const pricingTiers: PricingTier[] = [
 ];
 
 export default function Pricing({ id }: { id: string }) {
+  const generateCheckoutLinkAction = useAction(api.polar.generateCheckoutLink);
+
+  const handleCheckout = useCallback(
+    async (productId: string) => {
+      if (!productId) {
+        toast.error(
+          "Pro is coming soon. Want early access or to discuss enterprise? Contact us!",
+        );
+        return;
+      }
+
+      try {
+        const checkoutLink = await generateCheckoutLinkAction({
+          productIds: [productId],
+          origin: window.location.origin,
+          successUrl: window.location.origin + "/success",
+        });
+
+        if (!checkoutLink.url) {
+          toast.error(
+            "Pro is coming soon. Want early access or to discuss enterprise? Contact us!",
+          );
+          return;
+        }
+
+        window.location.href = checkoutLink.url;
+      } catch (error) {
+        console.error("Failed to generate checkout link:", error);
+        toast.error("Failed to start checkout process. Please try again.");
+      }
+    },
+    [generateCheckoutLinkAction],
+  );
+
   return (
     <section id={id} className="py-20">
       <div className="text-center mb-16">
@@ -153,6 +195,7 @@ export default function Pricing({ id }: { id: string }) {
                 variant={tier.cta.variant}
                 className="w-full"
                 asChild={!!tier.cta.href}
+                onClick={() => handleCheckout(tier.productId ?? "")}
               >
                 {tier.cta.href ? (
                   <a

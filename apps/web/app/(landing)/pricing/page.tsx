@@ -2,25 +2,8 @@ import Navbar from "@/components/navbar";
 import { ErebusText } from "../erebus-text";
 import Pricing from "../pricing";
 import { Footer } from "../footer";
-import { Check, ExternalLink, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
-
-interface PricingTier {
-  name: string;
-  price: string;
-  period?: string;
-  description: string;
-  features: string[];
-  cta: {
-    text: string;
-    href?: string;
-    variant: "default" | "secondary" | "outline";
-    external?: boolean;
-  };
-  popular?: boolean;
-  highlight?: boolean;
-}
 
 interface FeatureComparison {
   category: string;
@@ -32,71 +15,6 @@ interface FeatureComparison {
     description?: string;
   }[];
 }
-
-const pricingTiers: PricingTier[] = [
-  {
-    name: "Pay-As-You-Go",
-    price: "Usage-based",
-    description: "Flexible pricing with $5 free credit",
-    features: [
-      "$5 free credit to get started",
-      "Pay only for what you use",
-      "Basic reliability features",
-      "Email support",
-      "Auto-scaling up to 1K connections",
-      "Standard message retention (7 days)",
-      "Basic monitoring dashboard",
-    ],
-    cta: {
-      text: "Get Started",
-      variant: "secondary",
-    },
-  },
-  {
-    name: "Standard",
-    price: "$17",
-    period: "/month",
-    description: "Perfect for growing applications",
-    features: [
-      "Everything in Pay-As-You-Go",
-      "99.5% uptime SLA",
-      "Priority email support",
-      "Auto-scaling up to 10K connections",
-      "Extended message retention (30 days)",
-      "Advanced monitoring & alerts",
-      "Basic analytics dashboard",
-      "Custom domain support",
-    ],
-    cta: {
-      text: "Get Started",
-      variant: "default",
-    },
-    popular: true,
-  },
-  {
-    name: "Pro",
-    price: "$199",
-    period: "/month",
-    description: "For production applications at scale",
-    features: [
-      "Everything in Standard",
-      "99.9% uptime SLA",
-      "Dedicated support manager",
-      "Auto-scaling up to 100K connections",
-      "Unlimited message retention",
-      "Advanced analytics & insights",
-      "Custom integrations",
-      "SLA-based support response",
-      "Custom rate limiting",
-      "Advanced security features",
-    ],
-    cta: {
-      text: "Coming Soon",
-      variant: "outline",
-    },
-    highlight: true,
-  },
-];
 
 const featureComparison: FeatureComparison[] = [
   {
