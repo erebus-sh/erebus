@@ -2,12 +2,9 @@ import { Polar } from "@convex-dev/polar";
 import { api, components } from "./_generated/api";
 import { action } from "./_generated/server";
 import { ConvexError } from "convex/values";
-
+import { products } from "./products";
 export const polar = new Polar(components.polar, {
-  products: {
-    freemium: process.env.POLAR_PRODUCT_FREEMIUM!,
-    standard: process.env.POLAR_PRODUCT_STANDARD!,
-  },
+  products,
   getUserInfo: async (ctx): Promise<{ userId: string; email: string }> => {
     const user = await ctx.runQuery(api.users.query.getMe);
     if (!user || !user._id || typeof user.email !== "string") {

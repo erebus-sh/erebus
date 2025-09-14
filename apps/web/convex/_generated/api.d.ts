@@ -24,6 +24,7 @@ import type * as lib_jwt from "../lib/jwt.js";
 import type * as lib_polar from "../lib/polar.js";
 import type * as polar_meters from "../polar/meters.js";
 import type * as polar from "../polar.js";
+import type * as products from "../products.js";
 import type * as projects_mutation from "../projects/mutation.js";
 import type * as projects_query from "../projects/query.js";
 import type * as tables_api_keys from "../tables/api_keys.js";
@@ -74,6 +75,7 @@ declare const fullApi: ApiFromModules<{
   "lib/polar": typeof lib_polar;
   "polar/meters": typeof polar_meters;
   polar: typeof polar;
+  products: typeof products;
   "projects/mutation": typeof projects_mutation;
   "projects/query": typeof projects_query;
   "tables/api_keys": typeof tables_api_keys;

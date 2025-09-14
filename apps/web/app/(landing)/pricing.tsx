@@ -11,12 +11,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ExternalLink } from "lucide-react";
-import { polar } from "@/convex/polar";
 import { useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import Link from "next/link";
+import { products } from "@/convex/products";
 
 interface PricingTier {
   name: string;
@@ -53,7 +53,7 @@ const pricingTiers: PricingTier[] = [
       text: "Sign Up",
       variant: "secondary",
     },
-    productId: polar.products.freemium,
+    productId: products.freemium,
   },
   {
     name: "Standard",
@@ -75,7 +75,7 @@ const pricingTiers: PricingTier[] = [
       variant: "default",
     },
     popular: true,
-    productId: polar.products.standard,
+    productId: products.standard,
   },
   {
     name: "Pro",
