@@ -16,6 +16,7 @@ import { useCallback } from "react";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
+import Link from "next/link";
 
 interface PricingTier {
   name: string;
@@ -198,7 +199,7 @@ export default function Pricing({ id }: { id: string }) {
                 onClick={() => handleCheckout(tier.productId ?? "")}
               >
                 {tier.cta.href ? (
-                  <a
+                  <Link
                     href={tier.cta.href}
                     target={tier.cta.external ? "_blank" : undefined}
                     rel={tier.cta.external ? "noopener noreferrer" : undefined}
@@ -206,7 +207,7 @@ export default function Pricing({ id }: { id: string }) {
                   >
                     {tier.cta.text}
                     {tier.cta.external && <ExternalLink className="h-4 w-4" />}
-                  </a>
+                  </Link>
                 ) : (
                   tier.cta.text
                 )}
