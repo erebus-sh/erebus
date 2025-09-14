@@ -16,15 +16,21 @@ import {
 } from "./page-type";
 import { type BlogConfiguration } from "./types";
 import { getSortedByDatePosts } from "./utils";
+import { getBlogPost, type BlogPost } from "@/lib/source";
+import type { MDXComponents } from "mdx/types";
 
 interface BlogWrapperProps {
   params: { slug?: string[] };
   blogSource: ReturnType<typeof loader>;
-  posts: any[];
+  posts: BlogPost[];
   configuration: BlogConfiguration;
-  getCategoryBySlug: (slug: string) => any;
-  getSeriesBySlug: (slug: string) => any;
-  mdxComponents: any;
+  getCategoryBySlug: (slug: string) => {
+    label: string;
+    icon?: any;
+    description?: string;
+  };
+  getSeriesBySlug: (slug: string) => { label: string; description?: string };
+  mdxComponents: MDXComponents;
   includeDrafts: boolean;
 }
 
@@ -105,14 +111,14 @@ export async function BlogWrapper({
 
   // Handle blog post page
   if (isSinglePostPage(params)) {
-    const page = blogSource.getPage(params.slug);
+    const page = getBlogPost(params.slug);
     const category = params.slug?.[0] || undefined;
 
     if (!page) notFound();
 
-    const lastModified = page?.data.date;
+    const lastModified = page.data.date;
     const lastUpdate = lastModified ? new Date(lastModified) : undefined;
-    const tags = page?.data.tags ?? [];
+    const tags = page.data.tags ?? [];
 
     return (
       <SinglePost

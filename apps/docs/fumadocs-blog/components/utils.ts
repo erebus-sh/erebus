@@ -1,4 +1,4 @@
-import { type BlogPost } from "./types";
+import { type BlogPost } from "@/lib/source";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 

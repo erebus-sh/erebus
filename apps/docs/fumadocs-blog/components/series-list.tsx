@@ -15,7 +15,13 @@ interface SeriesListProps {
 
 export function SeriesList({
   seriesSlug,
-  configuration = {},
+  configuration = {
+    config: {
+      blogBase: "/blog",
+      blogOgImageBase: "blog-og",
+      pageSize: 5,
+    },
+  },
   posts = [],
   getSeriesBySlug,
 }: SeriesListProps) {

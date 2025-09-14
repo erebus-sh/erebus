@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import type { BlogPost, BlogConfiguration } from "./types";
+import { BlogConfiguration } from "./types";
+import type { BlogPost } from "@/lib/source";
 import { cn } from "./utils";
 
 interface PostCardProps {
@@ -8,7 +9,16 @@ interface PostCardProps {
   configuration?: BlogConfiguration;
 }
 
-export function PostCard({ post, configuration = {} }: PostCardProps) {
+export function PostCard({
+  post,
+  configuration = {
+    config: {
+      blogBase: "/blog",
+      blogOgImageBase: "blog-og",
+      pageSize: 5,
+    },
+  },
+}: PostCardProps) {
   const CardComponent = configuration.Card || null;
   const cardClassName =
     "order-last border-0 bg-transparent shadow-none sm:order-first sm:col-span-12 lg:col-span-10 lg:col-start-2";

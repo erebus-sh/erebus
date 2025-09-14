@@ -13,7 +13,7 @@ export const {
   pageTree: pageBlogTree,
 } = blogSource;
 
-export type BlogPost = ReturnType<typeof getBlogPost>;
+export type BlogPost = NonNullable<ReturnType<typeof getBlogPost>>;
 
 export const source = loader({
   // it assigns a URL to your pages

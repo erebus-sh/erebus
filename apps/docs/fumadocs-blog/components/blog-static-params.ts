@@ -1,4 +1,4 @@
-import type { BlogPost } from "./types";
+import type { BlogPost } from "@/lib/source";
 import { getSeriesNames } from "./utils";
 
 export async function generateAllParams(

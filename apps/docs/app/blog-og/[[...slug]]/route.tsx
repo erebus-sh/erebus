@@ -10,7 +10,6 @@ import {
 } from "@/blog-configuration";
 import { blogSource, getBlogPosts } from "@/lib/source";
 
-export const contentType = "image/png";
 export const dynamic = "force-static";
 
 export async function GET(
@@ -31,7 +30,7 @@ export async function GET(
   return generateOGImage({
     title: metadata.title,
     // description: metadata.description,
-    site: "rjv.im",
+    site: "erebus.sh",
   });
 }
 

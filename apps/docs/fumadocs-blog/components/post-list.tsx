@@ -1,6 +1,7 @@
 import { Pagination } from "./pagination";
 import { DocsTitle, DocsDescription } from "fumadocs-ui/page";
-import { BlogConfiguration, type BlogPost } from "./types";
+import { BlogConfiguration } from "./types";
+import { type BlogPost } from "@/lib/source";
 import { slot } from "./shared";
 
 export type PostListProps = {
