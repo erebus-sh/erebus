@@ -8,11 +8,18 @@ import { createGenericAdapter } from "@erebus-sh/sdk/server";
 import { Access, ErebusService } from "@erebus-sh/sdk/service";
 import type { BunRequest } from "bun";
 
+// Configuration
+const BASE_URL = process.env.BASE_URL || "http://localhost:3000";
+const WS_BASE_URL = process.env.WS_BASE_URL || "ws://localhost:3000";
+const SECRET_API_KEY =
+  process.env.SECRET_API_KEY ||
+  "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1";
+
 // Erebus client
 const client = ErebusClient.createClientSync({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:3000",
-  wsBaseUrl: "ws://localhost:3000",
+  authBaseUrl: BASE_URL,
+  wsBaseUrl: WS_BASE_URL,
 });
 
 // Database setup
@@ -45,19 +52,19 @@ database.run(`
 
 // Types
 interface User {
-  id: number;
+  id: string;
   username: string;
 }
 
 interface Chat {
-  id: number;
+  id: string;
   name: string;
   created_at: string;
 }
 
 interface Message {
-  id: number;
-  chat_id: number;
+  id: string;
+  chat_id: string;
   content: string;
   created_at: string;
 }
@@ -69,7 +76,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [error, setError] = useState("");
   const [isPasswordMode, setIsPasswordMode] = useState(false);
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!username.trim()) {
       setError("Username is required");
       return;
@@ -85,13 +92,17 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       return;
     }
 
-    // Check credentials
-    const user = database
-      .prepare("SELECT * FROM users WHERE username = ? AND password = ?")
-      .get(username, password) as User | undefined;
+    const req = new Request("http://localhost:4919/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    });
+    const res = await fetch(req);
+    const { username: loggedInUsername } = (await res.json()) as {
+      username: string;
+    };
 
-    if (user) {
-      onLogin(user);
+    if (loggedInUsername) {
+      onLogin({ id: loggedInUsername, username: loggedInUsername });
     } else {
       setError("Invalid credentials");
       setPassword("");
@@ -140,12 +151,10 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 const Sidebar = ({
   chats,
   onSelectChat,
-  onCreateChat,
   onLogout,
 }: {
   chats: Chat[];
   onSelectChat: (chat: Chat) => void;
-  onCreateChat: () => void;
   onLogout: () => void;
 }) => {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
@@ -157,7 +166,7 @@ const Sidebar = ({
       const result = stmt.run(newChatName.trim());
       const newChat = database
         .prepare("SELECT * FROM chats WHERE id = ?")
-        .get(result.lastInsertRowid) as Chat;
+        .get(result.lastInsertRowid.toString()) as Chat;
       onSelectChat(newChat);
       setNewChatName("");
       setIsCreatingChat(false);
@@ -171,13 +180,21 @@ const Sidebar = ({
 
   const handleSelect = useCallback(
     (option: { label: string; value: string }) => {
-      const chat = chats.find((c) => c.id === parseInt(option.value));
+      const chat = chats.find((c) => c.id === option.value);
       if (chat) {
         onSelectChat(chat);
       }
     },
     [chats, onSelectChat],
   );
+
+  useEffect(() => {
+    async function connect() {
+      client.joinChannel("chats:channel");
+      await client.connect();
+    }
+    connect();
+  }, [chats]);
 
   useInput((input, key) => {
     if (key.ctrl && input === "n") {
@@ -359,10 +376,6 @@ const TUI = () => {
     setSelectedChat(chat);
   }, []);
 
-  const handleCreateChat = useCallback(() => {
-    // This will be handled by the Sidebar component
-  }, []);
-
   const handleBackToSidebar = useCallback(() => {
     setSelectedChat(null);
   }, []);
@@ -380,7 +393,6 @@ const TUI = () => {
       <Sidebar
         chats={chats}
         onSelectChat={handleSelectChat}
-        onCreateChat={handleCreateChat}
         onLogout={handleLogout}
       />
       <Box
@@ -406,8 +418,12 @@ render(<TUI />);
 
 const app = createGenericAdapter<BunRequest>({
   authorize: async (channel, ctx) => {
-    // Extract user ID from cookies for proper authorization
-    const userId = ctx.req.cookies.get("x-user-id") || "1";
+    // Get authenticated user from request context
+    const userId = ctx.req.cookies.get("x-user-id");
+
+    if (!userId) {
+      throw new Error("User ID is required make sure to login");
+    }
 
     const service = new ErebusService({
       secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
@@ -422,8 +438,8 @@ const app = createGenericAdapter<BunRequest>({
     // First join the channel
     session.join(channel);
 
-    // Then allow the topic
-    session.allow("test_topic", Access.ReadWrite);
+    // Then allow the topic, for this example we allow all topics
+    session.allow("*", Access.ReadWrite);
 
     return session;
   },
@@ -433,14 +449,17 @@ const app = createGenericAdapter<BunRequest>({
 });
 
 Bun.serve({
-  port: 3000,
+  port: 0x1337, // 4919
   routes: {
     "/login": {
       POST: async (req) => {
         const bunReq = req;
+
+        // Very secure authentication :P
+        const { username } = (await bunReq.json()) as { username: string };
         const cookies = bunReq.cookies;
-        cookies.set("x-user-id", "1");
-        return Response.json({ success: true });
+        cookies.set("x-user-id", username);
+        return Response.json({ success: true, username });
       },
     },
   },
