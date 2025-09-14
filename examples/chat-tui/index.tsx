@@ -208,7 +208,7 @@ const Sidebar = ({
 
   useEffect(() => {
     async function connect() {
-      client.joinChannel("chats:channel");
+      client.joinChannel("chats");
       await client.connect();
     }
     connect();
@@ -480,7 +480,7 @@ const app = createGenericAdapter({
       userId: sessionData.userId,
     });
 
-    // First join the channel
+    // First join the channel | use the channel passed by the client or force a channel name
     session.join(channel);
 
     // Then allow the topic, for this example we allow all topics
@@ -488,7 +488,7 @@ const app = createGenericAdapter({
 
     return session;
   },
-  fireWebhook: async (webHookMessage: any) => {
+  fireWebhook: async (webHookMessage) => {
     console.log(webHookMessage);
   },
 });
