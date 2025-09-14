@@ -392,7 +392,7 @@ const TUI = () => {
 render(<TUI />);
 
 const app = createGenericAdapter<BunRequest>({
-  authorize: async (channel, ctx) => {
+  authorize: async (channel: string, ctx: { req: BunRequest }) => {
     console.log("authorize", channel, ctx);
     // Get authenticated user from request context
     const userId = ctx.req.cookies.get("x-user-id");
@@ -419,7 +419,7 @@ const app = createGenericAdapter<BunRequest>({
 
     return session;
   },
-  fireWebhook: async (webHookMessage) => {
+  fireWebhook: async (webHookMessage: any) => {
     console.log(webHookMessage);
   },
 });
@@ -428,7 +428,7 @@ Bun.serve({
   port: 0x1337, // 4919
   routes: {
     "/login": {
-      POST: async (req) => {
+      POST: async (req: BunRequest) => {
         const bunReq = req;
 
         // Very secure authentication :P
@@ -442,5 +442,9 @@ Bun.serve({
       },
     },
   },
-  fetch: (req) => app.fetch(req as BunRequest),
+  fetch: (req: Request) => {
+    // Cast Request to BunRequest for our adapter
+    // In Bun, the fallback fetch receives Request, but routes receive BunRequest
+    return app.fetch(req as any as BunRequest);
+  },
 });

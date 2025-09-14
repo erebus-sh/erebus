@@ -7,7 +7,7 @@ export function createRouteHandler({
   authorize,
   fireWebhook,
 }: {
-  authorize: Authorize;
+  authorize: Authorize<Request>;
   fireWebhook: FireWebhook;
 }) {
   const createHandler = async (req: Request): Promise<Response> => {

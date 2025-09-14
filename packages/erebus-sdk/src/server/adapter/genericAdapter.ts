@@ -9,15 +9,15 @@ export type Authorize<T = Request> = (
 
 export type FireWebhook = (webHookMessage: FireWebhookSchema) => Promise<void>;
 
-export async function getSessionFromRequest<T = Request>(
+export async function getSessionFromRequest<T>(
   req: T,
   authorize: Authorize<T>,
   fireWebhook: FireWebhook,
 ): Promise<ErebusSession | undefined> {
   let channel = "";
 
-  // Type-safe way to handle different request types
-  const requestLike = req as Request;
+  // Cast to Request-like object for method access
+  const requestLike = req as any;
 
   try {
     const body = (await requestLike.clone().json()) as { channel?: unknown };
@@ -28,10 +28,13 @@ export async function getSessionFromRequest<T = Request>(
     // If parsing fails, channel remains empty
   }
 
-  if (
+  // Check if this is a webhook request
+  const isWebhookRequest =
     requestLike.method === "POST" &&
-    requestLike.url === "/api/erebus/pubsub/fire-webhook"
-  ) {
+    (requestLike.url === "/api/erebus/pubsub/fire-webhook" ||
+      requestLike.url.endsWith("/api/erebus/pubsub/fire-webhook"));
+
+  if (isWebhookRequest) {
     const webHookMessage = await requestLike.json();
     await fireWebhook(webHookMessage);
     return undefined;
@@ -52,7 +55,9 @@ export function createGenericAdapter<T = Request>({
     // Create a new app instance with the session injected
     const app = createApp(session);
 
-    return await app.fetch(req as Request);
+    // Since most request types (like BunRequest) extend Request,
+    // we can safely cast to Request for the Hono app
+    return await app.fetch(req as unknown as Request);
   };
 
   return {
