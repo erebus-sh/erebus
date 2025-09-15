@@ -232,6 +232,18 @@ export default function Pricing({ id }: { id: string }) {
           </Card>
         ))}
       </div>
+      <p className="text-center text-xs text-muted-foreground font-mono mt-4">
+        Payments are processed via{" "}
+        <Link
+          href="https://polar.sh"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline underline-offset-4 hover:text-foreground"
+        >
+          Polar.sh
+        </Link>
+        .
+      </p>
 
       <div className="text-center mt-12 space-y-4">
         <p className="text-muted-foreground text-sm">
