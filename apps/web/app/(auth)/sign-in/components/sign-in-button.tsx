@@ -2,12 +2,16 @@
 
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
+import { useNextRedirect } from "@/hooks/useNextRedirect";
+
 export default function SignInButton() {
   const { signIn } = useAuthActions();
-
+  const { hasNext, next } = useNextRedirect();
   return (
     <Button
-      onClick={() => void signIn("github", { redirectTo: "/c" })}
+      onClick={() =>
+        void signIn("github", { redirectTo: hasNext ? next : "/c" })
+      }
       className="w-60 cursor-pointer rounded-full py-2"
     >
       {/* GithubIcon   */}

@@ -12,13 +12,14 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ExternalLink } from "lucide-react";
 import { useCallback } from "react";
+import { useNextRedirect } from "@/hooks/useNextRedirect";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import Link from "next/link";
 import { products } from "@/convex/products";
 import { useQueryWithState } from "@/utils/query";
-import { useRouter } from "next/navigation";
+
 interface PricingTier {
   name: string;
   price: string;
@@ -104,11 +105,11 @@ const pricingTiers: PricingTier[] = [
 ];
 
 export default function Pricing({ id }: { id: string }) {
+  const { redirectNow, setNext } = useNextRedirect();
   const generateCheckoutLinkAction = useAction(api.polar.generateCheckoutLink);
   const { data: user, isPending: isUserPending } = useQueryWithState(
     api.users.query.getMe,
   );
-  const router = useRouter();
   const handleCheckout = useCallback(
     async (productId: string) => {
       if (!productId) {
@@ -125,7 +126,8 @@ export default function Pricing({ id }: { id: string }) {
 
       if (!user) {
         toast.error("Please login or create an account to continue.");
-        router.push("/login");
+        setNext("login");
+        redirectNow();
         return;
       }
 
@@ -133,12 +135,12 @@ export default function Pricing({ id }: { id: string }) {
         const checkoutLink = await generateCheckoutLinkAction({
           productIds: [productId],
           origin: window.location.origin,
-          successUrl: window.location.origin + "/success",
+          successUrl: window.location.origin + "/success?next=/c",
         });
 
         if (!checkoutLink.url) {
           toast.error(
-            "Pro is coming soon. Want early access or to discuss enterprise? Contact us!",
+            "Whoops! Something went wrong starting checkout. Please try again, and if it keeps failing, reach out—we’ll help you get sorted.",
           );
           return;
         }
@@ -149,7 +151,7 @@ export default function Pricing({ id }: { id: string }) {
         toast.error("Failed to start checkout process. Please try again.");
       }
     },
-    [generateCheckoutLinkAction, user, isUserPending],
+    [generateCheckoutLinkAction, user, isUserPending, redirectNow],
   );
 
   return (

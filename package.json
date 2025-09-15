@@ -26,6 +26,7 @@
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",
     "date-fns": "^4.1.0",
+    "nuqs": "^2.6.0",
     "repo": ".",
     "zod": "^4.0.17"
   }

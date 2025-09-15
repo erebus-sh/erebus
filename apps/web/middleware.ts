@@ -5,7 +5,9 @@ export default convexAuthNextjsMiddleware(async (request, { convexAuth }) => {
   if (request.nextUrl.pathname.startsWith("/c")) {
     const token = await convexAuth.getToken();
     if (!token) {
-      return NextResponse.redirect(new URL("/sign-in", request.url));
+      const url = new URL("/sign-in", request.url);
+      url.searchParams.set("next", request.nextUrl.pathname);
+      return NextResponse.redirect(url);
     }
   }
 
