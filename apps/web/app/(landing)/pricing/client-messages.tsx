@@ -2,7 +2,7 @@ import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import { useEffect } from "react";
 
-export const InjectedMessagesClientSide = () => {
+export const MessagesClientSide = () => {
   const [expired, setExpired] = useQueryState("expired");
 
   useEffect(() => {
