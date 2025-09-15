@@ -9,8 +9,11 @@ import { api } from "@/convex/_generated/api";
 import { redirect } from "next/navigation";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 import { ConvexError } from "convex/values";
+import { Reason } from "@/app/enums/reason";
 
 export const dynamic = "force-dynamic";
+
+export const dynamicParams = false;
 
 export default async function ConsolePage() {
   let createUserSlug: string | null = null;
@@ -39,13 +42,13 @@ export default async function ConsolePage() {
 
       // TODO: Probably locking the user from the console is not good option,
       //       for now keep it, until we improve the logic
-      redirect(`/pricing?expired=true`);
+      redirect(`/pricing?reason=${Reason.EXPIRED}`);
     } else {
       // Redirect to the pricing page,
       // must steal your money before you can access the console
       // I'm not YC backed :(
       // Am I going to stop doing these comments? No.
-      redirect(`/pricing`);
+      redirect(`/pricing?reason=${Reason.FIRST_TIME}`);
     }
   }
 

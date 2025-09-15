@@ -3,9 +3,10 @@
 import { useQueryState } from "nuqs";
 import { toast } from "sonner";
 import { useEffect } from "react";
+import { Reason } from "@/app/enums/reason";
 
 export const MessagesClientSide = () => {
-  const [expired, setExpired] = useQueryState("expired");
+  const [reason, setReason] = useQueryState("reason");
 
   useEffect(() => {
     (async () => {
@@ -17,14 +18,17 @@ export const MessagesClientSide = () => {
        *
        */
       await new Promise((resolve) => setTimeout(resolve, 500));
-      if (expired) {
+      if (reason === Reason.EXPIRED) {
         toast.error(
           "Your subscription has expired. Please renew your subscription to continue.",
         );
-        setExpired(null);
+        setReason(null);
+      } else if (reason === Reason.FIRST_TIME) {
+        toast.error("You need to subscribe before you can access the console.");
+        setReason(null);
       }
     })();
-  }, [expired, setExpired]);
+  }, [reason, setReason]);
 
   return <></>;
 };

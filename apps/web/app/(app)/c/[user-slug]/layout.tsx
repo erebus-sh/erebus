@@ -22,13 +22,15 @@ export const metadata: Metadata = {
 
 export default function UserLayout({
   children,
+  params,
   searchParams,
 }: {
   children: React.ReactNode;
+  params: Promise<{ "user-slug": string } & Record<string, string>>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   return (
-    <GuardLayout searchParams={searchParams}>
+    <GuardLayout params={params} searchParams={searchParams}>
       <NavbarConsole />
       {children}
     </GuardLayout>

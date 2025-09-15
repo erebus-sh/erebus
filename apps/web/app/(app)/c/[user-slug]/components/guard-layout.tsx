@@ -2,18 +2,27 @@ import { api } from "@/convex/_generated/api";
 import { fetchQuery } from "convex/nextjs";
 import { redirect } from "next/navigation";
 import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
+import { Reason } from "@/app/enums/reason";
 
 interface GuardLayoutProps {
   children: React.ReactNode;
+  params: Promise<{ "user-slug": string } & Record<string, string>>;
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function GuardLayout({
   children,
+  params,
   searchParams,
 }: GuardLayoutProps) {
-  const slug = (await searchParams)["user-slug"] as string;
-  const projectSlug = (await searchParams)["proj-slug"] as string;
+  const resolvedParams = await params;
+  const resolvedSearchParams = await searchParams;
+  console.log("params", resolvedParams);
+  console.log("searchParams", resolvedSearchParams);
+
+  const slug = resolvedParams["user-slug"];
+  // Check if we're in a project route by looking for proj-slug in params
+  const projectSlug = resolvedParams["proj-slug"];
   const token = await convexAuthNextjsToken();
 
   // Fetch user profile data
@@ -35,19 +44,17 @@ export default async function GuardLayout({
 
   // Fetch project data if project slug exists
   let projectData = null;
-  if (!projectSlug) {
-    redirect(`/sign-in?next=/c`);
-  }
-
-  try {
-    projectData = await fetchQuery(
-      api.projects.query.getProjectBySlug,
-      { slug: projectSlug },
-      { token },
-    );
-  } catch (error) {
-    // Project not found or access denied
-    console.error("Error fetching project:", error);
+  if (projectSlug) {
+    try {
+      projectData = await fetchQuery(
+        api.projects.query.getProjectBySlug,
+        { slug: projectSlug },
+        { token },
+      );
+    } catch (error) {
+      // Project not found or access denied
+      console.error("Error fetching project:", error);
+    }
   }
 
   // Check user subscription status
@@ -55,7 +62,7 @@ export default async function GuardLayout({
     const { isSubscriptionActive, hasAlreadySubscribed } =
       userWithProfileData.userData;
     if (!isSubscriptionActive && !hasAlreadySubscribed) {
-      redirect(`/pricing?expired=true`);
+      redirect(`/pricing?reason=${Reason.EXPIRED}`);
     }
   }
 
@@ -64,7 +71,7 @@ export default async function GuardLayout({
     return <div>User not found</div>;
   }
 
-  // Check if project exists
+  // Check if project exists (only if projectSlug was provided)
   if (projectSlug && !projectData) {
     return <div>Project not found</div>;
   }
