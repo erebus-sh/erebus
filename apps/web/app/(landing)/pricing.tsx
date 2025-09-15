@@ -12,13 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, ExternalLink } from "lucide-react";
 import { useCallback } from "react";
-import { useNextRedirect } from "@/hooks/useNextRedirect";
 import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "sonner";
 import Link from "next/link";
 import { products } from "@/convex/products";
 import { useQueryWithState } from "@/utils/query";
+import { useRouter } from "next/navigation";
 
 interface PricingTier {
   name: string;
@@ -105,7 +105,7 @@ const pricingTiers: PricingTier[] = [
 ];
 
 export default function Pricing({ id }: { id: string }) {
-  const { redirectNow, setNext } = useNextRedirect();
+  const router = useRouter();
   const generateCheckoutLinkAction = useAction(api.polar.generateCheckoutLink);
   const { data: user, isPending: isUserPending } = useQueryWithState(
     api.users.query.getMe,
@@ -125,9 +125,8 @@ export default function Pricing({ id }: { id: string }) {
       }
 
       if (!user) {
-        toast.error("Please login or create an account to continue.");
-        setNext("login");
-        redirectNow();
+        toast.error("Please sign in or create an account to continue.");
+        router.push("/sign-in?next=/pricing");
         return;
       }
 
@@ -151,7 +150,7 @@ export default function Pricing({ id }: { id: string }) {
         toast.error("Failed to start checkout process. Please try again.");
       }
     },
-    [generateCheckoutLinkAction, user, isUserPending, redirectNow],
+    [generateCheckoutLinkAction, user, isUserPending, router],
   );
 
   return (

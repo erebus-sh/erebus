@@ -22,9 +22,31 @@ export default async function ConsolePage() {
     {},
     { token },
   );
-  if (user?.isSubscribitionActive) {
-    // Redirect to the pricing page
-    redirect(`/pricing`);
+
+  if (!user) {
+    // Straight up, get out of here >=(
+    // Altho the middleware should handle this,
+    // but just in case, we know it can't be fully trusted
+    // https://www.picussecurity.com/resource/blog/cve-2025-29927-nextjs-middleware-bypass-vulnerability :P
+    redirect(`/sign-in?next=/c`);
+  }
+
+  if (!user?.isSubscriptionActive) {
+    if (user?.hasAlreadySubscribed) {
+      // First heist was successful and I stole your money >=)
+      // Subscription expired, so back we go to rerun the same crime
+      // Capitalism baby lessgo
+
+      // TODO: Probably locking the user from the console is not good option,
+      //       for now keep it, until we improve the logic
+      redirect(`/pricing?expired=true`);
+    } else {
+      // Redirect to the pricing page,
+      // must steal your money before you can access the console
+      // I'm not YC backed :(
+      // Am I going to stop doing these comments? No.
+      redirect(`/pricing`);
+    }
   }
 
   try {
@@ -41,7 +63,7 @@ export default async function ConsolePage() {
      * Server side component does not have to return a value, but it's because we are must going to redirect to the slug page
      */
 
-    // It's can't be called in here because it will throw a NEXT_REDIRECT error
+    // It can't be called in here because it will throw a NEXT_REDIRECT error
     // redirect(`/c/${createUserSlug}`);
 
     if (!createUserSlug) throw new ConvexError("Slug was not created properly");
