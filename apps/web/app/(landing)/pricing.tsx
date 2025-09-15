@@ -253,22 +253,22 @@ export default function Pricing({ id }: { id: string }) {
 
         <div className="pt-4 border-t border-border/50">
           <p className="text-muted-foreground text-sm">
-            Prefer to self-host? Erebus is open-source.{" "}
+            Prefer to self-host? Erebus is proudly open-source!{" "}
             <Button
               variant="link"
               size="sm"
               className="p-0 h-auto text-muted-foreground hover:text-foreground underline-offset-4"
               asChild
             >
-              <a
+              <Link
                 href="https://github.com/erebus/erebus"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1"
               >
                 View it on GitHub
-                <ExternalLink className="h-3 w-3" />
-              </a>
+                <ExternalLink className="h-2 w-2" />
+              </Link>
             </Button>
           </p>
         </div>
