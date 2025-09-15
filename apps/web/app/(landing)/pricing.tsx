@@ -261,7 +261,7 @@ export default function Pricing({ id }: { id: string }) {
               asChild
             >
               <Link
-                href="https://github.com/erebus/erebus"
+                href="https://github.com/erebus-sh/erebus"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1"

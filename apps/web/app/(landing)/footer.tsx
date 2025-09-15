@@ -57,16 +57,20 @@ const footerLinks = {
   resources: [
     {
       label: "GitHub",
-      href: "https://github.com/erebus/erebus",
+      href: "https://github.com/erebus-sh/erebus",
       external: true,
     },
     { label: "Discord", href: "#", external: true },
-    { label: "Blog", href: "#", external: true },
+    {
+      label: "Blog",
+      href: `${process.env.NEXT_PUBLIC_DOCS_URL}/blog`,
+      external: true,
+    },
     { label: "Status", href: "#", external: true },
   ] as FooterLink[],
   company: [
-    { label: "About", href: "#" },
-    { label: "Contact", href: "#" },
+    { label: "About", href: "/about" },
+    { label: "Contact", href: "/contact" },
     { label: "Privacy", href: "/legal/privacy" },
     { label: "Terms", href: "/legal/terms" },
   ] as FooterLink[],
@@ -75,10 +79,10 @@ const footerLinks = {
 const socialLinks = [
   {
     label: "GitHub",
-    href: "https://github.com/erebus/erebus",
+    href: "https://github.com/erebus-sh/erebus",
     icon: GithubIcon,
   },
-  { label: "X", href: "#", icon: XIcon },
+  { label: "X", href: "https://x.com/ErebusGlobe", icon: XIcon },
   { label: "Email", href: "mailto:hello@erebus.sh", icon: Mail },
 ];
 
