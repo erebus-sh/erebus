@@ -4,6 +4,7 @@ import Pricing from "../pricing";
 import { Footer } from "../footer";
 import { Check, X } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { InjectedMessagesClientSide } from "./injected-messages";
 
 interface FeatureComparison {
   category: string;
@@ -263,6 +264,7 @@ export default function HomePage() {
   return (
     <main>
       <Navbar />
+      <InjectedMessagesClientSide />
       <div className="mx-4 sm:mx-6 md:mx-10 md:border-x md:border-[#232322] lg:mx-14">
         <Pricing id="pricing" />
         {/* Detailed feature comparison table */}
