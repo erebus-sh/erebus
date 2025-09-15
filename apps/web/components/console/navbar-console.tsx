@@ -19,7 +19,7 @@ import LogoBare from "@/components/navbar-components/logo-bare";
 import { useNavStackStore } from "@/stores/navigation";
 import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import { useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
   NavigationMenu,
@@ -29,13 +29,16 @@ import {
 } from "../ui/navigation-menu";
 import SettingsMenu from "../navbar-components/settings-menu";
 import Banner from "../Banner";
+import { useQueryWithState } from "@/utils/query";
 
 export default function NavbarConsole() {
   const { navStack, pushPage } = useNavStackStore();
   const params = useParams();
   const userSlug = params["user-slug"] as string;
   const projectSlug = params["proj-slug"] as string;
-  const user = useQuery(api.users.query.getMeWithSubscription);
+  const { data: user, isPending: isUserPending } = useQueryWithState(
+    api.users.query.getMeWithSubscription,
+  );
   const generateCustomerPortalUrl = useAction(
     api.polar.generateCustomerPortalUrl,
   );
@@ -164,7 +167,7 @@ export default function NavbarConsole() {
           />
         </div>
       </div>
-      {!user?.isSubscribitionActive && (
+      {!user?.isSubscriptionActive && !isUserPending && (
         <Banner
           text="Your subscription has not been updated. Please check your details and try again."
           textLink="Subscribe"
