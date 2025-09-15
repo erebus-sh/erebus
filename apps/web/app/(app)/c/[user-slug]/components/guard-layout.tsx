@@ -1,37 +1,71 @@
-"use client";
-
 import { api } from "@/convex/_generated/api";
-import { useQueryWithState } from "@/utils/query";
+import { fetchQuery } from "convex/nextjs";
+import { redirect } from "next/navigation";
+import { convexAuthNextjsToken } from "@convex-dev/auth/nextjs/server";
 
-import { useParams } from "next/navigation";
-
-export default function GuardLayout({
-  children,
-}: {
+interface GuardLayoutProps {
   children: React.ReactNode;
-}) {
-  const params = useParams();
-  const slug = params["user-slug"] as string;
-  const projectSlug = params["proj-slug"] as string;
-  const { data, isPending } = useQueryWithState(
-    api.user_profile.query.getUserProfileBySlug,
-    {
-      slug,
-    },
-  );
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
 
-  const { data: projectData, isPending: projectIsPending } = useQueryWithState(
-    api.projects.query.getProjectBySlug,
-    {
-      slug: projectSlug,
-    },
-  );
+export default async function GuardLayout({
+  children,
+  searchParams,
+}: GuardLayoutProps) {
+  const slug = (await searchParams)["user-slug"] as string;
+  const projectSlug = (await searchParams)["proj-slug"] as string;
+  const token = await convexAuthNextjsToken();
 
-  if (slug && !isPending && !data) {
+  // Fetch user profile data
+  let userWithProfileData = null;
+  if (!slug) {
+    redirect(`/sign-in?next=/c`);
+  }
+
+  try {
+    userWithProfileData = await fetchQuery(
+      api.user_profile.query.getUserProfileBySlug,
+      { slug },
+      { token },
+    );
+  } catch (error) {
+    // User not found or access denied
+    console.error("Error fetching user profile:", error);
+  }
+
+  // Fetch project data if project slug exists
+  let projectData = null;
+  if (!projectSlug) {
+    redirect(`/sign-in?next=/c`);
+  }
+
+  try {
+    projectData = await fetchQuery(
+      api.projects.query.getProjectBySlug,
+      { slug: projectSlug },
+      { token },
+    );
+  } catch (error) {
+    // Project not found or access denied
+    console.error("Error fetching project:", error);
+  }
+
+  // Check user subscription status
+  if (slug && userWithProfileData?.userData) {
+    const { isSubscriptionActive, hasAlreadySubscribed } =
+      userWithProfileData.userData;
+    if (!isSubscriptionActive && !hasAlreadySubscribed) {
+      redirect(`/pricing?expired=true`);
+    }
+  }
+
+  // Check if user exists
+  if (slug && !userWithProfileData) {
     return <div>User not found</div>;
   }
 
-  if (projectSlug && !projectIsPending && !projectData) {
+  // Check if project exists
+  if (projectSlug && !projectData) {
     return <div>Project not found</div>;
   }
 

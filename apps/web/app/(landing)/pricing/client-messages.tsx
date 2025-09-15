@@ -10,7 +10,7 @@ export const MessagesClientSide = () => {
   useEffect(() => {
     (async () => {
       /*
-       *I hate react, I swear to god man WTF
+       * I hate react, I swear to god man WTF
        * I need this because for some reason, the toast is not
        * showing up if you immediately call it, because I guess
        * some SSR render pipeline BS, bruhhhhhh!
