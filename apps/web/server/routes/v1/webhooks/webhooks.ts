@@ -11,12 +11,23 @@ import { z } from "zod";
 export const webhooksRoute = new Hono()
   .use(async (c, next) => {
     const secret = process.env.WEBHOOK_SECRET;
+    const actionSecret = process.env.ACTION_SECRET;
     if (!secret) {
       console.error(
         "[middleware][webhook][error] WEBHOOK_SECRET environment variable is not set",
       );
       return c.json(
         { error: "Server misconfiguration: WEBHOOK_SECRET missing" },
+        500,
+      );
+    }
+
+    if (!actionSecret) {
+      console.error(
+        "[middleware][webhook][error] ACTION_SECRET environment variable is not set",
+      );
+      return c.json(
+        { error: "Server misconfiguration: ACTION_SECRET missing" },
         500,
       );
     }
@@ -45,6 +56,8 @@ export const webhooksRoute = new Hono()
     "/usage",
     validator("json", (value) => z.array(UsageEventSchema).parse(value)),
     async (c) => {
+      const actionSecret = process.env.ACTION_SECRET;
+
       const body = await c.req.valid("json");
       console.log("Received usage webhook:", body);
 
@@ -58,7 +71,7 @@ export const webhooksRoute = new Hono()
             payloadLength: event.data.payloadLength,
             apiKeyId: event.data.keyId as Id<"api_keys">,
           })),
-          actionSecret: process.env.ACTION_SECRET!,
+          actionSecret: actionSecret!,
         });
 
         // Return success response
