@@ -25,7 +25,7 @@ export const metadata: Metadata = {
     siteName: "Erebus",
     title: "Erebus",
     description: "The Real Time Infra At The Edge",
-    images: ["https://erebus.sh/opengraph.png"],
+    images: ["/opengraph.png"],
   },
 };
 
