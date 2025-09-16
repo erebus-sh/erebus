@@ -85,97 +85,99 @@ export default function NavbarConsole() {
   }, [userSlug, projectSlug]);
 
   return (
-    <header className="border-b px-4 md:px-6">
-      <div className="flex h-16 items-center justify-between gap-4">
-        {/* Left side */}
-        <div className="flex items-center gap-2">
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbLink
-                  href="#"
-                  className="text-foreground inline-block h-6 w-auto"
-                >
-                  <LogoBare />
-                </BreadcrumbLink>
-              </BreadcrumbItem>
-              <BreadcrumbSeparator> / </BreadcrumbSeparator>
-              <BreadcrumbItem className="md:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger className="hover:text-foreground">
-                    <BreadcrumbEllipsis />
-                    <span className="sr-only">Toggle menu</span>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start">
-                    {navStack.map((item) => (
-                      <DropdownMenuItem key={item.href}>
-                        <BreadcrumbLink href={item.href}>
-                          {item.label}
-                        </BreadcrumbLink>
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </BreadcrumbItem>
-              {navStack.map((item, index) => (
-                <React.Fragment key={item.href}>
-                  <BreadcrumbItem key={item.href}>
-                    <BreadcrumbLink href={item.href}>
-                      {item.label}
-                    </BreadcrumbLink>
-                  </BreadcrumbItem>
-                  {index !== navStack.length - 1 && (
-                    <BreadcrumbSeparator className="max-md:hidden">
-                      {" "}
-                      /{" "}
-                    </BreadcrumbSeparator>
-                  )}
-                </React.Fragment>
-              ))}
-            </BreadcrumbList>
-          </Breadcrumb>
-        </div>
-        {/* Right side */}
-        <div className="flex items-center gap-4">
+    <>
+      <header className="border-b px-4 md:px-6">
+        <div className="flex h-16 items-center justify-between gap-4">
+          {/* Left side */}
           <div className="flex items-center gap-2">
-            {/* Nav menu */}
-            <NavigationMenu className="max-md:hidden">
-              <NavigationMenuList className="gap-2">
-                {navigationLinks.map((link, index) => (
-                  <NavigationMenuItem key={index}>
-                    <NavigationMenuLink
-                      href={link.href}
-                      className="text-muted-foreground hover:text-primary py-1.5 font-medium"
-                    >
-                      {link.label}
-                    </NavigationMenuLink>
-                  </NavigationMenuItem>
+            <Breadcrumb>
+              <BreadcrumbList>
+                <BreadcrumbItem>
+                  <BreadcrumbLink
+                    href="#"
+                    className="text-foreground inline-block h-6 w-auto"
+                  >
+                    <LogoBare />
+                  </BreadcrumbLink>
+                </BreadcrumbItem>
+                <BreadcrumbSeparator> / </BreadcrumbSeparator>
+                <BreadcrumbItem className="md:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="hover:text-foreground">
+                      <BreadcrumbEllipsis />
+                      <span className="sr-only">Toggle menu</span>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      {navStack.map((item) => (
+                        <DropdownMenuItem key={item.href}>
+                          <BreadcrumbLink href={item.href}>
+                            {item.label}
+                          </BreadcrumbLink>
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </BreadcrumbItem>
+                {navStack.map((item, index) => (
+                  <React.Fragment key={item.href}>
+                    <BreadcrumbItem key={item.href}>
+                      <BreadcrumbLink href={item.href}>
+                        {item.label}
+                      </BreadcrumbLink>
+                    </BreadcrumbItem>
+                    {index !== navStack.length - 1 && (
+                      <BreadcrumbSeparator className="max-md:hidden">
+                        {" "}
+                        /{" "}
+                      </BreadcrumbSeparator>
+                    )}
+                  </React.Fragment>
                 ))}
-              </NavigationMenuList>
-            </NavigationMenu>
-            {/* Settings */}
-            <SettingsMenu />
+              </BreadcrumbList>
+            </Breadcrumb>
           </div>
-          {/* Note(#V0ID):Notification I have no point on using this for now
+          {/* Right side */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {/* Nav menu */}
+              <NavigationMenu className="max-md:hidden">
+                <NavigationMenuList className="gap-2">
+                  {navigationLinks.map((link, index) => (
+                    <NavigationMenuItem key={index}>
+                      <NavigationMenuLink
+                        href={link.href}
+                        className="text-muted-foreground hover:text-primary py-1.5 font-medium"
+                      >
+                        {link.label}
+                      </NavigationMenuLink>
+                    </NavigationMenuItem>
+                  ))}
+                </NavigationMenuList>
+              </NavigationMenu>
+              {/* Settings */}
+              <SettingsMenu />
+            </div>
+            {/* Note(#V0ID):Notification I have no point on using this for now
           <NotificationMenu /> */}
-          {/* User menu */}
-          <UserMenu
-            user={{
-              avatar: user?.image || "",
-              name: user?.name || "",
-              email: user?.email || "",
-            }}
-          />
+            {/* User menu */}
+            <UserMenu
+              user={{
+                avatar: user?.image || "",
+                name: user?.name || "",
+                email: user?.email || "",
+              }}
+            />
+          </div>
         </div>
-      </div>
-      {!user?.isSubscriptionActive && !isUserPending && (
+      </header>
+      {user?.isSubscriptionActive && !isUserPending && (
         <Banner
           text="Your subscription has not been updated. Please check your details and try again."
           textLink="Subscribe"
           textLinkHref={customerPortalUrl!}
-          icon={<CreditCard />}
+          icon={CreditCard}
         />
       )}
-    </header>
+    </>
   );
 }
