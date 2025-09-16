@@ -91,7 +91,7 @@ export class ErebusPubSubClientNew {
    * Join a channel for this client instance
    * @param channel The channel to join
    */
-  joinChannel(channel: string, throwError: boolean = true): void {
+  joinChannel(channel: string): void {
     const instanceId = this.#conn.connectionId;
     logger.info(`[Erebus:${instanceId}] Joining channel`, { channel });
     logger.info("Erebus.joinChannel() called", { channel });
@@ -104,11 +104,6 @@ export class ErebusPubSubClientNew {
       const error = "Invalid channel: must be a non-empty string";
       logger.error(`[Erebus:${instanceId}] ${error}`, { channel });
       logger.error("Invalid channel", { channel });
-      if (throwError) {
-        // Treat it as an error
-        throw new Error(error);
-      }
-      // if not throwing, just return
       return;
     }
 
