@@ -7,7 +7,7 @@
  * @param str - Input string to shuffle.
  * @returns A shuffled string that is **not equal to the input**, if possible.
  */
-export function shuffleString(str: string): string {
+export function shuffleStringAndObfuscate(str: string): string {
   const original = str.split("");
 
   // If too short or identical chars (like "aaa"), nothing to shuffle.
@@ -31,5 +31,24 @@ export function shuffleString(str: string): string {
     [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
 
-  return shuffled.join("");
+  // TODO: test if this will work
+  // Obfuscate the shuffled string
+  let obfuscated = "";
+  for (let i = 0; i < shuffled.length; i++) {
+    const code = shuffled[i].charCodeAt(0) + 1;
+    // Ensure the result is an English letter (a-z, A-Z) or digit (0-9)
+    let nextChar = String.fromCharCode(code);
+
+    if (/[a-zA-Z0-9]/.test(nextChar)) {
+      obfuscated += nextChar;
+    } else {
+      // If not, wrap around: for 'z' -> 'a', 'Z' -> 'A', '9' -> '0'
+      if (shuffled[i] === "z") obfuscated += "a";
+      else if (shuffled[i] === "Z") obfuscated += "A";
+      else if (shuffled[i] === "9") obfuscated += "0";
+      else obfuscated += shuffled[i]; // fallback, should rarely happen
+    }
+  }
+
+  return obfuscated;
 }

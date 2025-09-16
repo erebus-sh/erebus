@@ -1,7 +1,7 @@
 import { mutation } from "../_generated/server";
 import { api } from "../_generated/api";
 import slugify from "slugify";
-import { shuffleString } from "../utils/shuffle";
+import { shuffleStringAndObfuscate } from "../utils/shuffle";
 import { customAlphabet } from "nanoid";
 import { Id } from "../_generated/dataModel";
 import { ConvexError } from "convex/values";
@@ -77,7 +77,7 @@ export const createUserSlug = mutation({
 
     while (attempt < maxAttempts) {
       const randomId = nanoid_local();
-      const shuffled = shuffleString(emailName);
+      const shuffled = shuffleStringAndObfuscate(emailName);
       const userSlug = slugify(shuffled, { lower: true, strict: true });
 
       logWithTag("slug-attempt", FN, {
