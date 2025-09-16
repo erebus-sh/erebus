@@ -59,6 +59,7 @@ export default defineConfig({
         "logger.ready",
         "logger.start",
         "logger.log",
+        "console.*",
       ],
     }),
   ],

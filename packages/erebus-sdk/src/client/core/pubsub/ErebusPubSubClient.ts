@@ -53,7 +53,7 @@ export class ErebusPubSubClientNew {
     this.#stateManager = new StateManager(this.#conn.connectionId);
     // Channel will be set via joinChannel
 
-    consola.info(`[Erebus:${instanceId}] Instance created successfully`, {
+    logger.info(`[Erebus:${instanceId}] Instance created successfully`, {
       wsUrl: opts.wsUrl,
     });
     logger.info("Erebus instance created", {

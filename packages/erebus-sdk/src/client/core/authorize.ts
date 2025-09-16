@@ -1,3 +1,4 @@
+import { logger } from "@/internal/logger/consola";
 import { createRpcClient } from "@/server/rpc";
 
 /**
@@ -7,9 +8,9 @@ export class Authorize {
   private client: ReturnType<typeof createRpcClient>;
 
   constructor(baseUrl: string) {
-    console.log("[AUTHORIZE] Constructor called with baseUrl:", baseUrl);
+    logger.info("[AUTHORIZE] Constructor called with baseUrl:", baseUrl);
     this.client = createRpcClient(baseUrl);
-    console.log("[AUTHORIZE] RPC client created successfully");
+    logger.info("[AUTHORIZE] RPC client created successfully");
   }
 
   /**
