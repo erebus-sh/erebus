@@ -32,7 +32,7 @@ export class ErebusPubSubClientNew {
     this.#debug = opts.debug ?? false;
     const instanceId = Math.random().toString(36).substring(2, 8);
 
-    consola.info(`[Erebus:${instanceId}] Constructor called`, {
+    logger.info(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
       hasTokenProvider: !!opts.tokenProvider,
       hasCustomLog: !!opts.log,
