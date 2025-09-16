@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.116",
+  "version": "0.0.117",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -26,6 +26,8 @@
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
     "@types/bun": "latest",
+    "@rollup/plugin-strip": "^3.0.4",
+    "@rollup/plugin-typescript": "^12.1.4",
     "chalk": "^5.3.0",
     "jsdom": "^26.1.0",
     "prettier": "3.6.2",
@@ -40,8 +42,6 @@
   "dependencies": {
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
-    "@rollup/plugin-strip": "^3.0.4",
-    "@rollup/plugin-typescript": "^12.1.4",
     "consola": "^3.4.2",
     "hono": "^4.9.1",
     "http2": "^3.3.7",
