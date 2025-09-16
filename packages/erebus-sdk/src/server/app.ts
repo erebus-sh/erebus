@@ -79,9 +79,7 @@ const routes = new Hono<{ Variables: AppVars }>()
   /**
    * Health check route
    */
-  .get("/api/health-not-meaningful", (c) =>
-    c.json({ ok: true, reqId: c.get("reqId") }),
-  )
+  .get("/api/health", (c) => c.json({ ok: true, reqId: c.get("reqId") }))
   /**
    * Generate a token route test
    */

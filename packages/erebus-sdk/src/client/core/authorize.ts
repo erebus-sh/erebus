@@ -61,10 +61,8 @@ export class Authorize {
   async healthCheck() {
     console.log("[AUTHORIZE] healthCheck called");
     try {
-      console.log(
-        "[AUTHORIZE] Making GET request to health-not-meaningful endpoint",
-      );
-      const response = await this.client["api"]["health-not-meaningful"].$get();
+      console.log("[AUTHORIZE] Making GET request to health endpoint");
+      const response = await this.client["api"]["health"].$get();
       const data = await response.json();
       console.log("[AUTHORIZE] healthCheck successful, response received");
       return data;

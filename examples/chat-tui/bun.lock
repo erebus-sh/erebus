@@ -4,7 +4,7 @@
     "": {
       "name": "chat-tui",
       "dependencies": {
-        "@erebus-sh/sdk": "0.0.125",
+        "@erebus-sh/sdk": "0.0.126",
         "ink": "^6.3.0",
         "ink-select-input": "^5.0.0",
         "ink-text-input": "^5.0.0",
@@ -21,7 +21,7 @@
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.2.0", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-qI/5TaaaCZE4yeSZ83lu0+xi1r88JSxUjnH4OP/iZF7+KKZ75u3ee5isd0LxX+6N8U0npL61YrpbthILHB6BnA=="],
 
-    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.125", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "consola": "^3.4.2", "hono": "^4.9.1", "http2": "^3.3.7", "jose": "^6.0.12", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5", "zustand": "^4 || ^5" } }, "sha512-F2/+GSm9l3eP26x35MKjE7keNMEKSVpQwFWdb/g4ltLIyqLoXeXRSBv31TPdPGj+BwQiIBPn7FWSFctCMfPZTA=="],
+    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.126", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "consola": "^3.4.2", "hono": "^4.9.1", "http2": "^3.3.7", "jose": "^6.0.12", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5", "zustand": "^4 || ^5" } }, "sha512-50f/KMOz1PE0kuOyAtWZu/T1UhiK4AcPvYH/RhQ3wSFPtY08wUE0HbtP69kQoj3UwHJTLJBwZl8iu+aILK+oNw=="],
 
     "@hono/node-server": ["@hono/node-server@1.19.2", "", { "peerDependencies": { "hono": "^4" } }, "sha512-lndWsd9De/btN998Aiv6gkeMVV2h9Cc0AR0qwFTmxx/YFh/PbrjgoxTpHaNaRn6F4GAkPiVJwI0W0gQF4Wn8EA=="],
 
