@@ -42,7 +42,12 @@ export default defineConfig({
   ],
   sourcemap: true,
   clean: true,
-  minify: true,
+  minify: {
+    compress: {
+      dropConsole: true,
+      dropDebugger: true,
+    },
+  },
   treeshake: true,
   plugins: [
     typescript(),

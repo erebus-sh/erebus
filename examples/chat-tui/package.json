@@ -10,7 +10,7 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@erebus-sh/sdk": "0.0.124",
+    "@erebus-sh/sdk": "0.0.125",
     "ink": "^6.3.0",
     "ink-select-input": "^5.0.0",
     "ink-text-input": "^5.0.0",
