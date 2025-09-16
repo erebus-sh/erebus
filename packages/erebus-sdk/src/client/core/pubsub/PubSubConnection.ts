@@ -27,7 +27,6 @@ import { HeartbeatManager } from "./HeartbeatManager";
 import { PresenceManager } from "./Presence";
 import type { PresenceHandler } from "./Presence";
 import { logger } from "@/internal/logger/consola";
-import consola from "consola";
 
 // Re-export errors for backward compatibility
 export { BackpressureError, NotConnectedError };
@@ -549,7 +548,7 @@ export class PubSubConnection {
       clientMsgId,
     });
 
-    consola.info(
+    logger.info(
       `[PubSubConnection] [${this.#connectionId}] Publishing message`,
       {
         topic: payload.topic,

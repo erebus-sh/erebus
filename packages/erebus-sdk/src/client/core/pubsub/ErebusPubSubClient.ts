@@ -5,7 +5,6 @@ import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import { logger } from "@/internal/logger/consola";
-import consola from "consola";
 
 export type ErebusOptions = {
   wsUrl: string;
@@ -63,7 +62,7 @@ export class ErebusPubSubClientNew {
 
   connect(timeout?: number) {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Connect called`, { timeout });
+    logger.info(`[Erebus:${instanceId}] Connect called`, { timeout });
     logger.info("Erebus.connect() called");
 
     // Check if the client is already connected
@@ -75,7 +74,7 @@ export class ErebusPubSubClientNew {
     if (!this.#stateManager.channel) {
       const error =
         "Channel must be set before connecting. Call joinChannel(channel) first.";
-      consola.error(`[Erebus:${instanceId}] ${error}`);
+      logger.error(`[Erebus:${instanceId}] ${error}`);
       logger.error("Connect failed - no channel set");
       throw new Error(error);
     }
@@ -93,7 +92,7 @@ export class ErebusPubSubClientNew {
    */
   joinChannel(channel: string): void {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Joining channel`, { channel });
+    logger.info(`[Erebus:${instanceId}] Joining channel`, { channel });
     logger.info("Erebus.joinChannel() called", { channel });
 
     if (
@@ -102,13 +101,13 @@ export class ErebusPubSubClientNew {
       channel.trim().length === 0
     ) {
       const error = "Invalid channel: must be a non-empty string";
-      consola.error(`[Erebus:${instanceId}] ${error}`, { channel });
+      logger.error(`[Erebus:${instanceId}] ${error}`, { channel });
       logger.error("Invalid channel", { channel });
       throw new Error(error);
     }
 
     if (this.#stateManager.getChannel() === channel) {
-      consola.info(`[Erebus:${instanceId}] Channel already joined`, {
+      logger.info(`[Erebus:${instanceId}] Channel already joined`, {
         channel,
       });
       logger.info("Channel already joined", { channel });
@@ -119,7 +118,7 @@ export class ErebusPubSubClientNew {
     this.#stateManager.setChannel(channel);
     this.#conn.setChannel(channel);
 
-    consola.info(`[Erebus:${instanceId}] Channel joined successfully`, {
+    logger.info(`[Erebus:${instanceId}] Channel joined successfully`, {
       channel,
     });
     logger.info("Channel joined successfully", { channel });
@@ -141,7 +140,7 @@ export class ErebusPubSubClientNew {
     timeoutMs?: number,
   ) {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Subscribe called`, {
+    logger.info(`[Erebus:${instanceId}] Subscribe called`, {
       topic,
       hasAckCallback: !!onAck,
       timeout: timeoutMs,
@@ -151,7 +150,7 @@ export class ErebusPubSubClientNew {
     if (!this.#stateManager.channel) {
       const error =
         "Channel must be set before subscribing. Call joinChannel(channel) first.";
-      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Subscribe failed - no channel set", { topic });
       throw new Error(error);
     }
@@ -159,14 +158,14 @@ export class ErebusPubSubClientNew {
     // Channel is guaranteed to be set in constructor, no need to check
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Invalid topic", { topic });
       throw new Error(error);
     }
 
     if (typeof handler !== "function") {
       const error = "Invalid handler: must be a function";
-      consola.error(`[Erebus:${instanceId}] ${error}`);
+      logger.error(`[Erebus:${instanceId}] ${error}`);
       logger.error("Invalid handler", { handlerType: typeof handler });
       throw new Error(error);
     }
@@ -186,7 +185,7 @@ export class ErebusPubSubClientNew {
     timeoutMs?: number,
   ) {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Unsubscribe called`, {
+    logger.info(`[Erebus:${instanceId}] Unsubscribe called`, {
       topic,
       hasAckCallback: !!onAck,
       timeout: timeoutMs,
@@ -195,14 +194,14 @@ export class ErebusPubSubClientNew {
 
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Invalid topic", { topic });
       throw new Error(error);
     }
 
     const handlers = this.#stateManager.getHandlers(topic);
     if (!handlers || handlers.size === 0) {
-      consola.warn(
+      logger.warn(
         `[Erebus:${instanceId}] No handler set found during unsubscribe`,
         { topic },
       );
@@ -241,7 +240,7 @@ export class ErebusPubSubClientNew {
 
   close() {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] Close called`);
+    logger.info(`[Erebus:${instanceId}] Close called`);
     logger.info("Erebus.close() called");
     this.#conn.close();
   }
@@ -289,7 +288,7 @@ export class ErebusPubSubClientNew {
     counts: Record<string, number>;
   } {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] __debugSummary getter called`);
+    logger.info(`[Erebus:${instanceId}] __debugSummary getter called`);
     logger.info("Erebus.__debugSummary getter called");
 
     const counts: Record<string, number> = {};
@@ -298,7 +297,7 @@ export class ErebusPubSubClientNew {
       const n = this.#stateManager.getHandlerCountForTopic(topic);
       handlerCount += n;
       counts[topic] = n;
-      consola.info(`[Erebus:${instanceId}] Counting handlers for topic`, {
+      logger.info(`[Erebus:${instanceId}] Counting handlers for topic`, {
         topic,
         count: n,
       });
@@ -307,7 +306,7 @@ export class ErebusPubSubClientNew {
         count: n,
       });
     }
-    consola.info(`[Erebus:${instanceId}] __debugSummary returning`, {
+    logger.info(`[Erebus:${instanceId}] __debugSummary returning`, {
       handlerCount,
       topics: Object.keys(counts),
       counts,
@@ -330,7 +329,7 @@ export class ErebusPubSubClientNew {
    */
   get __debugConn(): PubSubConnection {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] __debugConn getter called`);
+    logger.info(`[Erebus:${instanceId}] __debugConn getter called`);
     logger.info("Erebus.__debugConn getter called");
     return this.#conn;
   }
@@ -353,7 +352,7 @@ export class ErebusPubSubClientNew {
     processedMessagesCount: number;
   } {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] __debugObject getter called`);
+    logger.info(`[Erebus:${instanceId}] __debugObject getter called`);
     logger.info("Erebus.__debugObject getter called");
 
     const counts: Record<string, number> = {};
@@ -362,7 +361,7 @@ export class ErebusPubSubClientNew {
       const n = this.#stateManager.getHandlerCountForTopic(topic);
       handlerCount += n;
       counts[topic] = n;
-      consola.info(
+      logger.info(
         `[Erebus:${instanceId}] Counting handlers for topic (debugObject)`,
         {
           topic,
@@ -392,7 +391,7 @@ export class ErebusPubSubClientNew {
       counts,
       processedMessagesCount: this.#stateManager.processedMessagesCount,
     };
-    consola.info(`[Erebus:${instanceId}] __debugObject returning`, debugObj);
+    logger.info(`[Erebus:${instanceId}] __debugObject returning`, debugObj);
     logger.info("Erebus.__debugObject returning", debugObj);
     return debugObj;
   }
@@ -433,25 +432,25 @@ export class ErebusPubSubClientNew {
    */
   onPresence(topic: string, handler: PresenceHandler): void {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] onPresence called`, { topic });
+    logger.info(`[Erebus:${instanceId}] onPresence called`, { topic });
     logger.info("Erebus.onPresence() called", { topic });
 
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      consola.error(`[Erebus:${instanceId}] ${error}`, { topic });
+      logger.error(`[Erebus:${instanceId}] ${error}`, { topic });
       logger.error("Invalid topic for presence", { topic });
       throw new Error(error);
     }
 
     if (typeof handler !== "function") {
       const error = "Invalid handler: must be a function";
-      consola.error(`[Erebus:${instanceId}] ${error}`);
+      logger.error(`[Erebus:${instanceId}] ${error}`);
       logger.error("Invalid presence handler", { handlerType: typeof handler });
       throw new Error(error);
     }
 
     this.#conn.onPresence(topic, handler);
-    consola.info(
+    logger.info(
       `[Erebus:${instanceId}] Presence handler registered for topic`,
       {
         topic,
@@ -467,11 +466,11 @@ export class ErebusPubSubClientNew {
    */
   offPresence(topic: string, handler: PresenceHandler): void {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] offPresence called`, { topic });
+    logger.info(`[Erebus:${instanceId}] offPresence called`, { topic });
     logger.info("Erebus.offPresence() called", { topic });
 
     this.#conn.offPresence(topic, handler);
-    consola.info(`[Erebus:${instanceId}] Presence handler removed for topic`, {
+    logger.info(`[Erebus:${instanceId}] Presence handler removed for topic`, {
       topic,
     });
     logger.info("Presence handler removed", { topic });
@@ -483,13 +482,13 @@ export class ErebusPubSubClientNew {
    */
   clearPresenceHandlers(topic: string): void {
     const instanceId = this.#conn.connectionId;
-    consola.info(`[Erebus:${instanceId}] clearPresenceHandlers called`, {
+    logger.info(`[Erebus:${instanceId}] clearPresenceHandlers called`, {
       topic,
     });
     logger.info("Erebus.clearPresenceHandlers() called", { topic });
 
     this.#conn.clearPresenceHandlers(topic);
-    consola.info(
+    logger.info(
       `[Erebus:${instanceId}] All presence handlers cleared for topic`,
       {
         topic,
@@ -623,7 +622,7 @@ export class ErebusPubSubClientNew {
     const instanceId = this.#conn.connectionId;
     if (m.packetType !== "publish") {
       if (this.#debug) {
-        consola.info(`[Erebus:${instanceId}] Ignoring non-message packetType`, {
+        logger.info(`[Erebus:${instanceId}] Ignoring non-message packetType`, {
           packetType: m.packetType,
         });
       }
@@ -635,7 +634,7 @@ export class ErebusPubSubClientNew {
     // Check for duplicate messages
     if (this.#stateManager.isMessageProcessed(messageId)) {
       if (this.#debug) {
-        consola.info(`[Erebus:${instanceId}] Skipping duplicate message`, {
+        logger.info(`[Erebus:${instanceId}] Skipping duplicate message`, {
           messageId:
             messageId.length > 8
               ? `${messageId.substring(0, 4)}...${messageId.substring(messageId.length - 4)}`
@@ -651,7 +650,7 @@ export class ErebusPubSubClientNew {
     const handlers = this.#stateManager.getHandlers(m.payload?.topic || "");
     if (!handlers || handlers.size === 0) {
       if (this.#debug) {
-        consola.warn(`[Erebus:${instanceId}] No handlers found for topic`, {
+        logger.warn(`[Erebus:${instanceId}] No handlers found for topic`, {
           topic: m.payload?.topic,
         });
       }
@@ -667,7 +666,7 @@ export class ErebusPubSubClientNew {
         });
       } catch (error) {
         if (this.#debug) {
-          consola.error(
+          logger.error(
             `[Erebus:${this.#conn.connectionId}] Error in message handler`,
             {
               error,
