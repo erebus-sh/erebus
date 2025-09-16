@@ -26,7 +26,7 @@ async function helperGetPolarCustomerByUserId(userId: string) {
  *
  * Each event represents one unit of usage (e.g., one message sent through the gateway).
  * Polar automatically determines which pricing triggers or meters to update based on
- * the event name and customer configuration.
+ * the customer subscription.
  *
  * @param userId - The internal user ID from our system
  * @param count - Number of usage events to ingest (each represents one unit of usage)
