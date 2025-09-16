@@ -41,12 +41,14 @@ export async function ingestMetersForUserId(userId: string, count: number) {
   const userPolarCustomer = await helperGetPolarCustomerByUserId(userId);
 
   let events: EventCreateCustomer[] = [];
-  for (let i = 0; i < count; i++) {
-    events.push({
-      name: "Erebus Gateway Messages",
-      customerId: userPolarCustomer.id,
-    });
-  }
+  events.push({
+    name: "websocket-message", // matches meter filter in the polar meters
+    customerId: userPolarCustomer.id,
+    metadata: {
+      webSocketMessages: count, // numeric field for "Sum" aggregation
+    },
+    timestamp: new Date(),
+  });
   return await polarSdk.events.ingest({ events });
 }
 
