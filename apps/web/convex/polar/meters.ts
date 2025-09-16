@@ -1,3 +1,4 @@
+import { EventCreateCustomer } from "@polar-sh/sdk/models/components/eventcreatecustomer.js";
 import { createPolarSdk } from "../lib/polar";
 import { EventCreateExternalCustomer } from "@polar-sh/sdk/models/components/eventcreateexternalcustomer.js";
 
@@ -39,11 +40,11 @@ export async function ingestMetersForUserId(userId: string, count: number) {
   // This works because Convex stores the userId in customer metadata during creation
   const userPolarCustomer = await helperGetPolarCustomerByUserId(userId);
 
-  let events: EventCreateExternalCustomer[] = [];
+  let events: EventCreateCustomer[] = [];
   for (let i = 0; i < count; i++) {
     events.push({
       name: "Erebus Gateway Messages",
-      externalCustomerId: userPolarCustomer.id,
+      customerId: userPolarCustomer.id,
     });
   }
   return await polarSdk.events.ingest({ events });
