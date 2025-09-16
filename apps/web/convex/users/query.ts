@@ -1,7 +1,8 @@
 import { getAuthUserId } from "@convex-dev/auth/server";
-import { query } from "../_generated/server";
+import { internalQuery, query } from "../_generated/server";
 import { polar } from "../polar";
 import type { Subscription } from "@convex-dev/polar";
+import { v } from "convex/values";
 
 // Helper function to determine if a subscription is active
 function isSubscriptionActive(
@@ -70,5 +71,14 @@ export const getMeWithSubscription = query({
       isSubscriptionActive: isSubscriptionActive(subscription),
       hasAlreadySubscribed: hasAlreadySubscribed(subscription),
     };
+  },
+});
+
+export const getUserById = internalQuery({
+  args: {
+    id: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
   },
 });

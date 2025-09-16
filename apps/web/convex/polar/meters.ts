@@ -1,13 +1,13 @@
 import { createPolarSdk } from "../lib/polar";
 import { EventCreateExternalCustomer } from "@polar-sh/sdk/models/components/eventcreateexternalcustomer.js";
 
-export async function ingestMetersForUserId(userId: string, count: number) {
+export async function ingestMetersForUserId(email: string, count: number) {
   const polarSdk = createPolarSdk();
   let events: EventCreateExternalCustomer[] = [];
   for (let i = 0; i < count; i++) {
     events.push({
       name: "Erebus Gateway Messages",
-      externalCustomerId: userId,
+      externalCustomerId: email,
     });
   }
   return await polarSdk.events.ingest({ events });
@@ -56,4 +56,26 @@ export async function getUsageSnapshotForUser(externalCustomerId: string) {
     creditedUnits: totals.credited,
     balance: totals.balance,
   };
+}
+
+export async function getUsageForUserInPeriod(
+  externalCustomerId: string,
+  meterIds: string[],
+  start: Date,
+  end: Date,
+) {
+  const polar = createPolarSdk();
+  let total = 0;
+
+  for (const id of meterIds) {
+    const res = await polar.meters.quantities({
+      id,
+      startTimestamp: start,
+      endTimestamp: end,
+      interval: "day",
+      externalCustomerId, // filter to your user
+    });
+    total += Number(res.total ?? 0);
+  }
+  return total;
 }
