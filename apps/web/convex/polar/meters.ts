@@ -40,16 +40,24 @@ export async function ingestMetersForUserId(userId: string, count: number) {
   // This works because Convex stores the userId in customer metadata during creation
   const userPolarCustomer = await helperGetPolarCustomerByUserId(userId);
 
-  let events: EventCreateCustomer[] = [];
-  events.push({
-    name: "websocket-message", // matches meter filter in the polar meters
-    customerId: userPolarCustomer.id,
-    metadata: {
-      webSocketMessages: count, // numeric field for "Sum" aggregation
-    },
-    timestamp: new Date(),
+  // Ingest a usage event for the user in Polar.
+  // - The event name ("Erebus Gateway Messages") can be any name.
+  // - The `event` metadata field ("websocket-message") must match the meter filter in the polar console.
+  // - The `webSocketMessages` field provides the numeric value to be summed for usage aggregation.
+  // - The timestamp is set to the current time.
+  return await polarSdk.events.ingest({
+    events: [
+      {
+        name: "Erebus Gateway Messages", // Event name, can be any name.
+        customerId: userPolarCustomer.id, // Polar customer ID for this user.
+        metadata: {
+          event: "websocket-message", // Used by Polar meter filter to match this event.
+          webSocketMessages: count, // Number of messages to increment usage by (for "Sum" aggregation).
+        },
+        timestamp: new Date(), // Current timestamp for the event.
+      },
+    ],
   });
-  return await polarSdk.events.ingest({ events });
 }
 
 /**
