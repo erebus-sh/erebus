@@ -1,5 +1,5 @@
 import { action } from "../_generated/server";
-import { getMetersForUserId } from "../polar/meters";
+import { getUsageSnapshotForUser } from "../polar/meters";
 import { api } from "../_generated/api";
 import { ConvexError } from "convex/values";
 
@@ -15,7 +15,7 @@ export const getUserMeters = action({
     const user = await ctx.runQuery(api.users.query.getMeWithSubscription);
     if (!user || !user._id) throw new ConvexError("User not found");
 
-    const meters = await getMetersForUserId(user._id);
+    const meters = await getUsageSnapshotForUser(user._id);
 
     return {
       balance: meters.balance,

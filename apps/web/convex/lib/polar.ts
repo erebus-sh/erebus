@@ -2,7 +2,7 @@ import { Polar } from "@polar-sh/sdk";
 
 export function createPolarSdk() {
   if (!process.env.POLAR_ORGANIZATION_TOKEN) {
-    throw new Error("POLAR_ACCESS_TOKEN must be set");
+    throw new Error("POLAR_ORGANIZATION_TOKEN must be set");
   }
 
   if (!process.env.POLAR_SERVER) {
