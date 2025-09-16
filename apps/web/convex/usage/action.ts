@@ -35,6 +35,11 @@ export const trackUsage = action({
     }>;
     timestamp: number;
   }> => {
+    console.log("Provided secret (first 10):", args.actionSecret.slice(0, 10));
+    console.log(
+      "Expected secret (first 10):",
+      (process.env.ACTION_SECRET ?? "").slice(0, 10),
+    );
     if (args.actionSecret !== process.env.ACTION_SECRET) {
       throw new ConvexError(
         "Access denied: The provided secret key is invalid. Please verify your credentials or contact support if you believe this is an error.",
