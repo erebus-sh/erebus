@@ -1,31 +1,72 @@
 import { createPolarSdk } from "../lib/polar";
 import { EventCreateExternalCustomer } from "@polar-sh/sdk/models/components/eventcreateexternalcustomer.js";
 
-export async function ingestMetersForUserId(userId: string, count: number) {
+/**
+ * Helper function to retrieve a Polar customer by user ID.
+ * Convex automatically adds the userId as metadata when creating customers
+ * in the Polar portal, allowing us to look up customers by their internal user ID.
+ *
+ * @param userId - The internal user ID from our system
+ * @returns The Polar customer object associated with the user
+ */
+async function helperGetPolarCustomerByUserId(userId: string) {
   const polarSdk = createPolarSdk();
-
-  // Extract customer by user Id, as it's included in the metadata
-  // Fetch the first customer matching the userId in metadata
   const res = await polarSdk.customers.list({
     metadata: { userId },
   });
-  const polarCustomer = res.result.items[0];
+  return res.result.items[0];
+}
+
+/**
+ * Ingests usage meter events for a user in the Polar billing portal.
+ *
+ * This function creates and sends "Erebus Gateway Messages" events to Polar for each unit
+ * of usage consumed by the user. Polar uses these events to track usage against meters,
+ * which can trigger billing based on configured pricing rules and thresholds.
+ *
+ * Each event represents one unit of usage (e.g., one message sent through the gateway).
+ * Polar automatically determines which pricing triggers or meters to update based on
+ * the event name and customer configuration.
+ *
+ * @param userId - The internal user ID from our system
+ * @param count - Number of usage events to ingest (each represents one unit of usage)
+ * @returns Promise resolving to the Polar API response from ingesting events
+ */
+export async function ingestMetersForUserId(userId: string, count: number) {
+  const polarSdk = createPolarSdk();
+
+  // Find the user's Polar customer record using their internal user ID
+  // This works because Convex stores the userId in customer metadata during creation
+  const userPolarCustomer = await helperGetPolarCustomerByUserId(userId);
 
   let events: EventCreateExternalCustomer[] = [];
   for (let i = 0; i < count; i++) {
     events.push({
       name: "Erebus Gateway Messages",
-      externalCustomerId: polarCustomer.id,
+      externalCustomerId: userPolarCustomer.id,
     });
   }
   return await polarSdk.events.ingest({ events });
 }
 
-export async function getUsageSnapshotForUser(externalCustomerId: string) {
+/**
+ * Retrieves a comprehensive usage snapshot for a user across all their meters.
+ *
+ * This function aggregates usage data from all meters associated with the user,
+ * providing totals for consumed units, credited units, and current balance.
+ * The balance represents the net usage after credits are applied.
+ *
+ * @param userId - The internal user ID from our system
+ * @returns Object containing total consumed units, credited units, and balance
+ */
+export async function getUsageSnapshotForUser(userId: string) {
   const polar = createPolarSdk();
 
+  const userPolarCustomer = await helperGetPolarCustomerByUserId(userId);
+
+  // Fetch all meters for this customer, paginated (limit 100 per page)
   const pages = await polar.customerMeters.list({
-    externalCustomerId, // filter by your own user/project id
+    externalCustomerId: userPolarCustomer.id,
     limit: 100,
   });
 
@@ -39,10 +80,12 @@ export async function getUsageSnapshotForUser(externalCustomerId: string) {
 
   let totals = { consumed: 0, credited: 0, balance: 0 };
 
+  // Process each page of meters, calculating totals for each meter
   for await (const page of pages) {
     for (const m of page.result.items) {
       const consumed = Number(m.consumedUnits ?? 0);
       const credited = Number(m.creditedUnits ?? 0);
+      // Balance is net usage after credits; use Polar's balance if available, otherwise calculate
       const balance = Number(m.balance ?? credited - consumed);
 
       perMeter.push({
@@ -66,6 +109,19 @@ export async function getUsageSnapshotForUser(externalCustomerId: string) {
   };
 }
 
+/**
+ * Retrieves total usage for a specific customer across multiple meters within a date range.
+ *
+ * This function queries Polar's meter quantities API to get usage data for the specified
+ * meters and time period. It aggregates usage across all provided meter IDs to give
+ * a total usage count for the period.
+ *
+ * @param externalCustomerId - The Polar external customer ID
+ * @param meterIds - Array of meter IDs to query usage for
+ * @param start - Start date for the usage period
+ * @param end - End date for the usage period
+ * @returns Total usage units across all specified meters for the period
+ */
 export async function getUsageForUserInPeriod(
   externalCustomerId: string,
   meterIds: string[],
@@ -75,6 +131,7 @@ export async function getUsageForUserInPeriod(
   const polar = createPolarSdk();
   let total = 0;
 
+  // Aggregate usage across all specified meters for the time period
   for (const id of meterIds) {
     const res = await polar.meters.quantities({
       id,
