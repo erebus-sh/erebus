@@ -431,7 +431,7 @@ export class MessageBroadcaster extends BaseService {
     const url = new URL(webhookUrl);
 
     const client = createRpcClient(url.origin);
-    const response = await client.api.pubsub["fire-webhook"].$post({
+    const response = await client.api.erebus.pubsub["fire-webhook"].$post({
       json: payload,
     });
     if (!response.ok) {
@@ -551,7 +551,11 @@ export class MessageBroadcaster extends BaseService {
           // Send the appropriate presence packet
           if (selfClient && selfClient.clientId === client.clientId) {
             /**
-             * TODO: This is very bad, but I ain't fixing it right now >:(
+             * TODO: This approach is suboptimal, but leaving as-is for now >:(
+             *       Currently, we send the presence packet in multiple pieces,
+             *       which is unnecessary. Ideally, we should batch all packets
+             *       into a single array and send them together, but that's a
+             *       refactor for another time.
              */
             for (const packet of selfPacketSerialized ?? []) {
               selfClient.sendJSON(packet);

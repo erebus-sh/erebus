@@ -45,7 +45,7 @@ export async function generateOGImage(
     {
       width: 1200,
       height: 630,
-      // TODO: Fucking fonts don't work at all, fuck 'em
+      // TODO: Fuck fonts they don't work at all, fuck 'em
       // fonts: [
       //   {
       //     name: "Mono",
