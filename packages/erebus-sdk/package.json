@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.126",
+  "version": "0.0.127",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -46,6 +46,7 @@
   "dependencies": {
     "@hono/node-server": "^1.18.2",
     "@hono/zod-validator": "^0.7.2",
+    "@types/lodash.debounce": "^4.0.9",
     "consola": "^3.4.2",
     "hono": "^4.9.1",
     "http2": "^3.3.7",

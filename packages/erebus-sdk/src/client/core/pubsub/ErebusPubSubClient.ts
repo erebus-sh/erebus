@@ -5,6 +5,7 @@ import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import { logger } from "@/internal/logger/consola";
+import { debounce } from "lodash";
 
 export type ErebusOptions = {
   wsUrl: string;
@@ -26,10 +27,32 @@ export class ErebusPubSubClientNew {
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
+  #debounceOpenConnection: (timeout?: number) => void;
+  #debounceSubscribe: (
+    topic: string,
+    handler: Handler,
+    onAck?: SubscriptionCallback,
+    timeoutMs?: number,
+  ) => void;
 
   constructor(opts: ErebusOptions) {
     this.#debug = opts.debug ?? false;
     const instanceId = Math.random().toString(36).substring(2, 8);
+    this.#debounceOpenConnection = debounce((timeout?: number) => {
+      this.#conn.open(timeout);
+    }, 1000);
+
+    this.#debounceSubscribe = debounce(
+      (
+        topic: string,
+        handler: Handler,
+        onAck?: SubscriptionCallback,
+        timeoutMs?: number,
+      ) => {
+        this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
+      },
+      1000,
+    );
 
     logger.info(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
@@ -82,7 +105,8 @@ export class ErebusPubSubClientNew {
 
     // Channel is guaranteed to be set in constructor, no need to check
     this.#stateManager.clearProcessedMessages();
-    return this.#conn.open(timeout);
+    // Debounce open
+    return this.#debounceOpenConnection(timeout);
   }
 
   // joinChannel method removed - channel is set in constructor
@@ -131,7 +155,8 @@ export class ErebusPubSubClientNew {
     onAck?: SubscriptionCallback,
     timeoutMs: number = 3000,
   ) {
-    this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
+    // Debounce it
+    this.#debounceSubscribe(topic, handler, onAck, timeoutMs);
   }
 
   subscribeWithCallback(

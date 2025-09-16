@@ -1,9 +1,19 @@
 import { Polar } from "@polar-sh/sdk";
 
-const polarAccessToken = process.env.POLAR_ACCESS_TOKEN!;
-const polarServer = process.env.POLAR_SERVER! as "sandbox" | "production";
+export function createPolarSdk() {
+  if (!process.env.POLAR_ORGANIZATION_TOKEN) {
+    throw new Error("POLAR_ACCESS_TOKEN must be set");
+  }
 
-export const polarSdk = new Polar({
-  accessToken: polarAccessToken,
-  server: polarServer,
-});
+  if (!process.env.POLAR_SERVER) {
+    throw new Error("POLAR_SERVER must be set");
+  }
+
+  const polarOrganizationToken = process.env.POLAR_ORGANIZATION_TOKEN;
+  const polarServer = process.env.POLAR_SERVER as "sandbox" | "production";
+
+  return new Polar({
+    accessToken: polarOrganizationToken,
+    server: polarServer,
+  });
+}
