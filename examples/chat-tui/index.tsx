@@ -12,7 +12,7 @@ const BASE_URL = process.env.BASE_URL || "http://localhost:4919";
 const WS_BASE_URL = process.env.WS_BASE_URL || "ws://localhost:8787";
 const SECRET_API_KEY =
   process.env.SECRET_API_KEY ||
-  "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1";
+  "dv-er-go9xkpwdq1tj8am6t9e7bw0zatyb9qt1ggpre8s9wewo4dd9";
 
 // Erebus client
 const client = ErebusClient.createClientSync({
@@ -471,7 +471,7 @@ const app = createGenericAdapter({
     console.log("Using session for user:", sessionData.username);
 
     const service = new ErebusService({
-      secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
+      secret_api_key: SECRET_API_KEY,
       base_url: "http://localhost:3000",
     });
 

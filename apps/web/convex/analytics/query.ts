@@ -4,6 +4,9 @@ import { getValidatedProjectBySlugWithOwnershipForQuery } from "../lib/guard";
 import { usageByEventTimeAggregate } from "../aggregaters/usageAggregater";
 import { formatISO } from "date-fns";
 
+// TODO: This code is roughly put together using Cursor AI and Some handwork, it works probably
+//       but need more organization, cleanup, better tests and better documentation.
+
 /**
  * Enhanced analytics query to get analytics for a project with support for
  * both daily and hourly granularity, with normalized data (filling gaps).
@@ -235,13 +238,12 @@ export const getAnalytics = query({
       "Time bucket counts processed using aggregates",
     );
 
-    // Removed legacy formatter; using ISO strings via date-fns above
-
     // Sort the data chronologically
     const chartData = bucketCounts.sort((a, b) => a.date.localeCompare(b.date));
 
     console.log(
       {
+        projectId: project._id,
         tag: "analytics:getAnalytics:finalResult",
         chartDataLength: chartData.length,
         sampleChartData: chartData.slice(0, 3),
