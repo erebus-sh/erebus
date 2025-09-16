@@ -42,12 +42,24 @@ export default defineConfig({
   ],
   sourcemap: true,
   clean: true,
-  minify: {
-    compress: {
-      dropConsole: true,
-      dropDebugger: true,
-    },
-  },
+  minify: true,
   treeshake: true,
-  plugins: [typescript(), strip()],
+  plugins: [
+    typescript(),
+    strip({
+      // Strip specific logger calls in production builds
+      functions: [
+        "logger.info",
+        "logger.warn",
+        "logger.error",
+        "logger.debug",
+        "logger.trace",
+        "logger.success",
+        "logger.fail",
+        "logger.ready",
+        "logger.start",
+        "logger.log",
+      ],
+    }),
+  ],
 });

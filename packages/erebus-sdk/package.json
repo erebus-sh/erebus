@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.117",
+  "version": "0.0.119",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -18,10 +18,14 @@
     "bundler:build:types:check": "tsc --project tsconfig.json --noEmit",
     "check-types": "bun run bundler:build:types:check",
     "build": "bun run clean && bun run build:sdk",
-    "build:dev": "bun run build:sdk",
+    "build:dev": "NODE_ENV=development bun run build:sdk",
+    "build:prod": "NODE_ENV=production bun run clean && bun run build:sdk",
     "format": "bunx prettier . --write",
     "test": "vitest run",
-    "test:react": "vitest run --config vitest.jsdom.config.ts"
+    "test:react": "vitest run --config vitest.jsdom.config.ts",
+    "test:logger:dev": "NODE_ENV=development node scripts/test-logger.js",
+    "test:logger:prod": "NODE_ENV=production node scripts/test-logger.js",
+    "verify:production": "node scripts/verify-production-build.js"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",
