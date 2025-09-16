@@ -23,9 +23,9 @@
     "format": "bunx prettier . --write",
     "test": "vitest run",
     "test:react": "vitest run --config vitest.jsdom.config.ts",
-    "test:logger:dev": "NODE_ENV=development node scripts/test-logger.js",
-    "test:logger:prod": "NODE_ENV=production node scripts/test-logger.js",
-    "verify:production": "node scripts/verify-production-build.js"
+    "test:logger:dev": "NODE_ENV=development bun run scripts/test-logger.ts",
+    "test:logger:prod": "NODE_ENV=production bun run scripts/test-logger.ts",
+    "verify:production": "bun run scripts/verify-production-build.ts"
   },
   "devDependencies": {
     "@testing-library/react": "^16.3.0",

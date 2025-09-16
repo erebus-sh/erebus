@@ -67,6 +67,7 @@ export class ErebusPubSubClientNew {
 
     // Check if the client is already connected
     if (this.#stateManager.isConnected) {
+      logger.info(`[Erebus:${instanceId}] Already connected, returning`);
       // just return
       return;
     }

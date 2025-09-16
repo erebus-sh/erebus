@@ -508,7 +508,7 @@ Bun.serve({
 
         cookies.set("x-user-id", username, {
           httpOnly: true,
-          secure: false, // Set to true in production with HTTPS
+          secure: false,
           sameSite: "lax",
           path: "/",
         });
