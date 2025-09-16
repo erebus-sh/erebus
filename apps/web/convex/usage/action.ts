@@ -2,7 +2,6 @@ import { ConvexError, v } from "convex/values";
 import { action } from "../_generated/server";
 import { internal } from "../_generated/api";
 import { ingestMetersForUserId } from "../polar/meters";
-import { Id } from "../_generated/dataModel";
 
 export const schemaPayload = v.array(
   v.object({
@@ -75,9 +74,6 @@ export const trackUsage = action({
 
       const projectId = uniqueProjectIds[index];
       const userId = project.userId as string;
-      const user = await ctx.runQuery(internal.users.query.getUserById, {
-        id: userId as Id<"users">,
-      });
 
       // Find the project summary in the result to get accurate count
       const projectSummary = result.projects.find(
@@ -85,23 +81,17 @@ export const trackUsage = action({
       );
       const usageCount = projectSummary?.totalRows || 0;
 
-      const email = user?.email;
-      if (!email) {
-        console.error(`User ${userId} has no email`);
-        continue;
-      }
-
       userUsageCounts.set(
-        email,
-        (userUsageCounts.get(email) || 0) + usageCount,
+        userId,
+        (userUsageCounts.get(userId) || 0) + usageCount,
       );
     }
 
     // Bill each user for their actual usage count
     await Promise.all(
       Array.from(userUsageCounts.entries()).map(
-        async ([email, usageCount]: [string, number]) => {
-          await ingestMetersForUserId(email, usageCount);
+        async ([userId, usageCount]: [string, number]) => {
+          await ingestMetersForUserId(userId, usageCount);
         },
       ),
     );

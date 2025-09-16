@@ -3,6 +3,7 @@ import { internalQuery, query } from "../_generated/server";
 import { polar } from "../polar";
 import type { Subscription } from "@convex-dev/polar";
 import { v } from "convex/values";
+import { api } from "../_generated/api";
 
 // Helper function to determine if a subscription is active
 function isSubscriptionActive(

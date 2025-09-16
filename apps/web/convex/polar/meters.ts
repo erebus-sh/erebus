@@ -1,13 +1,21 @@
 import { createPolarSdk } from "../lib/polar";
 import { EventCreateExternalCustomer } from "@polar-sh/sdk/models/components/eventcreateexternalcustomer.js";
 
-export async function ingestMetersForUserId(email: string, count: number) {
+export async function ingestMetersForUserId(userId: string, count: number) {
   const polarSdk = createPolarSdk();
+
+  // Extract customer by user Id, as it's included in the metadata
+  // Fetch the first customer matching the userId in metadata
+  const res = await polarSdk.customers.list({
+    metadata: { userId },
+  });
+  const polarCustomer = res.result.items[0];
+
   let events: EventCreateExternalCustomer[] = [];
   for (let i = 0; i < count; i++) {
     events.push({
       name: "Erebus Gateway Messages",
-      externalCustomerId: email,
+      externalCustomerId: polarCustomer.id,
     });
   }
   return await polarSdk.events.ingest({ events });
