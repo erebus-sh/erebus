@@ -30,6 +30,7 @@ import {
 import SettingsMenu from "../navbar-components/settings-menu";
 import Banner from "../Banner";
 import { useQueryWithState } from "@/utils/query";
+import { CreditCard } from "lucide-react";
 
 export default function NavbarConsole() {
   const { navStack, pushPage } = useNavStackStore();
@@ -172,6 +173,7 @@ export default function NavbarConsole() {
           text="Your subscription has not been updated. Please check your details and try again."
           textLink="Subscribe"
           textLinkHref={customerPortalUrl!}
+          icon={<CreditCard />}
         />
       )}
     </header>
