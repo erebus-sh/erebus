@@ -66,6 +66,12 @@ export class ErebusPubSubClientNew {
     consola.info(`[Erebus:${instanceId}] Connect called`, { timeout });
     logger.info("Erebus.connect() called");
 
+    // Check if the client is already connected
+    if (this.#stateManager.isConnected) {
+      // just return
+      return;
+    }
+
     if (!this.#stateManager.channel) {
       const error =
         "Channel must be set before connecting. Call joinChannel(channel) first.";
