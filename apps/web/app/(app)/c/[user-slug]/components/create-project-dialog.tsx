@@ -124,7 +124,8 @@ export default function CreateProjectDialog() {
                       <span>Global</span>
                       <span className="mx-2">•</span>
                       <span className="text-muted-foreground text-xs">
-                        (Pinned near the region of the first client request)
+                        (Pinned near the client&apos;s region using best
+                        estimates)
                       </span>
                     </div>
                   </SelectItem>

@@ -170,7 +170,7 @@ export default function NavbarConsole() {
           </div>
         </div>
       </header>
-      {user?.isSubscriptionActive && !isUserPending && (
+      {!user?.isSubscriptionActive && !isUserPending && (
         <Banner
           text="Your subscription has not been updated. Please check your details and try again."
           textLink="Subscribe"
