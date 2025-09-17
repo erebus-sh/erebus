@@ -1,7 +1,7 @@
 import type {
   PacketEnvelope,
   AckPacketType,
-} from "@repo/schemas/packetEnvelope";
+} from "../../../../../schemas/packetEnvelope";
 
 import type { PendingPublish, PendingSubscription } from "../types";
 // Import Handler type that's actually used in practice

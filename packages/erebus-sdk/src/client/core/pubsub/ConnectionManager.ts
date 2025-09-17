@@ -1,4 +1,4 @@
-import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { WsErrors } from "@repo/shared/enums/wserrors";
 
 import { encodeEnvelope } from "@/client/core/wire";

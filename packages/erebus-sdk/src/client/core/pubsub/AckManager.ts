@@ -1,4 +1,4 @@
-import type { AckPacketType } from "@repo/schemas/packetEnvelope";
+import type { AckPacketType } from "../../../../../schemas/packetEnvelope";
 
 import { logger } from "@/internal/logger/consola";
 

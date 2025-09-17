@@ -1,5 +1,5 @@
-import type { MessageBody } from "@repo/schemas/messageBody";
-import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import type { MessageBody } from "../../../../../schemas/messageBody";
+import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { nanoid } from "nanoid";
 
 import { logger } from "@/internal/logger/consola";

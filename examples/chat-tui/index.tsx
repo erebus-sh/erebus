@@ -309,7 +309,9 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
       await client.publishWithAck({
         topic: chat.name,
         messageBody: newMessage.trim(),
-        onAck: () => {},
+        onAck: (ack) => {
+          console.log("[chat view] ack", ack.ack);
+        },
         timeoutMs: 10000,
       });
     }
