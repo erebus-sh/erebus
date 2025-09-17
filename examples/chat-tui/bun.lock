@@ -4,7 +4,7 @@
     "": {
       "name": "chat-tui",
       "dependencies": {
-        "@erebus-sh/sdk": "0.0.129",
+        "@erebus-sh/sdk": "0.0.131",
         "ink": "^6.3.0",
         "ink-select-input": "^5.0.0",
         "ink-text-input": "^5.0.0",
@@ -21,7 +21,7 @@
   "packages": {
     "@alcalzone/ansi-tokenize": ["@alcalzone/ansi-tokenize@0.2.0", "", { "dependencies": { "ansi-styles": "^6.2.1", "is-fullwidth-code-point": "^5.0.0" } }, "sha512-qI/5TaaaCZE4yeSZ83lu0+xi1r88JSxUjnH4OP/iZF7+KKZ75u3ee5isd0LxX+6N8U0npL61YrpbthILHB6BnA=="],
 
-    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.129", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "@types/lodash.debounce": "^4.0.9", "@typescript-eslint/eslint-plugin": "^8.44.0", "@typescript-eslint/parser": "^8.44.0", "consola": "^3.4.2", "eslint": "^9.35.0", "eslint-config-prettier": "^10.1.8", "eslint-plugin-import": "^2.32.0", "hono": "^4.9.1", "http2": "^3.3.7", "jose": "^6.0.12", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5", "zustand": "^4 || ^5" } }, "sha512-gAFjxu8DQ14O4z/Nv/w3XYpRPPKsXBEhm6ZB2GvPKuN8xM2+PVh3NPxp8/ba+J4sgMkBAP/F31GHEWHVKDL7Rw=="],
+    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.131", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "@types/lodash.debounce": "^4.0.9", "@typescript-eslint/eslint-plugin": "^8.44.0", "@typescript-eslint/parser": "^8.44.0", "consola": "^3.4.2", "eslint": "^9.35.0", "eslint-config-prettier": "^10.1.8", "eslint-plugin-import": "^2.32.0", "hono": "^4.9.1", "http2": "^3.3.7", "jose": "^6.0.12", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5", "zustand": "^4 || ^5" } }, "sha512-Q0qcA7a26Hbc1hl+9yzIgZOniTpPNsmUuMFfzygvFuwIbVp4MxQauln9/pqB9MK5fIKbXksgTP2woHB3Gx50sw=="],
 
     "@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.9.0", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-ayVFHdtZ+hsq1t2Dy24wCmGXGe4q9Gu3smhLYALJrr473ZH27MsnSL+LKUlimp4BWJqMDMLmPpx/Q9R3OAlL4g=="],
 

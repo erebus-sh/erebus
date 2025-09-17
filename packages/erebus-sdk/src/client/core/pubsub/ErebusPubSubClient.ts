@@ -1,4 +1,4 @@
-import type { MessageBody } from "@repo/schemas/messageBody";
+import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import { debounce } from "lodash";
 

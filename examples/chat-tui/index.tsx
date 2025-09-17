@@ -41,6 +41,7 @@ database.run(`
   CREATE TABLE IF NOT EXISTS messages (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     chat_id INTEGER NOT NULL,
+    user TEXT NOT NULL,
     content TEXT NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (chat_id) REFERENCES chats (id)
@@ -89,6 +90,7 @@ interface Chat {
 interface Message {
   id: string;
   chat_id: string;
+  user: string;
   content: string;
   created_at: string;
 }
@@ -99,13 +101,10 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
   const [error, setError] = useState("");
 
   const handleSubmit = useCallback(async () => {
-    console.log("[handleSubmit] Submit to TUI");
     if (!username.trim()) {
       setError("Username is required");
       return;
     }
-
-    console.log("[handleSubmit] Username login with", username);
 
     const req = new Request(`http://localhost:${port}/login`, {
       method: "POST",
@@ -120,19 +119,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
       username: string;
     };
 
-    console.log("[handleSubmit] Request comming back", req);
-    console.log(
-      "[handleSubmit] Response headers",
-      Object.fromEntries(res.headers.entries()),
-    );
-
     if (loggedInUsername) {
-      console.log(
-        "[handleSubmit] Set-Cookie header",
-        res.headers.get("set-cookie"),
-      );
-      console.log("[handleSubmit] User ID comming back", loggedInUsername);
-
       onLogin({ id: loggedInUsername, username: loggedInUsername });
     } else {
       setError("Invalid credentials");
@@ -291,8 +278,16 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
     loadMessages();
 
     client.subscribe(chat.name, (message) => {
-      console.log("[chat view] received message", message);
-      setMessages((prev) => [...prev, message]);
+      try {
+        const user = message.senderId;
+        const insert = database.prepare(
+          "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
+        );
+        insert.run(chat.id, user, message.payload);
+        loadMessages();
+      } catch (err) {
+        // noop
+      }
     });
 
     // Refresh messages every second
@@ -307,16 +302,14 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
   const handleSendMessage = useCallback(async () => {
     if (newMessage.trim()) {
       const stmt = database.prepare(
-        "INSERT INTO messages (chat_id, content) VALUES (?, ?)",
+        "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
       );
-      stmt.run(chat.id, newMessage.trim());
+      stmt.run(chat.id, (currentUserId as string) || "", newMessage.trim());
       setNewMessage("");
       await client.publishWithAck({
         topic: chat.name,
         messageBody: newMessage.trim(),
-        onAck: (ack) => {
-          console.log("[chat view] ack", ack);
-        },
+        onAck: () => {},
         timeoutMs: 10000,
       });
     }
@@ -351,7 +344,10 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
               <Text color="green">
                 {new Date(message.created_at).toLocaleTimeString()}
               </Text>
-              <Text> {message.content}</Text>
+              <Text>
+                {" "}
+                {message.user}: {message.content}
+              </Text>
             </Box>
           ))
         ) : (
@@ -457,27 +453,18 @@ render(<TUI />);
 
 const app = createGenericAdapter({
   authorize: async (channel: string, ctx: { req: Request }) => {
-    console.log("authorize", channel, ctx);
-    console.log("ctx.req", ctx.req);
-    console.log("Current user ID:", currentUserId);
-    console.log("Session store size:", sessionStore.size);
-
     // Get authenticated user from in-memory session store
     if (!currentUserId) {
-      console.log("No current user ID found");
       throw new Error("No active session found. Please login first.");
     }
 
     const sessionData = sessionStore.get(currentUserId);
     if (!sessionData) {
-      console.log("No session data found for user:", currentUserId);
       throw new Error("Session expired or not found. Please login again.");
     }
 
     // Update last activity
     sessionData.lastActivity = Date.now();
-
-    console.log("Using session for user:", sessionData.username);
 
     const service = new ErebusService({
       secret_api_key: SECRET_API_KEY,
@@ -498,7 +485,7 @@ const app = createGenericAdapter({
     return session;
   },
   fireWebhook: async (webHookMessage) => {
-    console.log(webHookMessage);
+    // noop
   },
 });
 
@@ -512,8 +499,6 @@ Bun.serve({
 
         // Very secure authentication :P
         const { username } = (await bunReq.json()) as { username: string };
-
-        console.log("login", username);
 
         cookies.set("x-user-id", username, {
           httpOnly: true,
@@ -529,13 +514,6 @@ Bun.serve({
     },
   },
   fetch: (req: Request) => {
-    console.log("fetch", {
-      method: req.method,
-      url: req.url,
-      headers: Object.fromEntries(req.headers.entries()),
-      body: req.body ? "[body present]" : "[no body]",
-    });
-
     // Inject current user session into the request context
     // This allows the authorize handler to access the current user
     const modifiedReq = new Request(req, {
@@ -547,14 +525,6 @@ Bun.serve({
           : "",
       },
     });
-
-    console.log("Injected user session:", {
-      userId: currentUserId,
-      username: currentUserId
-        ? sessionStore.get(currentUserId)?.username
-        : "none",
-    });
-
     return app.fetch(modifiedReq);
   },
 });
