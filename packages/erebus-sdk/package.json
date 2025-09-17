@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.127",
+  "version": "0.0.129",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -12,6 +12,7 @@
   },
   "scripts": {
     "clean": "rm -rf dist",
+    "lint": "bun eslint src/client/core/** --ext .ts,.tsx",
     "clean:types": "rm -rf dist/types",
     "build:sdk": "tsdown --config build.config.ts",
     "bundler:build:types": "tsc --project tsconfig.json --emitDeclarationOnly",

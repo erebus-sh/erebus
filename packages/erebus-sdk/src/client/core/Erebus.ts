@@ -1,7 +1,7 @@
 import { ErebusError } from "@/internal/error";
 
 import { Authorize } from "./authorize";
-import { ErebusPubSubClientNew as ErebusPubSubClient } from "./pubsub/ErebusPubSubClient";
+import { ErebusPubSubClient } from "./pubsub/ErebusPubSubClient";
 
 export enum ErebusClientState {
   PubSub,

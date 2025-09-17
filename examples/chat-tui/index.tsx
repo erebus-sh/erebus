@@ -15,7 +15,7 @@ const SECRET_API_KEY =
   "dv-er-a9ti6g5fnybi2mug3t5mi5o7w27121ehxsy8l6nf5xijxzu4";
 
 // Erebus client
-const client = ErebusClient.createClientSync({
+const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
   authBaseUrl: `http://localhost:${port}`,
   wsBaseUrl: WS_BASE_URL,

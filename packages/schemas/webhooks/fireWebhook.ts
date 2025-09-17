@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { MessageBodySchema } from "@repo/schemas/messageBody";
+import { MessageBodySchema } from "../messageBody";
 
 export const FireWebhookSchema = z.object({
   messageBody: z.array(MessageBodySchema),

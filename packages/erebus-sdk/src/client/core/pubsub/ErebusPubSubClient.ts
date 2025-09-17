@@ -25,7 +25,7 @@ export type Handler = (
 /**
  * Refactored ErebusPubSub client using modular architecture
  */
-export class ErebusPubSubClientNew {
+export class ErebusPubSubClient {
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;

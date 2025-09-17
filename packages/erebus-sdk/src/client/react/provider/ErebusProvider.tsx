@@ -25,7 +25,7 @@ export function ErebusProvider({
     if (typeof window === "undefined") {
       return createNoopPubSubClient();
     }
-    return ErebusClient.createClientSync({
+    return ErebusClient.createClient({
       client: ErebusClientState.PubSub,
       authBaseUrl,
       wsBaseUrl,

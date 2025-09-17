@@ -6,7 +6,7 @@ export {
 } from "./PubSubConnection";
 
 // Main client export
-export { ErebusPubSubClientNew as ErebusPubSubClient } from "./ErebusPubSubClient";
+export { ErebusPubSubClient } from "./ErebusPubSubClient";
 
 // Individual managers (for advanced use cases)
 export { ConnectionManager } from "./ConnectionManager";
