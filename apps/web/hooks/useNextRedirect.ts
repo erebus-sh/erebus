@@ -11,15 +11,14 @@ export function useNextRedirect(defaultPath = "/") {
   const router = useRouter();
 
   // nuqs handles query param <-> state
-  const [rawNext, setNext] = useQueryState(
-    "next",
-    parseAsString.withDefault(defaultPath),
-  );
+  // Important: do NOT use a default here so we can detect absence of ?next
+  const [rawNext, setNext] = useQueryState("next", parseAsString);
 
-  // Validate to prevent open redirect
-  const isValidNext = rawNext && rawNext.startsWith("/");
+  // Validate to prevent open redirect and detect actual presence of ?next
+  const nextExists = typeof rawNext === "string" && rawNext.length > 0;
+  const isValidNext = nextExists && rawNext.startsWith("/");
   const safeNext = isValidNext ? rawNext : defaultPath;
-  const hasNext = Boolean(isValidNext);
+  const hasNext = Boolean(nextExists && isValidNext);
 
   function redirectNow() {
     router.push(safeNext);

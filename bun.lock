@@ -152,7 +152,7 @@
     },
     "packages/erebus-sdk": {
       "name": "@erebus-sh/sdk",
-      "version": "0.0.126",
+      "version": "0.0.127",
       "dependencies": {
         "@hono/node-server": "^1.18.2",
         "@hono/zod-validator": "^0.7.2",
