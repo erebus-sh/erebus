@@ -280,11 +280,15 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
     client.subscribe(chat.name, (message) => {
       try {
         const user = message.senderId;
-        const insert = database.prepare(
-          "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
-        );
-        insert.run(chat.id, user, message.payload);
-        loadMessages();
+
+        // Only add message if it's not from the current user (to avoid duplicates from optimistic updates)
+        if (user !== currentUserId) {
+          const insert = database.prepare(
+            "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
+          );
+          insert.run(chat.id, user, message.payload);
+          loadMessages();
+        }
       } catch (err) {
         // noop
       }
@@ -301,19 +305,55 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
 
   const handleSendMessage = useCallback(async () => {
     if (newMessage.trim()) {
-      const stmt = database.prepare(
-        "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
-      );
-      stmt.run(chat.id, (currentUserId as string) || "", newMessage.trim());
+      const messageContent = newMessage.trim();
+      const currentUser = (currentUserId as string) || "";
+      const timestamp = new Date().toISOString();
+
+      // Create optimistic message object
+      const optimisticMessage: Message = {
+        id: `temp-${Date.now()}`, // Temporary ID
+        chat_id: chat.id,
+        user: currentUser,
+        content: messageContent,
+        created_at: timestamp,
+      };
+
+      // Add message to UI immediately (optimistic update)
+      setMessages((prev) => [...prev, optimisticMessage]);
       setNewMessage("");
-      await client.publishWithAck({
-        topic: chat.name,
-        messageBody: newMessage.trim(),
-        onAck: (ack) => {
-          console.log("[chat view] ack", ack.ack);
-        },
-        timeoutMs: 10000,
-      });
+
+      // Save to database and publish in background
+      try {
+        const stmt = database.prepare(
+          "INSERT INTO messages (chat_id, user, content) VALUES (?, ?, ?)",
+        );
+        const result = stmt.run(chat.id, currentUser, messageContent);
+
+        // Update the optimistic message with real database ID
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === optimisticMessage.id
+              ? { ...msg, id: result.lastInsertRowid.toString() }
+              : msg,
+          ),
+        );
+
+        await client.publishWithAck({
+          topic: chat.name,
+          messageBody: messageContent,
+          onAck: (ack) => {
+            console.log("[chat view] ack", ack.ack);
+          },
+          timeoutMs: 10000,
+        });
+      } catch (error) {
+        // If save fails, remove the optimistic message and show error
+        setMessages((prev) =>
+          prev.filter((msg) => msg.id !== optimisticMessage.id),
+        );
+        console.error("Failed to save message:", error);
+        // You could add a toast/notification here to show the error to the user
+      }
     }
   }, [newMessage, chat.id]);
 
