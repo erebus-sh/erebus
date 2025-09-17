@@ -1,6 +1,7 @@
 import type { PresencePacketType } from "@repo/schemas/packetEnvelope";
-import { logger } from "@/internal/logger/consola";
+
 import type { Presence } from "@/client/core/types";
+import { logger } from "@/internal/logger/consola";
 
 /**
  * Handler function type for presence updates
@@ -10,6 +11,11 @@ export type PresenceHandler = (presence: Presence) => void;
 /**
  * Manages presence event handlers for different topics
  */
+// Extended presence packet type that might include subscribers
+type EnrichedPresencePacket = PresencePacketType & {
+  subscribers?: string[];
+};
+
 export class PresenceManager {
   #connectionId: string;
   #presenceHandlers = new Map<string, Set<PresenceHandler>>();
@@ -17,6 +23,18 @@ export class PresenceManager {
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
     logger.info(`[${this.#connectionId}] PresenceManager created`);
+  }
+
+  /**
+   * Type guard to check if presence packet has subscribers property
+   */
+  #hasSubscribers(
+    packet: PresencePacketType,
+  ): packet is EnrichedPresencePacket {
+    return (
+      "subscribers" in packet &&
+      Array.isArray((packet as Record<string, unknown>)["subscribers"])
+    );
   }
 
   /**
@@ -136,9 +154,9 @@ export class PresenceManager {
       status: presencePacket.status,
       timestamp: Date.now(),
       // Include subscribers array if present (for enriched self presence updates)
-      // Use type assertion since the server may send additional fields
-      ...((presencePacket as any).subscribers && {
-        subscribers: (presencePacket as any).subscribers,
+      // Check if the packet has subscribers property and it's an array
+      ...(this.#hasSubscribers(presencePacket) && {
+        subscribers: presencePacket.subscribers,
       }),
     };
 

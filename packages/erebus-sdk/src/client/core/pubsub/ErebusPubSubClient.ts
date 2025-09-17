@@ -1,11 +1,13 @@
 import type { MessageBody } from "@repo/schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import { debounce } from "lodash";
+
+import { logger } from "@/internal/logger/consola";
+
 import type { AckCallback, SubscriptionCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
-import { logger } from "@/internal/logger/consola";
-import { debounce } from "lodash";
 
 export type ErebusOptions = {
   wsUrl: string;
@@ -39,7 +41,7 @@ export class ErebusPubSubClientNew {
     this.#debug = opts.debug ?? false;
     const instanceId = Math.random().toString(36).substring(2, 8);
     this.#debounceOpenConnection = debounce((timeout?: number) => {
-      this.#conn.open(timeout);
+      void this.#conn.open(timeout);
     }, 1000);
 
     this.#debounceSubscribe = debounce(
@@ -68,7 +70,7 @@ export class ErebusPubSubClientNew {
       channel: "", // Empty channel initially, will be set via joinChannel
       heartbeatMs: opts.heartbeatMs,
       log: opts.log,
-      onMessage: (m: PacketEnvelope) => this.#handleMessage(m),
+      onMessage: (m: PacketEnvelope): void => this.#handleMessage(m),
     });
 
     // Initialize state manager with connection ID and set channel immediately
@@ -83,7 +85,7 @@ export class ErebusPubSubClientNew {
     });
   }
 
-  connect(timeout?: number) {
+  connect(timeout?: number): void {
     const instanceId = this.#conn.connectionId;
     logger.info(`[Erebus:${instanceId}] Connect called`, { timeout });
     logger.info("Erebus.connect() called");
@@ -154,7 +156,7 @@ export class ErebusPubSubClientNew {
     handler: Handler,
     onAck?: SubscriptionCallback,
     timeoutMs: number = 3000,
-  ) {
+  ): void {
     // Debounce it
     this.#debounceSubscribe(topic, handler, onAck, timeoutMs);
   }
@@ -164,7 +166,7 @@ export class ErebusPubSubClientNew {
     handler: Handler,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
-  ) {
+  ): void {
     const instanceId = this.#conn.connectionId;
     logger.info(`[Erebus:${instanceId}] Subscribe called`, {
       topic,
@@ -201,7 +203,7 @@ export class ErebusPubSubClientNew {
     this.#conn.subscribeWithCallback(topic, onAck, timeoutMs);
   }
 
-  unsubscribe(topic: string) {
+  unsubscribe(topic: string): void {
     this.unsubscribeWithCallback(topic);
   }
 
@@ -209,7 +211,7 @@ export class ErebusPubSubClientNew {
     topic: string,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
-  ) {
+  ): void {
     const instanceId = this.#conn.connectionId;
     logger.info(`[Erebus:${instanceId}] Unsubscribe called`, {
       topic,
@@ -264,7 +266,7 @@ export class ErebusPubSubClientNew {
     return this.#publishInternal(topic, messageBody, true, onAck, timeoutMs);
   }
 
-  close() {
+  close(): void {
     const instanceId = this.#conn.connectionId;
     logger.info(`[Erebus:${instanceId}] Close called`);
     logger.info("Erebus.close() called");
@@ -279,7 +281,7 @@ export class ErebusPubSubClientNew {
     const startTime = Date.now();
 
     return new Promise((resolve, reject) => {
-      const checkReadiness = () => {
+      const checkReadiness = (): void => {
         // In a real implementation, we'd wait for server ACKs
         // For now, we assume subscriptions are ready after a short delay
         if (this.#stateManager.pendingSubscriptionsCount === 0) {
@@ -633,13 +635,13 @@ export class ErebusPubSubClientNew {
     return new Promise<string>((resolve, reject) => {
       try {
         if (withAck && onAck && timeoutMs) {
-          this.#conn.publishWithAck(actualMessageBody, onAck, timeoutMs);
+          void this.#conn.publishWithAck(actualMessageBody, onAck, timeoutMs);
         } else {
           this.#conn.publish(actualMessageBody);
         }
         resolve(clientMsgId);
       } catch (error) {
-        reject(error);
+        reject(error instanceof Error ? error : new Error(String(error)));
       }
     });
   }
@@ -685,10 +687,10 @@ export class ErebusPubSubClientNew {
 
     for (const fn of handlers) {
       try {
-        fn(m.payload!, {
-          topic: m.payload!.topic,
-          seq: m.payload!.seq,
-          ts: m.payload!.sentAt.getTime(),
+        fn(m.payload, {
+          topic: m.payload.topic,
+          seq: m.payload.seq,
+          ts: m.payload.sentAt.getTime(),
         });
       } catch (error) {
         if (this.#debug) {

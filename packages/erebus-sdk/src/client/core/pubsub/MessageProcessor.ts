@@ -1,13 +1,13 @@
 import type {
   PacketEnvelope,
   AckPacketType,
-  PresencePacketType,
 } from "@repo/schemas/packetEnvelope";
-import type { IMessageProcessor, OnMessage } from "./interfaces";
-import type { IAckManager } from "./interfaces";
-import type { PresenceManager } from "./Presence";
+
 import { parseServerFrame } from "@/client/core/wire";
 import { logger } from "@/internal/logger/consola";
+
+import type { PresenceManager } from "./Presence";
+import type { IMessageProcessor, OnMessage, IAckManager } from "./interfaces";
 
 /**
  * Handles incoming message parsing and routing
@@ -31,7 +31,7 @@ export class MessageProcessor implements IMessageProcessor {
     logger.info(`[${this.#connectionId}] MessageProcessor created`);
   }
 
-  async processMessage(dataStr: string): Promise<PacketEnvelope | null> {
+  processMessage(dataStr: string): PacketEnvelope | null {
     logger.info(`[${this.#connectionId}] Processing message`, {
       dataLength: dataStr.length,
     });
@@ -61,15 +61,15 @@ export class MessageProcessor implements IMessageProcessor {
       packetType: parsed.packetType,
     });
 
-    await this.handlePacket(parsed);
+    this.handlePacket(parsed);
     return parsed;
   }
 
-  async handlePacket(packet: PacketEnvelope): Promise<void> {
+  handlePacket(packet: PacketEnvelope): void {
     try {
       // Handle ACK packets
       if (packet.packetType === "ack") {
-        await this.#handleAckPacket(packet as AckPacketType);
+        this.#handleAckPacket(packet);
       } else if (packet.packetType === "publish") {
         // Handle regular publish messages
         logger.info(`[${this.#connectionId}] Handling publish message`, {
@@ -84,9 +84,7 @@ export class MessageProcessor implements IMessageProcessor {
           clientId: packet.clientId,
           status: packet.status,
         });
-        this.#presenceManager.handlePresencePacket(
-          packet as PresencePacketType,
-        );
+        this.#presenceManager.handlePresencePacket(packet);
       } else {
         logger.warn(`[${this.#connectionId}] Unknown packet type`, {
           packetType: packet.packetType,
@@ -101,7 +99,7 @@ export class MessageProcessor implements IMessageProcessor {
     }
   }
 
-  async #handleAckPacket(ackPacket: AckPacketType): Promise<void> {
+  #handleAckPacket(ackPacket: AckPacketType): void {
     logger.info(`[${this.#connectionId}] Processing ACK packet`, {
       clientMsgId: ackPacket.clientMsgId,
       path: ackPacket.result.path,

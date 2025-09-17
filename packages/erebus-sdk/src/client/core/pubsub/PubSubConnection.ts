@@ -1,5 +1,9 @@
-import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import type { MessageBody } from "@repo/schemas/messageBody";
+import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import { nanoid } from "nanoid";
+
+import { logger } from "@/internal/logger/consola";
+
 import {
   type AckCallback,
   type PendingPublish,
@@ -7,26 +11,24 @@ import {
   type PendingSubscription,
   VERSION,
 } from "../types";
+import { AckManager } from "./AckManager";
+import {
+  ConnectionManager,
+  BackpressureError,
+  NotConnectedError,
+} from "./ConnectionManager";
+import { GrantManager } from "./GrantManager";
+import { HeartbeatManager } from "./HeartbeatManager";
+import { MessageProcessor } from "./MessageProcessor";
+import { PresenceManager } from "./Presence";
+import type { PresenceHandler } from "./Presence";
+import { SubscriptionManager } from "./SubscriptionManager";
 import type {
   ConnectionConfig,
   ConnectionHealth,
   ConnectionState,
   SubscriptionStatus,
 } from "./interfaces";
-import { nanoid } from "nanoid";
-import {
-  ConnectionManager,
-  BackpressureError,
-  NotConnectedError,
-} from "./ConnectionManager";
-import { AckManager } from "./AckManager";
-import { SubscriptionManager } from "./SubscriptionManager";
-import { MessageProcessor } from "./MessageProcessor";
-import { GrantManager } from "./GrantManager";
-import { HeartbeatManager } from "./HeartbeatManager";
-import { PresenceManager } from "./Presence";
-import type { PresenceHandler } from "./Presence";
-import { logger } from "@/internal/logger/consola";
 
 // Re-export errors for backward compatibility
 export { BackpressureError, NotConnectedError };
@@ -72,13 +74,13 @@ export class PubSubConnection {
     // Create connection manager with message processing
     const connectionConfig: ConnectionConfig = {
       ...config,
-      onMessage: async (rawMessage: PacketEnvelope & { rawData?: string }) => {
+      onMessage: (rawMessage: PacketEnvelope & { rawData?: string }): void => {
         // Handle the message processing
         if (rawMessage.rawData) {
-          await this.#messageProcessor.processMessage(rawMessage.rawData);
+          this.#messageProcessor.processMessage(rawMessage.rawData);
         } else {
           // Direct packet handling for already parsed messages
-          await this.#messageProcessor.handlePacket(rawMessage);
+          this.#messageProcessor.handlePacket(rawMessage);
         }
       },
     };
@@ -89,8 +91,8 @@ export class PubSubConnection {
     this.#heartbeatManager = new HeartbeatManager(
       this.#connectionId,
       config.heartbeatMs ?? 25_000,
-      () => this.#sendHeartbeat(),
-      config.log ?? (() => {}),
+      (): void => this.#sendHeartbeat(),
+      config.log ?? ((): void => {}),
     );
 
     logger.info(`[${this.#connectionId}] PubSubConnection initialized`);
@@ -245,6 +247,7 @@ export class PubSubConnection {
       timeout: timeoutMs,
     });
 
+    // Return false if already subscribed
     if (!this.#subscriptionManager.subscribe(topic)) {
       logger.info(`[${this.#connectionId}] Topic already subscribed`, {
         topic,
@@ -563,7 +566,7 @@ export class PubSubConnection {
         topic: payload.topic,
         ack: withAck,
         payload,
-        clientMsgId: clientMsgId!,
+        clientMsgId: clientMsgId,
         ...(withAck && requestId && { requestId }), // Only include requestId for ACK tracking
       });
     } catch (error) {
@@ -583,7 +586,7 @@ export class PubSubConnection {
       throw error;
     }
 
-    return Promise.resolve(clientMsgId!);
+    return Promise.resolve(clientMsgId);
   }
 
   #sendHeartbeat(): void {

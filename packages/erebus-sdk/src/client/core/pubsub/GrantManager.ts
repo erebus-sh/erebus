@@ -1,5 +1,6 @@
-import type { IGrantManager, TokenProvider } from "./interfaces";
 import { logger } from "@/internal/logger/consola";
+
+import type { IGrantManager, TokenProvider } from "./interfaces";
 
 const GRANT_CACHE_KEY = "erebus:grant";
 

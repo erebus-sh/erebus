@@ -1,5 +1,6 @@
-import { logger } from "@/internal/logger/consola";
 import type { AckPacketType } from "@repo/schemas/packetEnvelope";
+
+import { logger } from "@/internal/logger/consola";
 
 export type ErebusOptions = {
   wsUrl: string; // wss://...
@@ -111,7 +112,7 @@ export type PendingSubscription = {
   timeoutId?: NodeJS.Timeout;
 };
 
-export function logTypeInfo(label: string, value: unknown) {
+export function logTypeInfo(label: string, value: unknown): void {
   logger.info("type info", { label, valueType: typeof value });
 }
 

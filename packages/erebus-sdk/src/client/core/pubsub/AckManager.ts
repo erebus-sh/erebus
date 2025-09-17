@@ -1,4 +1,7 @@
 import type { AckPacketType } from "@repo/schemas/packetEnvelope";
+
+import { logger } from "@/internal/logger/consola";
+
 import type {
   PendingPublish,
   AckResponse,
@@ -6,7 +9,13 @@ import type {
   SubscriptionResponse,
 } from "../types";
 import type { IAckManager } from "./interfaces";
-import { logger } from "@/internal/logger/consola";
+
+// Type for subscription error results (not currently in schema)
+type SubscriptionErrorResult = {
+  ok: false;
+  code: string;
+  message: string;
+};
 
 /**
  * Manages ACK tracking and timeout handling for publish and subscription operations
@@ -450,7 +459,7 @@ export class AckManager implements IAckManager {
           ack: ackPacket,
           seq: ackPacket.result.seq,
           serverMsgId: ackPacket.result.serverAssignedId,
-          topic: ackPacket.result.topic!,
+          topic: ackPacket.result.topic,
         };
       } else if ("result" in ackPacket.result && !ackPacket.result.result.ok) {
         // Error ACK
@@ -461,7 +470,7 @@ export class AckManager implements IAckManager {
             code: ackPacket.result.result.code,
             message: ackPacket.result.result.message,
           },
-          topic: ackPacket.result.topic!,
+          topic: ackPacket.result.topic,
         };
       } else {
         // Malformed ACK
@@ -512,21 +521,39 @@ export class AckManager implements IAckManager {
           return {
             success: true,
             ack: ackPacket,
-            topic: ackPacket.result.topic!,
-            status: result.status as "subscribed" | "unsubscribed",
+            topic: ackPacket.result.topic,
+            status: result.status,
             path: ackPacket.result.path,
           };
         } else {
           // Error ACK - has code and message properties
-          const errorResult = result as any; // Type assertion since we know it's an error case
+          // Type guard to check if this looks like an error result
+          const isErrorResult = (r: unknown): r is SubscriptionErrorResult => {
+            if (typeof r !== "object" || r === null) return false;
+            const obj = r as Record<string, unknown>;
+            return (
+              obj["ok"] === false &&
+              typeof obj["code"] === "string" &&
+              typeof obj["message"] === "string"
+            );
+          };
+
+          const errorResult = isErrorResult(result)
+            ? result
+            : {
+                ok: false as const,
+                code: "SUBSCRIPTION_ERROR",
+                message: "Subscription operation failed",
+              };
+
           return {
             success: false,
             ack: ackPacket,
             error: {
-              code: errorResult.code || "SUBSCRIPTION_ERROR",
-              message: errorResult.message || "Subscription operation failed",
+              code: errorResult.code,
+              message: errorResult.message,
             },
-            topic: ackPacket.result.topic!,
+            topic: ackPacket.result.topic,
             path: ackPacket.result.path,
           };
         }

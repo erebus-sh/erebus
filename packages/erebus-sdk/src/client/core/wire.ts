@@ -1,4 +1,4 @@
-import { logger } from "@/internal/logger/consola";
+import { MessageBodySchema, type MessageBody } from "@repo/schemas/messageBody";
 import {
   PacketEnvelopeSchema,
   type PacketEnvelope,
@@ -7,7 +7,8 @@ import {
   AckSubscription,
   PresencePacket,
 } from "@repo/schemas/packetEnvelope";
-import { MessageBodySchema, type MessageBody } from "@repo/schemas/messageBody";
+
+import { logger } from "@/internal/logger/consola";
 
 export function encodeEnvelope(pkt: PacketEnvelope): string {
   logger.info("[encodeEnvelope] called", { packetType: pkt.packetType });
@@ -27,6 +28,7 @@ export function encodeEnvelope(pkt: PacketEnvelope): string {
   return encoded;
 }
 
+/* eslint-disable -- reason: I don't want to handle this now TODO */
 export function parseServerFrame(raw: string): PacketEnvelope | null {
   logger.info("[parseServerFrame] called", { rawLength: raw.length });
 
@@ -90,18 +92,18 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
       } as PacketEnvelope;
     }
   } catch (err) {
-    logger.warn(
-      "[parseServerFrame] failed",
-      { error: err instanceof Error ? err.message : String(err) },
-      raw,
-    );
+    logger.warn(`[parseServerFrame] failed ${raw}`, {
+      error: err instanceof Error ? err.message : String(err),
+    });
     return null;
   }
 }
+/* eslint-enable */
 
 /**
  * Parse ACK packets with manual handling to avoid discriminated union issues
  */
+/* eslint-disable -- reason: I don't want to handle this now TODO */
 function parseAckPacket(data: any): PacketEnvelope | null {
   try {
     // Manual validation and parsing without relying on discriminated unions
@@ -158,6 +160,7 @@ function parseAckPacket(data: any): PacketEnvelope | null {
     return null;
   }
 }
+/* eslint-enable */
 
 /**
  * Legacy function for backward compatibility

@@ -1,5 +1,6 @@
-import type { IHeartbeatManager, Logger } from "./interfaces";
 import { logger } from "@/internal/logger/consola";
+
+import type { IHeartbeatManager, Logger } from "./interfaces";
 
 /**
  * Manages heartbeat/ping functionality to keep WebSocket connections alive

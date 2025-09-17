@@ -8,16 +8,16 @@ import { createGenericAdapter } from "@erebus-sh/sdk/server";
 import { Access, ErebusService } from "@erebus-sh/sdk/service";
 
 // Configuration
-const BASE_URL = process.env.BASE_URL || "http://localhost:4919";
+let port = Math.floor(Math.random() * 10000) + 4000; // 4000-5000
 const WS_BASE_URL = process.env.WS_BASE_URL || "ws://localhost:8787";
 const SECRET_API_KEY =
   process.env.SECRET_API_KEY ||
-  "dv-er-go9xkpwdq1tj8am6t9e7bw0zatyb9qt1ggpre8s9wewo4dd9";
+  "dv-er-a9ti6g5fnybi2mug3t5mi5o7w27121ehxsy8l6nf5xijxzu4";
 
 // Erebus client
 const client = ErebusClient.createClientSync({
   client: ErebusClientState.PubSub,
-  authBaseUrl: BASE_URL,
+  authBaseUrl: `http://localhost:${port}`,
   wsBaseUrl: WS_BASE_URL,
 });
 
@@ -107,7 +107,7 @@ const LoginScreen = ({ onLogin }: { onLogin: (user: User) => void }) => {
 
     console.log("[handleSubmit] Username login with", username);
 
-    const req = new Request("http://localhost:4919/login", {
+    const req = new Request(`http://localhost:${port}/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -291,6 +291,7 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
     loadMessages();
 
     client.subscribe(chat.name, (message) => {
+      console.log("[chat view] received message", message);
       setMessages((prev) => [...prev, message]);
     });
 
@@ -303,13 +304,21 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
     };
   }, [chat.id]);
 
-  const handleSendMessage = useCallback(() => {
+  const handleSendMessage = useCallback(async () => {
     if (newMessage.trim()) {
       const stmt = database.prepare(
         "INSERT INTO messages (chat_id, content) VALUES (?, ?)",
       );
       stmt.run(chat.id, newMessage.trim());
       setNewMessage("");
+      await client.publishWithAck({
+        topic: chat.name,
+        messageBody: newMessage.trim(),
+        onAck: (ack) => {
+          console.log("[chat view] ack", ack);
+        },
+        timeoutMs: 10000,
+      });
     }
   }, [newMessage, chat.id]);
 
@@ -494,7 +503,7 @@ const app = createGenericAdapter({
 });
 
 Bun.serve({
-  port: 0x1337, // 4919
+  port: port,
   routes: {
     "/login": {
       POST: async (req) => {

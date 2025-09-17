@@ -1,5 +1,7 @@
-import type { ConnectionState, SubscriptionStatus } from "./interfaces";
 import { logger } from "@/internal/logger/consola";
+
+import type { Handler } from "./ErebusPubSubClient";
+import type { ConnectionState, SubscriptionStatus } from "./interfaces";
 
 /**
  * Manages the overall state of the pub/sub system
@@ -12,7 +14,7 @@ export class StateManager {
   #subscriptions = new Map<string, SubscriptionStatus>();
   #processedMessages = new Set<string>();
   #pendingSubscriptions = new Set<string>();
-  #handlers = new Map<string, Set<any>>();
+  #handlers = new Map<string, Set<Handler>>();
   #lastActivity = Date.now();
   #error: Error | null = null;
   #isReconnecting = false;
@@ -75,20 +77,20 @@ export class StateManager {
 
   get activeTopics(): string[] {
     return Array.from(this.#subscriptions.entries())
-      .filter(([_, status]) => status === "subscribed")
-      .map(([topic, _]) => topic);
+      .filter(([_, status]) => status === "subscribed") // eslint-disable-line
+      .map(([topic, _]) => topic); // eslint-disable-line
   }
 
   get pendingTopics(): string[] {
     return Array.from(this.#subscriptions.entries())
-      .filter(([_, status]) => status === "pending")
-      .map(([topic, _]) => topic);
+      .filter(([_, status]) => status === "pending") // eslint-disable-line
+      .map(([topic, _]) => topic); // eslint-disable-line
   }
 
   get unsubscribedTopics(): string[] {
     return Array.from(this.#subscriptions.entries())
-      .filter(([_, status]) => status === "unsubscribed")
-      .map(([topic, _]) => topic);
+      .filter(([_, status]) => status === "unsubscribed") // eslint-disable-line
+      .map(([topic, _]) => topic); // eslint-disable-line
   }
 
   setSubscriptionStatus(topic: string, status: SubscriptionStatus): void {
@@ -159,7 +161,7 @@ export class StateManager {
     return this.#handlers.get(topic)?.size || 0;
   }
 
-  addHandler(topic: string, handler: any): void {
+  addHandler(topic: string, handler: Handler): void {
     if (!this.#handlers.has(topic)) {
       this.#handlers.set(topic, new Set());
     }
@@ -167,7 +169,7 @@ export class StateManager {
     this.#updateActivity();
   }
 
-  removeHandler(topic: string, handler: any): void {
+  removeHandler(topic: string, handler: Handler): void {
     const handlers = this.#handlers.get(topic);
     if (handlers) {
       handlers.delete(handler);
@@ -183,7 +185,7 @@ export class StateManager {
     this.#updateActivity();
   }
 
-  getHandlers(topic: string): Set<any> | undefined {
+  getHandlers(topic: string): Set<Handler> | undefined {
     return this.#handlers.get(topic);
   }
 
@@ -320,7 +322,7 @@ export class StateManager {
     connectionState: ConnectionState;
     channel: string | null;
     subscriptions: Map<string, SubscriptionStatus>;
-    handlers: Map<string, Set<any>>;
+    handlers: Map<string, Set<Handler>>;
     processedMessages: Set<string>;
     pendingSubscriptions: Set<string>;
     error: Error | null;

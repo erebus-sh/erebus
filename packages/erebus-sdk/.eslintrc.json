@@ -1,0 +1,29 @@
+{
+    "root": true,
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["@typescript-eslint", "import"],
+    "extends": [
+      "eslint:recommended",
+      "plugin:@typescript-eslint/recommended",
+      "plugin:import/recommended",
+      "plugin:import/typescript",
+      "prettier"
+    ],
+    "rules": {
+      "@typescript-eslint/explicit-function-return-type": "error",
+      "@typescript-eslint/no-explicit-any": "error",
+      "@typescript-eslint/ban-ts-comment": "error",
+      "@typescript-eslint/no-floating-promises": "error",
+      "import/order": [
+        "error",
+        {
+          "alphabetize": { "order": "asc" },
+          "groups": ["builtin", "external", "internal", ["parent", "sibling", "index"]],
+          "newlines-between": "always"
+        }
+      ],
+      "no-console": "warn",
+      "eqeqeq": ["error", "always"]
+    }
+  }
+  

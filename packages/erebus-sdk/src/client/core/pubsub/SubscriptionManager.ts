@@ -1,5 +1,6 @@
-import type { ISubscriptionManager, SubscriptionStatus } from "./interfaces";
 import { logger } from "@/internal/logger/consola";
+
+import type { ISubscriptionManager, SubscriptionStatus } from "./interfaces";
 
 /**
  * Manages topic subscriptions and optimistic subscription tracking

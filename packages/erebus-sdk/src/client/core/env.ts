@@ -1,8 +1,8 @@
 import { logger } from "@/internal/logger/consola";
 
 export function isBrowser(): boolean {
-  const hasWindow = typeof (globalThis as any).window !== "undefined";
-  const hasDocument = typeof (globalThis as any).document !== "undefined";
+  const hasWindow = typeof (globalThis as any).window !== "undefined"; // eslint-disable-line
+  const hasDocument = typeof (globalThis as any).document !== "undefined"; // eslint-disable-line
   const result = hasWindow && hasDocument;
   logger.info("env.isBrowser evaluated", { result });
   return result;

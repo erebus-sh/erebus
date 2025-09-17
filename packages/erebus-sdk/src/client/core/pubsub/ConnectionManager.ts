@@ -1,4 +1,13 @@
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import { WsErrors } from "@repo/shared/enums/wserrors";
+
+import { encodeEnvelope } from "@/client/core/wire";
+import { ErebusError } from "@/internal/error";
+import { logger } from "@/internal/logger/consola";
+import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
+
+import { backoff } from "../backoff";
+import { VERSION } from "../types";
 import type {
   IConnectionManager,
   ConnectionState,
@@ -7,13 +16,6 @@ import type {
   Logger,
   OpenOptions,
 } from "./interfaces";
-import { encodeEnvelope } from "@/client/core/wire";
-import { logger } from "@/internal/logger/consola";
-import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
-import { backoff } from "../backoff";
-import { WsErrors } from "@repo/shared/enums/wserrors";
-import { ErebusError } from "@/internal/error";
-import { VERSION } from "../types";
 
 export class BackpressureError extends Error {}
 export class NotConnectedError extends Error {}
@@ -51,7 +53,7 @@ export class ConnectionManager implements IConnectionManager {
     this.#channel = config.channel;
     this.#grant = ""; // Initialize empty, will be set when opening
     this.#onMessage = config.onMessage;
-    this.#log = config.log ?? (() => {});
+    this.#log = config.log ?? ((): void => {});
     this.#autoReconnect = config.autoReconnect ?? false;
     this.#debugHexDump = config.debugHexDump ?? false;
   }
@@ -126,7 +128,7 @@ export class ConnectionManager implements IConnectionManager {
     // Store the grant for potential reconnections
     this.#grant = options.grant;
 
-    const ws = await this.#createWebSocket(options.grant);
+    const ws = this.#createWebSocket(options.grant);
     this.#ws = ws;
     this.#setupWebSocketListeners(ws);
 
@@ -324,7 +326,7 @@ export class ConnectionManager implements IConnectionManager {
     });
   }
 
-  async #createWebSocket(grant: string): Promise<WebSocket> {
+  #createWebSocket(grant: string): WebSocket {
     const connectUrl = new URL(this.#url);
     connectUrl.searchParams.set("grant", grant);
     logger.info(`[${this.#connectionId}] Creating WebSocket connection`, {
@@ -339,7 +341,10 @@ export class ConnectionManager implements IConnectionManager {
       if ("binaryType" in ws) {
         (ws as WebSocket & { binaryType: string }).binaryType = "arraybuffer";
       }
-    } catch {}
+    } catch {
+      // Intentionally ignore errors when setting binaryType
+      // This may fail in some environments but is not critical
+    }
 
     return ws;
   }
@@ -357,7 +362,7 @@ export class ConnectionManager implements IConnectionManager {
     );
 
     ws.addEventListener("message", (ev) => {
-      this.#handleMessage(ev);
+      void this.#handleMessage(ev);
     });
 
     ws.addEventListener("close", (event: CloseEvent) => {
@@ -367,7 +372,7 @@ export class ConnectionManager implements IConnectionManager {
         state: this.#state,
       });
 
-      if (event.code === WsErrors.VersionMismatch) {
+      if (event.code === (WsErrors.VersionMismatch as number)) {
         throw new ErebusError(
           `Version mismatch: ${event.reason} current client version: ${VERSION}`,
         );
@@ -399,7 +404,7 @@ export class ConnectionManager implements IConnectionManager {
     // Handle hex dump debugging
     if (this.#debugHexDump) {
       const hex = this.#getHexDump(ev.data);
-      console.log(`[${this.#connectionId}] WS message hex:`, hex);
+      logger.debug(`[${this.#connectionId}] WS message hex:`, { hex });
     }
 
     try {
@@ -455,7 +460,7 @@ export class ConnectionManager implements IConnectionManager {
       return new TextDecoder().decode(uint8);
     } else if (typeof Buffer !== "undefined" && Buffer.isBuffer(data)) {
       // Node Buffer
-      const buf = data as Buffer;
+      const buf = data;
       const uint8 = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength);
       return new TextDecoder().decode(uint8);
     } else if (data instanceof ArrayBuffer) {
@@ -464,7 +469,8 @@ export class ConnectionManager implements IConnectionManager {
     } else if (data instanceof Uint8Array) {
       return new TextDecoder().decode(data);
     } else {
-      return String(data);
+      // Fallback for any other data type
+      return typeof data === "string" ? data : JSON.stringify(data);
     }
   }
 
@@ -489,10 +495,12 @@ export class ConnectionManager implements IConnectionManager {
     this.#retry++;
     setTimeout(() => {
       logger.info(`[${this.#connectionId}] Executing scheduled reconnect`);
-      this.open({ grant: this.#grant, timeout: 5000 }).catch((error) => {
-        logger.error(`[${this.#connectionId}] Reconnect failed`, { error });
-        this.#state = "closed";
-      });
+      this.open({ grant: this.#grant, timeout: 5000 }).catch(
+        (error: unknown) => {
+          logger.error(`[${this.#connectionId}] Reconnect failed`, { error });
+          this.#state = "closed";
+        },
+      );
     }, bckOff);
   }
 }

@@ -2,7 +2,10 @@ import type {
   PacketEnvelope,
   AckPacketType,
 } from "@repo/schemas/packetEnvelope";
+
 import type { PendingPublish, PendingSubscription } from "../types";
+// Import Handler type that's actually used in practice
+import type { Handler } from "./ErebusPubSubClient";
 
 /**
  * Basic connection states
@@ -139,8 +142,8 @@ export interface IHeartbeatManager {
  * Message processing interface
  */
 export interface IMessageProcessor {
-  processMessage(data: string): Promise<PacketEnvelope | null>;
-  handlePacket(packet: PacketEnvelope): Promise<void>;
+  processMessage(data: string): PacketEnvelope | null;
+  handlePacket(packet: PacketEnvelope): void;
 }
 
 /**
@@ -169,10 +172,10 @@ export interface IStateManager {
   isSubscribed(topic: string): boolean;
   addProcessedMessage(messageId: string): void;
   isMessageProcessed(messageId: string): boolean;
-  addHandler(topic: string, handler: MessageHandler): void;
-  removeHandler(topic: string, handler: MessageHandler): void;
+  addHandler(topic: string, handler: Handler): void;
+  removeHandler(topic: string, handler: Handler): void;
   clearHandlers(topic: string): void;
-  getHandlers(topic: string): Set<MessageHandler> | undefined;
+  getHandlers(topic: string): Set<Handler> | undefined;
   addPendingSubscription(topic: string): void;
   removePendingSubscription(topic: string): void;
   setError(error: Error): void;

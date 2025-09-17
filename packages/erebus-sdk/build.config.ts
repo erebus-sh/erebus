@@ -53,19 +53,19 @@ export default defineConfig({
     typescript(),
     strip({
       // Strip specific logger calls in production builds
-      functions: [
-        "logger.info",
-        "logger.warn",
-        "logger.error",
-        "logger.debug",
-        "logger.trace",
-        "logger.success",
-        "logger.fail",
-        "logger.ready",
-        "logger.start",
-        "logger.log",
-        "console.*",
-      ],
+      // functions: [
+      //   "logger.info",
+      //   "logger.warn",
+      //   "logger.error",
+      //   "logger.debug",
+      //   "logger.trace",
+      //   "logger.success",
+      //   "logger.fail",
+      //   "logger.ready",
+      //   "logger.start",
+      //   "logger.log",
+      //   "console.*",
+      // ],
     }),
   ],
 });

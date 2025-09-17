@@ -208,7 +208,7 @@ export class SubscriptionManager extends BaseService {
     const subscribers = (await this.getStorageValue<string[]>(key, [])) || [];
 
     this.logDebug(
-      `[GET_SUBSCRIBERS] Found ${subscribers.length} subscribers for key: ${key}`,
+      `[GET_SUBSCRIBERS] Found ${subscribers.length} subscribers for key: ${key} in topic: ${topic}`,
     );
     return subscribers;
   }
