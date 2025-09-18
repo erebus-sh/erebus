@@ -342,7 +342,7 @@ const ChatView = ({ chat, onBack }: { chat: Chat; onBack: () => void }) => {
           topic: chat.name,
           messageBody: messageContent,
           onAck: (ack) => {
-            console.log("[chat view] ack", ack.ack);
+            // console.log("[chat view] ack", ack.ack);
           },
           timeoutMs: 10000,
         });
