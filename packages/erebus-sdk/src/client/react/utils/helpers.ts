@@ -5,10 +5,10 @@ import { ErebusError } from "@/service";
  * Attempts to join a channel and connect the client, with timeout and error handling.
  * Ensures that errors from withTimeout are properly handled and surfaced.
  */
-export async function joinAndConnect(
+export function joinAndConnect(
   client: ErebusPubSubClient,
   channel: string,
-): Promise<{ success: boolean; error: ErebusError | null }> {
+): { success: boolean; error: ErebusError | null } {
   try {
     client.joinChannel(channel);
     client.connect();
