@@ -116,6 +116,8 @@ export default function ChatPage() {
         </button>
       </div>
 
+      {isError && <div style={{ color: "red" }}>{error?.message}</div>}
+
       {/* Add bottom padding to prevent messages from being hidden behind input */}
       <div style={{ height: "80px" }} />
     </>

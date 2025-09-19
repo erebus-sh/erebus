@@ -1,6 +1,5 @@
 import type { ErebusPubSubClient } from "@/client/core/pubsub";
 import { ErebusError } from "@/service";
-import { withTimeout } from "./withTimeout";
 
 /**
  * Attempts to join a channel and connect the client, with timeout and error handling.
@@ -9,28 +8,11 @@ import { withTimeout } from "./withTimeout";
 export async function joinAndConnect(
   client: ErebusPubSubClient,
   channel: string,
-  timeout: number = 10000,
 ): Promise<{ success: boolean; error: ErebusError | null }> {
   try {
     client.joinChannel(channel);
-    const { error } = await withTimeout(
-      client.connect(),
-      timeout,
-      "joinAndConnect",
-    );
-    if (error) {
-      console.error(
-        "[joinAndConnect] Failed to join and connect (timeout or connect error)",
-        error,
-      );
-      return {
-        success: false,
-        error:
-          error instanceof ErebusError
-            ? error
-            : new ErebusError(error?.message ?? "Failed to join and connect"),
-      };
-    }
+    client.connect();
+
     console.log("[joinAndConnect] Successfully joined and connected");
     return { success: true, error: null };
   } catch (error) {
