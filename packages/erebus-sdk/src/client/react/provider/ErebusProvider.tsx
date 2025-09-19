@@ -26,21 +26,31 @@ export function ErebusProvider({
       return createNoopPubSubClient();
     }
 
-    if (typeof wsBaseUrl === "string" && wsBaseUrl.match(/\/.+/)) {
-      throw new Error(
-        "wsBaseUrl must be a base URL without a trailing slash or path. Use e.g. ws://localhost:8787, not ws://localhost:8787/ or ws://localhost:8787/somepath",
-      );
+    // Clean up wsBaseUrl and authBaseUrl if they end with a trailing slash
+    let cleanedWsBaseUrl = wsBaseUrl;
+    if (typeof wsBaseUrl === "string") {
+      cleanedWsBaseUrl = wsBaseUrl.replace(/\/+$/, "");
+      if (cleanedWsBaseUrl.match(/\/.+/)) {
+        throw new Error(
+          "wsBaseUrl must be a base URL without a trailing slash or path. Use e.g. ws://localhost:8787, not ws://localhost:8787/ or ws://localhost:8787/somepath",
+        );
+      }
     }
-    if (typeof authBaseUrl === "string" && authBaseUrl.match(/\/.+/)) {
-      throw new Error(
-        "authBaseUrl must be a base URL without a trailing slash or path. Use e.g. http://localhost:3002, not http://localhost:3002/ or http://localhost:3002/somepath",
-      );
+
+    let cleanedAuthBaseUrl = authBaseUrl;
+    if (typeof authBaseUrl === "string") {
+      cleanedAuthBaseUrl = authBaseUrl.replace(/\/+$/, "");
+      if (cleanedAuthBaseUrl.match(/\/.+/)) {
+        throw new Error(
+          "authBaseUrl must be a base URL without a trailing slash or path. Use e.g. http://localhost:3002, not http://localhost:3002/ or http://localhost:3002/somepath",
+        );
+      }
     }
 
     return ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl,
-      wsBaseUrl,
+      authBaseUrl: cleanedAuthBaseUrl,
+      wsBaseUrl: cleanedWsBaseUrl,
       enableCaching,
       grantCacheLayer(): Promise<string | undefined> {
         return Promise.resolve(getGrant());
