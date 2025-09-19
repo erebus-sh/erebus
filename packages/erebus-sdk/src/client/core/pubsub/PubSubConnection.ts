@@ -115,75 +115,18 @@ export class PubSubConnection {
     console.log(`[${this.#connectionId}] PubSubConnection initialized`);
   }
 
-  // Connection state getters
-  get state(): ConnectionState {
-    return this.#connectionManager.state;
-  }
-
-  get isConnected(): boolean {
-    return this.#connectionManager.isConnected;
-  }
-
-  get isConnecting(): boolean {
-    return this.#connectionManager.isConnecting;
-  }
-
-  get isClosed(): boolean {
-    return this.#connectionManager.isClosed;
-  }
-
-  get isIdle(): boolean {
-    return this.#connectionManager.isIdle;
-  }
-
-  get isReadable(): boolean {
-    return this.#connectionManager.isConnected;
-  }
-
-  get isWritable(): boolean {
-    return this.#connectionManager.isConnected;
-  }
-
-  get channel(): string {
-    return this.#connectionManager.channel;
-  }
-
-  get subscriptionCount(): number {
-    return this.#subscriptionManager.subscriptionCount;
-  }
-
-  get subscriptions(): string[] {
-    return this.#subscriptionManager.subscriptions;
-  }
-
-  get readyState(): number | undefined {
-    return this.#connectionManager.readyState;
-  }
-
-  get bufferedAmount(): number {
-    return this.#connectionManager.bufferedAmount;
-  }
-
-  get connectionId(): string {
-    return this.#connectionManager.connectionId;
-  }
-
-  get url(): string {
-    return this.#connectionManager.url;
-  }
-
   get connectionHealth(): ConnectionHealth {
     return {
-      state: this.state,
-      isConnected: this.isConnected,
-      isReadable: this.isReadable,
-      isWritable: this.isWritable,
-      channel: this.channel,
-      subscriptionCount: this.subscriptionCount,
-      readyState: this.readyState,
-      bufferedAmount: this.bufferedAmount,
-      connectionId: this.connectionId,
-      url: this.url,
+      state: this.#connectionManager.state,
+      isConnected: this.#connectionManager.isConnected,
+      isReadable: this.#connectionManager.isConnected,
+      isWritable: this.#connectionManager.isConnected,
+      channel: this.#connectionManager.channel,
+      subscriptionCount: this.#subscriptionManager.subscriptionCount,
+      readyState: this.#connectionManager.readyState,
+      bufferedAmount: this.#connectionManager.bufferedAmount,
+      connectionId: this.#connectionId,
+      url: this.#connectionManager.url,
     };
   }
 
@@ -205,7 +148,9 @@ export class PubSubConnection {
 
   async open(timeout?: number): Promise<void> {
     // Get grant token before opening connection
-    const grantJWT = await this.#grantManager.getTokenWithCache(this.channel);
+    const grantJWT = await this.#grantManager.getTokenWithCache(
+      this.#connectionManager.channel,
+    );
 
     // Open connection with grant and timeout
     await this.#connectionManager.open({
@@ -272,7 +217,7 @@ export class PubSubConnection {
       return;
     }
 
-    if (!this.isConnected) {
+    if (!this.#connectionManager.isConnected) {
       console.log(
         `[${this.#connectionId}] Connection not open, subscription will be sent when connected`,
         { topic },
@@ -358,7 +303,7 @@ export class PubSubConnection {
       return;
     }
 
-    if (this.isConnected) {
+    if (this.#connectionManager.isConnected) {
       console.log(
         `[${this.#connectionId}] Connection open, sending unsubscribe packet`,
         { topic },
@@ -509,9 +454,9 @@ export class PubSubConnection {
       throw new Error(error);
     }
 
-    if (!this.isConnected) {
+    if (!this.#connectionManager.isConnected) {
       console.error(`[${this.#connectionId}] Cannot publish - not connected`, {
-        state: this.state,
+        state: this.#connectionManager.state,
       });
       throw new NotConnectedError("Not connected");
     }
@@ -618,7 +563,7 @@ export class PubSubConnection {
   }
 
   #sendHeartbeat(): void {
-    if (!this.isConnected) {
+    if (!this.#connectionManager.isConnected) {
       console.log(`[${this.#connectionId}] Skipping heartbeat - not connected`);
       return;
     }
