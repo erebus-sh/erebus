@@ -203,7 +203,10 @@ export class ErebusSession {
           JSON.stringify(await error.response.json()),
         );
       }
-      throw error;
+      throw new ErebusError(
+        `Failed to get token: ${error instanceof Error ? error.message : "Unknown error"}`,
+        JSON.stringify(error),
+      );
     }
   }
 
