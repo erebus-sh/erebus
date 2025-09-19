@@ -93,10 +93,10 @@ export default function RootLayout({
     <html lang="en">
     {/*
     Wrap your entire app in ErebusProvider
-    You can pass your own authBaseUrl and wsBaseUrl
-    If you leave them out the defaults will be used (recommended)
+    You can must pass authBaseUrl, but you can leave wsBaseUrl out
+    If you leave wsBaseUrl out the defaults will be used wss://gateway.erebus.sh/ (recommended)
     */}
-      <ErebusProvider>
+      <ErebusProvider authBaseUrl="http://localhost:3000/">
         <body
           className="antialiased"
         >
