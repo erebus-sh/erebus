@@ -133,7 +133,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
 
             try {
               const parsedPayload = schema[channelName]!.parse(
-                msg.payload,
+                JSON.parse(msg.payload), // Payload is a string, but we need to parse it to an object
               ) as PayloadT;
 
               const receivedMessage: ReceivedMessage<PayloadT> = {
