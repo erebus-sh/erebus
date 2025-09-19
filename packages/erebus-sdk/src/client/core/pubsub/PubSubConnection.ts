@@ -272,69 +272,67 @@ export class PubSubConnection {
       return;
     }
 
-    if (this.isConnected) {
-      console.log(
-        `[${this.#connectionId}] Connection open, sending subscribe packet`,
-        { topic },
-      );
-      try {
-        let requestId: string | undefined;
-        let clientMsgId: string | undefined;
-
-        // Set up ACK tracking if callback provided
-        if (callback) {
-          requestId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-
-          // Optional clientMsgId for subscription tracking
-          if (
-            typeof crypto !== "undefined" &&
-            typeof crypto.randomUUID === "function"
-          ) {
-            clientMsgId = crypto.randomUUID();
-          }
-
-          const pending: PendingSubscription = {
-            requestId,
-            clientMsgId,
-            topic,
-            path: "subscribe",
-            callback,
-            timestamp: Date.now(),
-          };
-
-          // Set timeout for subscription ACK response
-          if (timeoutMs && timeoutMs > 0) {
-            pending.timeoutId = setTimeout(() => {
-              this.#ackManager.handleSubscriptionTimeout(requestId!);
-            }, timeoutMs);
-          }
-
-          this.#ackManager.trackSubscription(requestId, pending);
-        }
-
-        this.#connectionManager.send({
-          packetType: "subscribe",
-          topic,
-          ...(requestId && { requestId }),
-          ...(clientMsgId && { clientMsgId }),
-        });
-      } catch (error) {
-        console.error(
-          `[${this.#connectionId}] Error sending subscribe packet`,
-          {
-            error,
-            topic,
-          },
-        );
-        // Revert the subscription on send failure
-        this.#subscriptionManager.unsubscribe(topic);
-        throw error;
-      }
-    } else {
+    if (!this.isConnected) {
       console.log(
         `[${this.#connectionId}] Connection not open, subscription will be sent when connected`,
         { topic },
       );
+      return;
+    }
+
+    console.log(
+      `[${this.#connectionId}] Connection open, sending subscribe packet`,
+      { topic },
+    );
+    try {
+      let requestId: string | undefined;
+      let clientMsgId: string | undefined;
+
+      // Set up ACK tracking if callback provided
+      if (callback) {
+        requestId = `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+        // Optional clientMsgId for subscription tracking
+        if (
+          typeof crypto !== "undefined" &&
+          typeof crypto.randomUUID === "function"
+        ) {
+          clientMsgId = crypto.randomUUID();
+        }
+
+        const pending: PendingSubscription = {
+          requestId,
+          clientMsgId,
+          topic,
+          path: "subscribe",
+          callback,
+          timestamp: Date.now(),
+        };
+
+        // Set timeout for subscription ACK response
+        if (timeoutMs && timeoutMs > 0) {
+          pending.timeoutId = setTimeout(() => {
+            this.#ackManager.handleSubscriptionTimeout(requestId!);
+          }, timeoutMs);
+        }
+
+        this.#ackManager.trackSubscription(requestId, pending);
+      }
+
+      this.#connectionManager.send({
+        packetType: "subscribe",
+        topic,
+        ...(requestId && { requestId }),
+        ...(clientMsgId && { clientMsgId }),
+      });
+    } catch (error) {
+      console.error(`[${this.#connectionId}] Error sending subscribe packet`, {
+        error,
+        topic,
+      });
+      // Revert the subscription on send failure
+      this.#subscriptionManager.unsubscribe(topic);
+      throw error;
     }
   }
 

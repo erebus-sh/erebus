@@ -100,6 +100,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     (async () => {
       const { success, error } = await joinAndConnect(client, channelName);
       if (!success) {
+        console.log("[useChannelInternal] Join and connect failed", error);
         setIsError(true);
         setError(error);
         return;
