@@ -186,19 +186,3 @@ export interface IStateManager {
   reset(): void;
   clear(): void;
 }
-
-/**
- * Connection health information
- */
-export interface ConnectionHealth {
-  state: string;
-  isConnected: boolean;
-  isReadable: boolean;
-  isWritable: boolean;
-  channel: string;
-  subscriptionCount: number;
-  readyState: number | undefined;
-  bufferedAmount: number;
-  connectionId: string;
-  url: string;
-}

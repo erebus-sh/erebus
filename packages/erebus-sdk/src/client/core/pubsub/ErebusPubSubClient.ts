@@ -362,68 +362,6 @@ export class ErebusPubSubClient {
     return this.#conn;
   }
 
-  /**
-   * Development-only object for debugging
-   */
-  get __debugObject(): {
-    conn: PubSubConnection;
-    handlers: Map<string, Set<Handler>>;
-    connectionObject: {
-      url: string;
-      state: string;
-      subs: string[];
-      bufferedAmount: number;
-    };
-    handlerCount: number;
-    topics: string[];
-    counts: Record<string, number>;
-    processedMessagesCount: number;
-  } {
-    const instanceId = this.#conn.connectionId;
-    console.log(`[Erebus:${instanceId}] __debugObject getter called`);
-    console.log("Erebus.__debugObject getter called");
-
-    const counts: Record<string, number> = {};
-    let handlerCount = 0;
-    for (const topic of this.#stateManager.getTopicsWithHandlers()) {
-      const n = this.#stateManager.getHandlerCountForTopic(topic);
-      handlerCount += n;
-      counts[topic] = n;
-      console.log(
-        `[Erebus:${instanceId}] Counting handlers for topic (debugObject)`,
-        {
-          topic,
-          count: n,
-        },
-      );
-      console.log("Counting handlers for topic (debugObject)", {
-        topic,
-        count: n,
-      });
-    }
-
-    // Extract connection details from the connection object
-    const connectionObject = {
-      url: this.#conn.url,
-      state: this.#conn.state,
-      subs: this.#conn.subscriptions,
-      bufferedAmount: this.#conn.bufferedAmount,
-    };
-
-    const debugObj = {
-      conn: this.#conn,
-      handlers: this.#stateManager.__debugState.handlers,
-      connectionObject,
-      handlerCount,
-      topics: Object.keys(counts),
-      counts,
-      processedMessagesCount: this.#stateManager.processedMessagesCount,
-    };
-    console.log(`[Erebus:${instanceId}] __debugObject returning`, debugObj);
-    console.log("Erebus.__debugObject returning", debugObj);
-    return debugObj;
-  }
-
   // Getters
   get connectionState(): string {
     return this.#stateManager.connectionState;
@@ -541,63 +479,6 @@ export class ErebusPubSubClient {
       },
     );
     console.log("All presence handlers cleared", { topic });
-  }
-
-  /**
-   * Get connection health information
-   */
-  get connectionHealth(): {
-    state: string;
-    isConnected: boolean;
-    isReadable: boolean;
-    isWritable: boolean;
-    channel: string | null;
-    subscriptionCount: number;
-    pendingSubscriptionsCount: number;
-    processedMessagesCount: number;
-    hasError: boolean;
-    error: Error | null;
-    isReconnecting: boolean;
-    reconnectAttempts: number;
-    connectionDetails: {
-      state: string;
-      isConnected: boolean;
-      isReadable: boolean;
-      isWritable: boolean;
-      channel: string;
-      subscriptionCount: number;
-      readyState: number | undefined;
-      bufferedAmount: number;
-      connectionId: string;
-      url: string;
-    };
-  } {
-    return {
-      state: this.connectionState,
-      isConnected: this.isConnected,
-      isReadable: this.isReadable,
-      isWritable: this.isWritable,
-      channel: this.channel,
-      subscriptionCount: this.subscriptionCount,
-      pendingSubscriptionsCount: this.pendingSubscriptionsCount,
-      processedMessagesCount: this.processedMessagesCount,
-      hasError: this.hasError,
-      error: this.error,
-      isReconnecting: this.isReconnecting,
-      reconnectAttempts: this.reconnectAttempts,
-      connectionDetails: {
-        state: this.#conn.state,
-        isConnected: this.#conn.isConnected,
-        isReadable: this.#conn.isReadable,
-        isWritable: this.#conn.isWritable,
-        channel: this.#conn.channel,
-        subscriptionCount: this.#conn.subscriptionCount,
-        readyState: this.#conn.readyState,
-        bufferedAmount: this.#conn.bufferedAmount,
-        connectionId: this.#conn.connectionId,
-        url: this.#conn.url,
-      },
-    };
   }
 
   /**

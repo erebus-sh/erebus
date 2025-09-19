@@ -23,7 +23,6 @@ import type { PresenceHandler } from "./Presence";
 import { SubscriptionManager } from "./SubscriptionManager";
 import type {
   ConnectionConfig,
-  ConnectionHealth,
   ConnectionState,
   SubscriptionStatus,
 } from "./interfaces";
@@ -80,6 +79,9 @@ export class PubSubConnection {
     } = {
       ...config,
       onMessage: (rawMessage: PacketEnvelope & { rawData?: string }): void => {
+        console.log(`[${this.#connectionId}:onMessage] Received message`, {
+          rawMessage,
+        });
         // Handle the message processing
         if (rawMessage.rawData) {
           this.#messageProcessor.processMessage(rawMessage.rawData);
@@ -89,12 +91,21 @@ export class PubSubConnection {
         }
       },
       onStateChange: (state: ConnectionState): void => {
+        console.log(
+          `[${this.#connectionId}:onStateChange] Connection state changed`,
+          {
+            state,
+          },
+        );
         // Synchronize state with StateManager if available
         if (this.#stateManager) {
           this.#stateManager.setConnectionState(state);
         }
       },
       onError: (error: Error): void => {
+        console.log(`[${this.#connectionId}:onError] Connection error`, {
+          error,
+        });
         // Synchronize error with StateManager if available
         if (this.#stateManager) {
           this.#stateManager.setError(error);
@@ -115,19 +126,8 @@ export class PubSubConnection {
     console.log(`[${this.#connectionId}] PubSubConnection initialized`);
   }
 
-  get connectionHealth(): ConnectionHealth {
-    return {
-      state: this.#connectionManager.state,
-      isConnected: this.#connectionManager.isConnected,
-      isReadable: this.#connectionManager.isConnected,
-      isWritable: this.#connectionManager.isConnected,
-      channel: this.#connectionManager.channel,
-      subscriptionCount: this.#subscriptionManager.subscriptionCount,
-      readyState: this.#connectionManager.readyState,
-      bufferedAmount: this.#connectionManager.bufferedAmount,
-      connectionId: this.#connectionId,
-      url: this.#connectionManager.url,
-    };
+  get connectionId(): string {
+    return this.#connectionId;
   }
 
   get subscribedTopics(): string[] {

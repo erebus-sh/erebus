@@ -92,30 +92,6 @@ export function createNoopPubSubClient(): ErebusPubSubClient {
     get processedMessagesCount() {
       return 0;
     },
-    get connectionHealth() {
-      return {
-        state: "closed",
-        isConnected: false,
-        isReadable: false,
-        isWritable: false,
-        channel: null,
-        subscriptionCount: 0,
-        pendingSubscriptionsCount: 0,
-        processedMessagesCount: 0,
-        connectionDetails: {
-          state: "closed",
-          isConnected: false,
-          isReadable: false,
-          isWritable: false,
-          channel: "",
-          subscriptionCount: 0,
-          readyState: undefined,
-          bufferedAmount: 0,
-          connectionId: "noop",
-          url: "",
-        },
-      };
-    },
     get isReadable() {
       return false;
     },

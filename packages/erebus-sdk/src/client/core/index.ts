@@ -58,7 +58,6 @@ export type {
   IHeartbeatManager,
   IMessageProcessor,
   IStateManager,
-  ConnectionHealth,
 } from "./pubsub";
 
 // ========== AUTHORIZATION ==========
