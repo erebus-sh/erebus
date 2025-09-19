@@ -102,15 +102,10 @@ export class MessageBroadcaster extends BaseService {
     // Track which client IDs have received the message to prevent duplicates
     const sentToClients = new Set<string>();
 
-    // Pre-serialize the message once for all recipients (performance optimization)
-    const serializedMessage = MessageBroadcaster.TEXT_ENCODER.encode(
-      JSON.stringify(messageBody),
-    );
-
     // Process clients in batches to prevent event loop blocking
     await this.processClientBatches(
       clients,
-      serializedMessage,
+      messageBody,
       senderClientId,
       subscriberClientIds,
       topic,
@@ -150,7 +145,7 @@ export class MessageBroadcaster extends BaseService {
    * Process ErebusClient connections in batches with yielding for performance.
    *
    * @param clients - Array of ErebusClient connections
-   * @param serializedMessage - Pre-serialized message bytes
+   * @param messageBody - Message body to send
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
    * @param topic - Topic being published to
@@ -159,7 +154,7 @@ export class MessageBroadcaster extends BaseService {
    */
   private async processClientBatches(
     clients: ErebusClient[],
-    serializedMessage: Uint8Array,
+    messageBody: MessageBody,
     senderClientId: string,
     subscriberClientIds: string[],
     topic: string,
@@ -175,7 +170,7 @@ export class MessageBroadcaster extends BaseService {
       const batchPromises = batch.map((client) =>
         this.processSingleClient(
           client,
-          serializedMessage,
+          messageBody,
           senderClientId,
           subscriberClientIds,
           topic,
@@ -195,7 +190,7 @@ export class MessageBroadcaster extends BaseService {
    * Process a single ErebusClient connection with comprehensive error handling.
    *
    * @param client - ErebusClient to process
-   * @param serializedMessage - Pre-serialized message bytes
+   * @param messageBody - Message body to send
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
    * @param topic - Topic being published to
@@ -204,7 +199,7 @@ export class MessageBroadcaster extends BaseService {
    */
   private async processSingleClient(
     client: ErebusClient,
-    serializedMessage: Uint8Array,
+    messageBody: MessageBody,
     senderClientId: string,
     subscriberClientIds: string[],
     topic: string,
@@ -226,7 +221,7 @@ export class MessageBroadcaster extends BaseService {
         // Regular read access - send the actual message
         return await this.sendMessage(
           client,
-          serializedMessage,
+          messageBody,
           senderClientId,
           subscriberClientIds,
           sentToClients,
@@ -274,7 +269,7 @@ export class MessageBroadcaster extends BaseService {
    * Send the actual message with backpressure handling and access control.
    *
    * @param client - ErebusClient to send to
-   * @param serializedMessage - Pre-serialized message bytes
+   * @param messageBody - Message body to send
    * @param senderClientId - ID of the message sender
    * @param subscriberClientIds - Array of subscriber client IDs
    * @param sentToClients - Set to update with delivered client
@@ -282,7 +277,7 @@ export class MessageBroadcaster extends BaseService {
    */
   private async sendMessage(
     client: ErebusClient,
-    serializedMessage: Uint8Array,
+    messageBody: MessageBody,
     senderClientId: string,
     subscriberClientIds: string[],
     sentToClients: Set<string>,
@@ -309,7 +304,7 @@ export class MessageBroadcaster extends BaseService {
     }
 
     // Send the message (optimized with pre-serialized bytes)
-    client.send(serializedMessage);
+    client.sendJSON(messageBody);
     sentToClients.add(recipientClientId);
 
     return { result: "sent", reason: "normal_send" };

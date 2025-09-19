@@ -1,5 +1,5 @@
 import { defineConfig } from "tsdown";
-import strip from "@rollup/plugin-strip";
+// import strip from "@rollup/plugin-strip";
 import typescript from "@rollup/plugin-typescript";
 
 export default defineConfig({
@@ -42,32 +42,32 @@ export default defineConfig({
   ],
   sourcemap: true,
   clean: true,
-  minify: {
-    compress: {
-      // TODO: make this configurable
-      // dropConsole: true,
-      // dropDebugger: true,
-    },
-  },
+  // minify: {
+  //   compress: {
+  //     // TODO: make this configurable
+  //     // dropConsole: true,
+  //     // dropDebugger: true,
+  //   },
+  // },
   treeshake: true,
   plugins: [
     typescript(),
-    strip({
-      // TODO: make this configurable
-      // Strip specific logger calls in production builds
-      // functions: [
-      //   "logger.info",
-      //   "logger.warn",
-      //   "logger.error",
-      //   "logger.debug",
-      //   "logger.trace",
-      //   "logger.success",
-      //   "logger.fail",
-      //   "logger.ready",
-      //   "logger.start",
-      //   "logger.log",
-      //   "console.*",
-      // ],
-    }),
+    // strip({
+    //   // TODO: make this configurable
+    //   // Strip specific logger calls in production builds
+    //   // functions: [
+    //   //   "logger.info",
+    //   //   "logger.warn",
+    //   //   "logger.error",
+    //   //   "logger.debug",
+    //   //   "logger.trace",
+    //   //   "logger.success",
+    //   //   "logger.fail",
+    //   //   "logger.ready",
+    //   //   "logger.start",
+    //   //   "logger.log",
+    //   //   "console.*",
+    //   // ],
+    // }),
   ],
 });

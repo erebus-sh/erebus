@@ -259,7 +259,7 @@ export const grantRoute = new Hono().post(
       c.header("X-RateLimit-Remaining", String(remaining));
       c.header("X-RateLimit-Reset", String(Math.floor(reset / 1000)));
 
-      if (!limitOk) {
+      if (!limitOk && process.env.NODE_ENV === "production") {
         c.header("Retry-After", String(retrySec));
         return c.json(
           {
