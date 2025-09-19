@@ -3,7 +3,6 @@ import { WsErrors } from "@repo/shared/enums/wserrors";
 
 import { encodeEnvelope } from "@/client/core/wire";
 import { ErebusError } from "@/internal/error";
-import { logger } from "@/internal/logger/consola";
 import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
 
 import { backoff } from "../backoff";
@@ -38,12 +37,12 @@ export class ConnectionManager implements IConnectionManager {
 
   constructor(config: ConnectionConfig) {
     this.#connectionId = `conn_${Math.random().toString(36).substring(2, 8)}`;
-    logger.info(`[${this.#connectionId}] ConnectionManager created`, {
+    console.log(`[${this.#connectionId}] ConnectionManager created`, {
       url: config.url,
     });
 
     if (!validateWebSocketUrl(config.url)) {
-      logger.error(`[${this.#connectionId}] Invalid WebSocket URL`, {
+      console.error(`[${this.#connectionId}] Invalid WebSocket URL`, {
         url: config.url,
       });
       throw new Error("Invalid WebSocket URL");
@@ -100,14 +99,14 @@ export class ConnectionManager implements IConnectionManager {
   }
 
   async open(options: OpenOptions): Promise<void> {
-    logger.info(`[${this.#connectionId}] Opening connection`, {
+    console.log(`[${this.#connectionId}] Opening connection`, {
       timeout: options.timeout,
     });
     this.#log("info", "connection.open called");
 
     // Prevent multiple simultaneous connection attempts
     if (this.#state === "connecting" || this.#state === "open") {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Connection already ${this.#state}, returning early`,
       );
       return;
@@ -116,13 +115,13 @@ export class ConnectionManager implements IConnectionManager {
     // Validate that channel is set before connecting
     if (!this.#channel || this.#channel.trim().length === 0) {
       const error = "Channel must be set before opening connection";
-      logger.error(`[${this.#connectionId}] ${error}`, {
+      console.error(`[${this.#connectionId}] ${error}`, {
         channel: this.#channel,
       });
       throw new Error(error);
     }
 
-    logger.info(`[${this.#connectionId}] Setting state to connecting`);
+    console.log(`[${this.#connectionId}] Setting state to connecting`);
     this.#state = "connecting";
 
     // Store the grant for potential reconnections
@@ -133,11 +132,11 @@ export class ConnectionManager implements IConnectionManager {
     this.#setupWebSocketListeners(ws);
 
     if (options.timeout) {
-      logger.info(`[${this.#connectionId}] Setting connection timeout`, {
+      console.log(`[${this.#connectionId}] Setting connection timeout`, {
         timeout: options.timeout,
       });
       const timeoutId = setTimeout(() => {
-        logger.error(`[${this.#connectionId}] Connection timeout reached`, {
+        console.error(`[${this.#connectionId}] Connection timeout reached`, {
           timeout: options.timeout,
         });
         ws.close();
@@ -148,7 +147,7 @@ export class ConnectionManager implements IConnectionManager {
         ws.addEventListener(
           "open",
           () => {
-            logger.info(
+            console.log(
               `[${this.#connectionId}] Connection opened within timeout, clearing timeout`,
             );
             clearTimeout(timeoutId);
@@ -158,14 +157,14 @@ export class ConnectionManager implements IConnectionManager {
         ),
       );
     } else {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Waiting for connection to open (no timeout)`,
       );
       await new Promise<void>((res) =>
         ws.addEventListener(
           "open",
           () => {
-            logger.info(
+            console.log(
               `[${this.#connectionId}] Connection opened successfully`,
             );
             res();
@@ -177,14 +176,14 @@ export class ConnectionManager implements IConnectionManager {
   }
 
   close(): void {
-    logger.info(
+    console.log(
       `[${this.#connectionId}] Connection close called (url: ${this.#url})`,
     );
     this.#log("info", `connection close called (url: ${this.#url})`);
 
     // Prevent further operations
     this.#state = "closed";
-    logger.info(
+    console.log(
       `[${this.#connectionId}] Connection state set to closed (url: ${this.#url})`,
     );
 
@@ -199,30 +198,30 @@ export class ConnectionManager implements IConnectionManager {
           this.#ws.close();
         }
       } catch (error) {
-        logger.warn(`[${this.#connectionId}] Error closing WebSocket`, {
+        console.warn(`[${this.#connectionId}] Error closing WebSocket`, {
           error,
         });
       }
       this.#ws = undefined;
     }
 
-    logger.info(`[${this.#connectionId}] Connection closed and cleaned up`);
+    console.log(`[${this.#connectionId}] Connection closed and cleaned up`);
   }
 
   send(pkt: PacketEnvelope): void {
-    logger.info(`[${this.#connectionId}] Sending packet`, {
+    console.log(`[${this.#connectionId}] Sending packet`, {
       packetType: pkt.packetType,
     });
 
     // Validate packet
     if (!pkt || typeof pkt !== "object") {
       const error = "Invalid packet: must be an object";
-      logger.error(`[${this.#connectionId}] ${error}`, { pkt });
+      console.error(`[${this.#connectionId}] ${error}`, { pkt });
       throw new Error(error);
     }
 
     if (!this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Cannot send packet - WebSocket not ready`,
         {
           hasWs: !!this.#ws,
@@ -238,7 +237,7 @@ export class ConnectionManager implements IConnectionManager {
     // Enhanced backpressure monitoring
     const bufferedAmount = this.#ws.bufferedAmount;
     if (bufferedAmount > 1_000_000) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Critical backpressure - closing connection`,
         {
           buffered: bufferedAmount,
@@ -254,7 +253,7 @@ export class ConnectionManager implements IConnectionManager {
 
     try {
       const encoded = encodeEnvelope(pkt);
-      logger.info(
+      console.log(
         `[ConnectionManager] [${this.#connectionId}] Packet encoded, sending via WebSocket`,
         {
           packetType: pkt.packetType,
@@ -263,7 +262,7 @@ export class ConnectionManager implements IConnectionManager {
       );
       this.#ws.send(encoded);
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error sending packet`, {
+      console.error(`[${this.#connectionId}] Error sending packet`, {
         error,
         packetType: pkt.packetType,
       });
@@ -275,13 +274,13 @@ export class ConnectionManager implements IConnectionManager {
    * Send raw string data directly through WebSocket (for heartbeats, etc.)
    */
   sendRaw(data: string): void {
-    logger.info(`[${this.#connectionId}] Sending raw data`, {
+    console.log(`[${this.#connectionId}] Sending raw data`, {
       dataType: typeof data,
       dataLength: data.length,
     });
 
     if (!this.#ws || this.#ws.readyState !== WebSocket.OPEN) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Cannot send raw data - WebSocket not ready`,
         {
           hasWs: !!this.#ws,
@@ -296,9 +295,9 @@ export class ConnectionManager implements IConnectionManager {
 
     try {
       this.#ws.send(data);
-      logger.info(`[${this.#connectionId}] Raw data sent successfully`);
+      console.log(`[${this.#connectionId}] Raw data sent successfully`);
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error sending raw data`, {
+      console.error(`[${this.#connectionId}] Error sending raw data`, {
         error,
         dataLength: data.length,
       });
@@ -307,7 +306,7 @@ export class ConnectionManager implements IConnectionManager {
   }
 
   setChannel(channel: string): void {
-    logger.info(`[${this.#connectionId}] Setting channel`, { channel });
+    console.log(`[${this.#connectionId}] Setting channel`, { channel });
 
     // Validate channel
     if (
@@ -316,12 +315,12 @@ export class ConnectionManager implements IConnectionManager {
       channel.trim().length === 0
     ) {
       const error = "Invalid channel: must be a non-empty string";
-      logger.error(`[${this.#connectionId}] ${error}`, { channel });
+      console.error(`[${this.#connectionId}] ${error}`, { channel });
       throw new Error(error);
     }
 
     this.#channel = channel;
-    logger.info(`[${this.#connectionId}] Channel set successfully`, {
+    console.log(`[${this.#connectionId}] Channel set successfully`, {
       channel: this.#channel,
     });
   }
@@ -329,7 +328,7 @@ export class ConnectionManager implements IConnectionManager {
   #createWebSocket(grant: string): WebSocket {
     const connectUrl = new URL(this.#url);
     connectUrl.searchParams.set("grant", grant);
-    logger.info(`[${this.#connectionId}] Creating WebSocket connection`, {
+    console.log(`[${this.#connectionId}] Creating WebSocket connection`, {
       url: this.#url,
       grant: grant.substring(0, 10) + "...", // Log partial grant for debugging
     });
@@ -353,7 +352,7 @@ export class ConnectionManager implements IConnectionManager {
     ws.addEventListener(
       "open",
       () => {
-        logger.info(`[${this.#connectionId}] WebSocket opened successfully`);
+        console.log(`[${this.#connectionId}] WebSocket opened successfully`);
         this.#retry = 0;
         this.#state = "open";
         this.#log("info", "ws open");
@@ -367,7 +366,7 @@ export class ConnectionManager implements IConnectionManager {
 
     ws.addEventListener("close", (event: CloseEvent) => {
       this.#log("warn", "ws close encountered", { retry: this.#retry });
-      logger.warn(`[${this.#connectionId}] WebSocket close encountered`, {
+      console.warn(`[${this.#connectionId}] WebSocket close encountered`, {
         retry: this.#retry,
         state: this.#state,
       });
@@ -389,7 +388,7 @@ export class ConnectionManager implements IConnectionManager {
 
     ws.addEventListener("error", (e) => {
       this.#log("warn", "ws error", e);
-      logger.warn(`[${this.#connectionId}] WebSocket error`, {
+      console.warn(`[${this.#connectionId}] WebSocket error`, {
         error: e,
         state: this.#state,
         readyState: ws.readyState,
@@ -404,13 +403,13 @@ export class ConnectionManager implements IConnectionManager {
     // Handle hex dump debugging
     if (this.#debugHexDump) {
       const hex = this.#getHexDump(ev.data);
-      logger.debug(`[${this.#connectionId}] WS message hex:`, { hex });
+      console.log(`[${this.#connectionId}] WS message hex:`, { hex });
     }
 
     try {
       const dataStr = await this.#convertToString(ev.data);
       if (dataStr.length === 0) {
-        logger.warn(`[${this.#connectionId}] Data string is empty, skipping`);
+        console.warn(`[${this.#connectionId}] Data string is empty, skipping`);
         return;
       }
 
@@ -419,7 +418,7 @@ export class ConnectionManager implements IConnectionManager {
         rawData: string;
       });
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error handling message`, {
+      console.error(`[${this.#connectionId}] Error handling message`, {
         error,
       });
     }
@@ -441,7 +440,7 @@ export class ConnectionManager implements IConnectionManager {
     if (typeof data === "string") {
       return data;
     } else if (typeof data === "undefined" || data === null) {
-      logger.warn(
+      console.warn(
         `[${this.#connectionId}] Data is undefined or null, using empty string`,
       );
       return "";
@@ -476,28 +475,28 @@ export class ConnectionManager implements IConnectionManager {
 
   #reconnect(): void {
     if (this.#state === "closed" || this.#state === "connecting") {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Reconnect called but connection is ${this.#state}, ignoring`,
       );
       return;
     }
 
-    logger.info(`[${this.#connectionId}] Starting reconnect process`);
+    console.log(`[${this.#connectionId}] Starting reconnect process`);
     this.#state = "idle"; // Reset to idle to allow reconnection
 
     const bckOff = backoff(this.#retry, 5000);
     this.#log("info", "scheduling reconnect", { retry: this.#retry, bckOff });
-    logger.info(`[${this.#connectionId}] Scheduling reconnect`, {
+    console.log(`[${this.#connectionId}] Scheduling reconnect`, {
       retry: this.#retry,
       backoff: bckOff,
     });
 
     this.#retry++;
     setTimeout(() => {
-      logger.info(`[${this.#connectionId}] Executing scheduled reconnect`);
+      console.log(`[${this.#connectionId}] Executing scheduled reconnect`);
       this.open({ grant: this.#grant, timeout: 5000 }).catch(
         (error: unknown) => {
-          logger.error(`[${this.#connectionId}] Reconnect failed`, { error });
+          console.error(`[${this.#connectionId}] Reconnect failed`, { error });
           this.#state = "closed";
         },
       );

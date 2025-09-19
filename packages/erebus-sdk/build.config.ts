@@ -57,8 +57,8 @@ export default defineConfig({
     //   // Strip specific logger calls in production builds
     //   // functions: [
     //   //   "logger.info",
-    //   //   "logger.warn",
-    //   //   "logger.error",
+    //   //   "console.warn",
+    //   //   "console.error",
     //   //   "logger.debug",
     //   //   "logger.trace",
     //   //   "logger.success",

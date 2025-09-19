@@ -1,7 +1,6 @@
 import type { PresencePacketType } from "@repo/schemas/packetEnvelope";
 
 import type { Presence } from "@/client/core/types";
-import { logger } from "@/internal/logger/consola";
 
 /**
  * Handler function type for presence updates
@@ -22,7 +21,7 @@ export class PresenceManager {
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
-    logger.info(`[${this.#connectionId}] PresenceManager created`);
+    console.log(`[${this.#connectionId}] PresenceManager created`);
   }
 
   /**
@@ -43,20 +42,20 @@ export class PresenceManager {
    * @param handler - The callback function to handle presence updates
    */
   onPresence(topic: string, handler: PresenceHandler): void {
-    logger.info(`[${this.#connectionId}] Adding presence handler for topic`, {
+    console.log(`[${this.#connectionId}] Adding presence handler for topic`, {
       topic,
     });
 
     // Validate inputs
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      logger.error(`[${this.#connectionId}] ${error}`, { topic });
+      console.error(`[${this.#connectionId}] ${error}`, { topic });
       throw new Error(error);
     }
 
     if (typeof handler !== "function") {
       const error = "Invalid handler: must be a function";
-      logger.error(`[${this.#connectionId}] ${error}`);
+      console.error(`[${this.#connectionId}] ${error}`);
       throw new Error(error);
     }
 
@@ -68,7 +67,7 @@ export class PresenceManager {
     // Add the handler
     this.#presenceHandlers.get(topic)!.add(handler);
 
-    logger.info(`[${this.#connectionId}] Presence handler added`, {
+    console.log(`[${this.#connectionId}] Presence handler added`, {
       topic,
       totalHandlers: this.#presenceHandlers.get(topic)!.size,
     });
@@ -80,13 +79,13 @@ export class PresenceManager {
    * @param handler - The specific handler function to remove
    */
   offPresence(topic: string, handler: PresenceHandler): void {
-    logger.info(`[${this.#connectionId}] Removing presence handler for topic`, {
+    console.log(`[${this.#connectionId}] Removing presence handler for topic`, {
       topic,
     });
 
     const handlers = this.#presenceHandlers.get(topic);
     if (!handlers) {
-      logger.warn(`[${this.#connectionId}] No handlers found for topic`, {
+      console.warn(`[${this.#connectionId}] No handlers found for topic`, {
         topic,
       });
       return;
@@ -99,7 +98,7 @@ export class PresenceManager {
       this.#presenceHandlers.delete(topic);
     }
 
-    logger.info(`[${this.#connectionId}] Presence handler removed`, {
+    console.log(`[${this.#connectionId}] Presence handler removed`, {
       topic,
       remainingHandlers: handlers.size,
     });
@@ -110,7 +109,7 @@ export class PresenceManager {
    * @param topic - The topic to clear all handlers for
    */
   clearPresenceHandlers(topic: string): void {
-    logger.info(
+    console.log(
       `[${this.#connectionId}] Clearing all presence handlers for topic`,
       { topic },
     );
@@ -121,7 +120,7 @@ export class PresenceManager {
    * Remove all presence handlers for all topics
    */
   clearAllPresenceHandlers(): void {
-    logger.info(`[${this.#connectionId}] Clearing all presence handlers`);
+    console.log(`[${this.#connectionId}] Clearing all presence handlers`);
     this.#presenceHandlers.clear();
   }
 
@@ -130,7 +129,7 @@ export class PresenceManager {
    * @param presencePacket - The presence packet received from the server
    */
   handlePresencePacket(presencePacket: PresencePacketType): void {
-    logger.info(`[${this.#connectionId}] Handling presence packet`, {
+    console.log(`[${this.#connectionId}] Handling presence packet`, {
       clientId: presencePacket.clientId,
       topic: presencePacket.topic,
       status: presencePacket.status,
@@ -138,7 +137,7 @@ export class PresenceManager {
 
     const handlers = this.#presenceHandlers.get(presencePacket.topic);
     if (!handlers || handlers.size === 0) {
-      logger.debug(
+      console.log(
         `[${this.#connectionId}] No presence handlers found for topic`,
         {
           topic: presencePacket.topic,
@@ -165,7 +164,7 @@ export class PresenceManager {
       try {
         handler(presenceEvent);
       } catch (error) {
-        logger.error(`[${this.#connectionId}] Error in presence handler`, {
+        console.error(`[${this.#connectionId}] Error in presence handler`, {
           error,
           topic: presencePacket.topic,
           clientId: presencePacket.clientId,
@@ -174,7 +173,7 @@ export class PresenceManager {
       }
     }
 
-    logger.info(
+    console.log(
       `[${this.#connectionId}] Presence packet handled successfully`,
       {
         topic: presencePacket.topic,

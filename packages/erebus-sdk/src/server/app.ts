@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { logger } from "@/internal/logger/consola";
 
 import { ErebusSession } from "@/service/session";
 import { zValidator } from "@hono/zod-validator";
@@ -18,7 +17,7 @@ export function createApp(sessionOrProvider?: ErebusSession | SessionProvider) {
   const app = new Hono<{ Variables: AppVars }>();
 
   app.onError((err, c) => {
-    logger.error("[unhandled]", {
+    console.error("[unhandled]", {
       reqId: c.get("reqId"),
       err:
         err instanceof Error
@@ -66,7 +65,7 @@ export function createApp(sessionOrProvider?: ErebusSession | SessionProvider) {
       await next();
     } finally {
       const ms = Math.round(performance.now() - started);
-      logger.info(`[${reqId}] ${c.req.method} ${c.req.path} -> ${ms}ms`);
+      console.log(`[${reqId}] ${c.req.method} ${c.req.path} -> ${ms}ms`);
     }
   });
 
@@ -97,7 +96,7 @@ const routes = new Hono<{ Variables: AppVars }>()
 
     console.log(session.__debugObject);
 
-    logger.info(`[${c.get("reqId")}] Generating token`);
+    console.log(`[${c.get("reqId")}] Generating token`);
     return c.json({
       token: "test",
     });
@@ -117,7 +116,7 @@ const routes = new Hono<{ Variables: AppVars }>()
     async (c) => {
       const session = c.get("session");
       const reqId = c.get("reqId");
-      logger.info(`[${reqId}] Generating token`);
+      console.log(`[${reqId}] Generating token`);
 
       if (!session) {
         return c.json(
@@ -132,7 +131,7 @@ const routes = new Hono<{ Variables: AppVars }>()
       try {
         token = await session.authorize();
       } catch (error) {
-        logger.error(
+        console.error(
           `[${reqId}] Error generating token: ${error instanceof Error ? error.message : "Unknown error"}`,
         );
         return c.json(
@@ -200,16 +199,16 @@ export type AuthorizeServer = (
 //   authorize: AuthorizeServer,
 // ) => {
 //   const app = createApp(authorize);
-//   logger.info(`Attempting to start server on port ${port}...`);
+//   console.log(`Attempting to start server on port ${port}...`);
 //   const server = serve({
 //     fetch: app.fetch,
 //     port,
 //   });
 //   server.on("listening", () => {
-//     logger.info(`Server successfully started and is running on port ${port}`);
+//     console.log(`Server successfully started and is running on port ${port}`);
 //   });
 //   server.on("error", (err: Error) => {
-//     logger.error(`Server failed to start on port ${port}: ${err.message}`);
+//     console.error(`Server failed to start on port ${port}: ${err.message}`);
 //   });
 //   return server;
 // };

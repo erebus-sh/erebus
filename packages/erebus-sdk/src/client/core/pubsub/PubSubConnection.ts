@@ -2,8 +2,6 @@ import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { nanoid } from "nanoid";
 
-import { logger } from "@/internal/logger/consola";
-
 import {
   type AckCallback,
   type PendingPublish,
@@ -49,7 +47,7 @@ export class PubSubConnection {
 
   constructor(config: ConnectionConfig) {
     this.#connectionId = `conn_${Math.random().toString(36).slice(2, 8)}`;
-    logger.info(`[${this.#connectionId}] PubSubConnection constructor called`, {
+    console.log(`[${this.#connectionId}] PubSubConnection constructor called`, {
       url: config.url,
       heartbeatMs: config.heartbeatMs ?? 25_000,
     });
@@ -95,7 +93,7 @@ export class PubSubConnection {
       config.log ?? ((): void => {}),
     );
 
-    logger.info(`[${this.#connectionId}] PubSubConnection initialized`);
+    console.log(`[${this.#connectionId}] PubSubConnection initialized`);
   }
 
   // Connection state getters
@@ -210,7 +208,7 @@ export class PubSubConnection {
     const topicsToResubscribe =
       this.#subscriptionManager.getTopicsForResubscription();
     for (const topic of topicsToResubscribe) {
-      logger.info(`[${this.#connectionId}] Resubscribing to topic`, { topic });
+      console.log(`[${this.#connectionId}] Resubscribing to topic`, { topic });
       this.#connectionManager.send({ packetType: "subscribe", topic });
     }
   }
@@ -241,7 +239,7 @@ export class PubSubConnection {
     callback?: SubscriptionCallback,
     timeoutMs?: number,
   ): void {
-    logger.info(`[${this.#connectionId}] Subscribe called`, {
+    console.log(`[${this.#connectionId}] Subscribe called`, {
       topic,
       hasCallback: !!callback,
       timeout: timeoutMs,
@@ -249,14 +247,14 @@ export class PubSubConnection {
 
     // Return false if already subscribed
     if (!this.#subscriptionManager.subscribe(topic)) {
-      logger.info(`[${this.#connectionId}] Topic already subscribed`, {
+      console.log(`[${this.#connectionId}] Topic already subscribed`, {
         topic,
       });
       return;
     }
 
     if (this.isConnected) {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Connection open, sending subscribe packet`,
         { topic },
       );
@@ -302,16 +300,19 @@ export class PubSubConnection {
           ...(clientMsgId && { clientMsgId }),
         });
       } catch (error) {
-        logger.error(`[${this.#connectionId}] Error sending subscribe packet`, {
-          error,
-          topic,
-        });
+        console.error(
+          `[${this.#connectionId}] Error sending subscribe packet`,
+          {
+            error,
+            topic,
+          },
+        );
         // Revert the subscription on send failure
         this.#subscriptionManager.unsubscribe(topic);
         throw error;
       }
     } else {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Connection not open, subscription will be sent when connected`,
         { topic },
       );
@@ -327,21 +328,21 @@ export class PubSubConnection {
     callback?: SubscriptionCallback,
     timeoutMs?: number,
   ): void {
-    logger.info(`[${this.#connectionId}] Unsubscribe called`, {
+    console.log(`[${this.#connectionId}] Unsubscribe called`, {
       topic,
       hasCallback: !!callback,
       timeout: timeoutMs,
     });
 
     if (!this.#subscriptionManager.unsubscribe(topic)) {
-      logger.info(`[${this.#connectionId}] Topic already unsubscribed`, {
+      console.log(`[${this.#connectionId}] Topic already unsubscribed`, {
         topic,
       });
       return;
     }
 
     if (this.isConnected) {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Connection open, sending unsubscribe packet`,
         { topic },
       );
@@ -387,7 +388,7 @@ export class PubSubConnection {
           ...(clientMsgId && { clientMsgId }),
         });
       } catch (error) {
-        logger.error(
+        console.error(
           `[${this.#connectionId}] Error sending unsubscribe packet`,
           {
             error,
@@ -397,7 +398,7 @@ export class PubSubConnection {
         // Don't rethrow - we've already removed from subscriptions
       }
     } else {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Connection not open, unsubscription will be sent when connected`,
         { topic },
       );
@@ -463,7 +464,7 @@ export class PubSubConnection {
     callback?: AckCallback,
     timeoutMs?: number,
   ): Promise<string> {
-    logger.info(`[${this.#connectionId}] Publish called`, {
+    console.log(`[${this.#connectionId}] Publish called`, {
       topic: payload.topic,
       withAck,
     });
@@ -471,18 +472,18 @@ export class PubSubConnection {
     // Validate payload
     if (!payload || typeof payload !== "object") {
       const error = "Invalid payload: must be an object";
-      logger.error(`[${this.#connectionId}] ${error}`, { payload });
+      console.error(`[${this.#connectionId}] ${error}`, { payload });
       throw new Error(error);
     }
 
     if (withAck && !callback) {
       const error = "ACK callback is required when withAck is true";
-      logger.error(`[${this.#connectionId}] ${error}`);
+      console.error(`[${this.#connectionId}] ${error}`);
       throw new Error(error);
     }
 
     if (!this.isConnected) {
-      logger.error(`[${this.#connectionId}] Cannot publish - not connected`, {
+      console.error(`[${this.#connectionId}] Cannot publish - not connected`, {
         state: this.state,
       });
       throw new NotConnectedError("Not connected");
@@ -538,20 +539,20 @@ export class PubSubConnection {
     } catch (err) {
       // Ensure fallback is set
       Object.assign(payload, { clientMsgId });
-      logger.warn(
+      console.warn(
         `[${this.#connectionId}] Error setting client fields, using fallback`,
         { err, clientMsgId },
       );
     }
 
-    logger.info(`[${this.#connectionId}] Publishing message`, {
+    console.log(`[${this.#connectionId}] Publishing message`, {
       topic: payload.topic,
       withAck,
       requestId,
       clientMsgId,
     });
 
-    logger.info(
+    console.log(
       `[PubSubConnection] [${this.#connectionId}] Publishing message`,
       {
         topic: payload.topic,
@@ -579,7 +580,7 @@ export class PubSubConnection {
         }
       }
 
-      logger.error(`[${this.#connectionId}] Error publishing message`, {
+      console.error(`[${this.#connectionId}] Error publishing message`, {
         error,
         topic: payload.topic,
       });
@@ -591,9 +592,7 @@ export class PubSubConnection {
 
   #sendHeartbeat(): void {
     if (!this.isConnected) {
-      logger.debug(
-        `[${this.#connectionId}] Skipping heartbeat - not connected`,
-      );
+      console.log(`[${this.#connectionId}] Skipping heartbeat - not connected`);
       return;
     }
 
@@ -601,7 +600,7 @@ export class PubSubConnection {
       // Heartbeats are raw ping strings, not packet envelopes
       this.#connectionManager.sendRaw("ping");
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error sending heartbeat`, {
+      console.error(`[${this.#connectionId}] Error sending heartbeat`, {
         error,
       });
       // Close connection to trigger reconnect

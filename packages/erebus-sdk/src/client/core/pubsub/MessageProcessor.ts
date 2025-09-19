@@ -4,8 +4,6 @@ import type {
 } from "@repo/schemas/packetEnvelope";
 
 import { parseServerFrame } from "@/client/core/wire";
-import { logger } from "@/internal/logger/consola";
-
 import type { PresenceManager } from "./Presence";
 import type { IMessageProcessor, OnMessage, IAckManager } from "./interfaces";
 
@@ -28,22 +26,22 @@ export class MessageProcessor implements IMessageProcessor {
     this.#onMessage = onMessage;
     this.#ackManager = ackManager;
     this.#presenceManager = presenceManager;
-    logger.info(`[${this.#connectionId}] MessageProcessor created`);
+    console.log(`[${this.#connectionId}] MessageProcessor created`);
   }
 
   processMessage(dataStr: string): PacketEnvelope | null {
-    logger.info(`[${this.#connectionId}] Processing message`, {
+    console.log(`[${this.#connectionId}] Processing message`, {
       dataLength: dataStr.length,
     });
 
     if (dataStr.length === 0) {
-      logger.warn(`[${this.#connectionId}] Data string is empty, skipping`);
+      console.warn(`[${this.#connectionId}] Data string is empty, skipping`);
       return null;
     }
 
     // Ping packet just skip it
     if (dataStr === "ping") {
-      logger.warn(`[${this.#connectionId}] Ping packet, skipping`, {
+      console.warn(`[${this.#connectionId}] Ping packet, skipping`, {
         rawDataPreview: dataStr.slice(0, 200),
       });
       return null;
@@ -51,13 +49,13 @@ export class MessageProcessor implements IMessageProcessor {
 
     const parsed = parseServerFrame(dataStr);
     if (!parsed) {
-      logger.warn(`[${this.#connectionId}] Failed to parse server frame`, {
+      console.warn(`[${this.#connectionId}] Failed to parse server frame`, {
         rawDataPreview: dataStr.slice(0, 200),
       });
       return null;
     }
 
-    logger.info(`[${this.#connectionId}] Parsed packet`, {
+    console.log(`[${this.#connectionId}] Parsed packet`, {
       packetType: parsed.packetType,
     });
 
@@ -72,26 +70,26 @@ export class MessageProcessor implements IMessageProcessor {
         this.#handleAckPacket(packet);
       } else if (packet.packetType === "publish") {
         // Handle regular publish messages
-        logger.info(`[${this.#connectionId}] Handling publish message`, {
+        console.log(`[${this.#connectionId}] Handling publish message`, {
           topic: packet.payload?.topic,
           messageId: packet.payload?.id || "unknown",
         });
         this.#onMessage(packet);
       } else if (packet.packetType === "presence") {
         // Handle presence packets
-        logger.info(`[${this.#connectionId}] Handling presence packet`, {
+        console.log(`[${this.#connectionId}] Handling presence packet`, {
           topic: packet.topic,
           clientId: packet.clientId,
           status: packet.status,
         });
         this.#presenceManager.handlePresencePacket(packet);
       } else {
-        logger.warn(`[${this.#connectionId}] Unknown packet type`, {
+        console.warn(`[${this.#connectionId}] Unknown packet type`, {
           packetType: packet.packetType,
         });
       }
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error handling packet`, {
+      console.error(`[${this.#connectionId}] Error handling packet`, {
         error,
         packetType: packet.packetType,
       });
@@ -100,7 +98,7 @@ export class MessageProcessor implements IMessageProcessor {
   }
 
   #handleAckPacket(ackPacket: AckPacketType): void {
-    logger.info(`[${this.#connectionId}] Processing ACK packet`, {
+    console.log(`[${this.#connectionId}] Processing ACK packet`, {
       clientMsgId: ackPacket.clientMsgId,
       path: ackPacket.result.path,
     });

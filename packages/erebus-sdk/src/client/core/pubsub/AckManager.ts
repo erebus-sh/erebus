@@ -1,7 +1,5 @@
 import type { AckPacketType } from "../../../../../schemas/packetEnvelope";
 
-import { logger } from "@/internal/logger/consola";
-
 import type {
   PendingPublish,
   AckResponse,
@@ -29,11 +27,11 @@ export class AckManager implements IAckManager {
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
-    logger.info(`[${this.#connectionId}] AckManager created`);
+    console.log(`[${this.#connectionId}] AckManager created`);
   }
 
   trackPublish(requestId: string, pending: PendingPublish): void {
-    logger.info(`[${this.#connectionId}] Tracking publish for ACK`, {
+    console.log(`[${this.#connectionId}] Tracking publish for ACK`, {
       requestId,
       clientMsgId: pending.clientMsgId,
       topic: pending.topic,
@@ -44,7 +42,7 @@ export class AckManager implements IAckManager {
 
     // Set up timeout if specified
     if (pending.timeoutId) {
-      logger.info(`[${this.#connectionId}] ACK timeout set`, {
+      console.log(`[${this.#connectionId}] ACK timeout set`, {
         requestId,
         timeout: "already configured",
       });
@@ -52,7 +50,7 @@ export class AckManager implements IAckManager {
   }
 
   trackSubscription(requestId: string, pending: PendingSubscription): void {
-    logger.info(`[${this.#connectionId}] Tracking subscription for ACK`, {
+    console.log(`[${this.#connectionId}] Tracking subscription for ACK`, {
       requestId,
       clientMsgId: pending.clientMsgId,
       topic: pending.topic,
@@ -64,13 +62,13 @@ export class AckManager implements IAckManager {
     this.#pendingSubscriptions.set(requestId, pending);
     if (pending.clientMsgId) {
       this.#subscriptionMsgIdToRequestId.set(pending.clientMsgId, requestId);
-      logger.info(`[${this.#connectionId}] Stored clientMsgId mapping`, {
+      console.log(`[${this.#connectionId}] Stored clientMsgId mapping`, {
         clientMsgId: pending.clientMsgId,
         requestId,
         totalMappings: this.#subscriptionMsgIdToRequestId.size,
       });
     } else {
-      logger.info(
+      console.log(
         `[${this.#connectionId}] No clientMsgId provided for subscription tracking`,
         {
           requestId,
@@ -81,7 +79,7 @@ export class AckManager implements IAckManager {
 
     // Set up timeout if specified
     if (pending.timeoutId) {
-      logger.info(`[${this.#connectionId}] Subscription ACK timeout set`, {
+      console.log(`[${this.#connectionId}] Subscription ACK timeout set`, {
         requestId,
         timeout: "already configured",
       });
@@ -89,7 +87,7 @@ export class AckManager implements IAckManager {
   }
 
   handleAck(ackPacket: AckPacketType): void {
-    logger.info(`[${this.#connectionId}] Handling ACK packet`, {
+    console.log(`[${this.#connectionId}] Handling ACK packet`, {
       clientMsgId: ackPacket.clientMsgId,
       path: ackPacket.result.path,
     });
@@ -103,7 +101,7 @@ export class AckManager implements IAckManager {
     ) {
       this.#handleSubscriptionAck(ackPacket);
     } else {
-      logger.warn(`[${this.#connectionId}] Unknown ACK path`, {
+      console.warn(`[${this.#connectionId}] Unknown ACK path`, {
         path: ackPacket.result.path,
         clientMsgId: ackPacket.clientMsgId,
       });
@@ -113,7 +111,7 @@ export class AckManager implements IAckManager {
   #handlePublishAck(ackPacket: AckPacketType): void {
     const clientMsgId = ackPacket.clientMsgId;
     if (!clientMsgId) {
-      logger.warn(
+      console.warn(
         `[${this.#connectionId}] Publish ACK packet missing clientMsgId`,
       );
       return;
@@ -121,7 +119,7 @@ export class AckManager implements IAckManager {
 
     const requestId = this.#clientMsgIdToRequestId.get(clientMsgId);
     if (!requestId) {
-      logger.warn(
+      console.warn(
         `[${this.#connectionId}] No requestId found for publish clientMsgId`,
         {
           clientMsgId,
@@ -132,7 +130,7 @@ export class AckManager implements IAckManager {
 
     const pending = this.#pendingPublishes.get(requestId);
     if (!pending) {
-      logger.warn(`[${this.#connectionId}] No pending publish found for ACK`, {
+      console.warn(`[${this.#connectionId}] No pending publish found for ACK`, {
         requestId,
         clientMsgId,
       });
@@ -151,7 +149,7 @@ export class AckManager implements IAckManager {
     // Create response based on ACK type
     const response = this.#createAckResponse(ackPacket, pending);
 
-    logger.info(`[${this.#connectionId}] Calling publish ACK callback`, {
+    console.log(`[${this.#connectionId}] Calling publish ACK callback`, {
       requestId,
       clientMsgId,
       success: response.success,
@@ -160,7 +158,7 @@ export class AckManager implements IAckManager {
     try {
       pending.callback(response);
     } catch (error) {
-      logger.error(`[${this.#connectionId}] Error in publish ACK callback`, {
+      console.error(`[${this.#connectionId}] Error in publish ACK callback`, {
         error,
         requestId,
         clientMsgId,
@@ -175,7 +173,7 @@ export class AckManager implements IAckManager {
     let requestId: string | undefined;
     let pending: PendingSubscription | undefined;
 
-    logger.info(`[${this.#connectionId}] Processing subscription ACK`, {
+    console.log(`[${this.#connectionId}] Processing subscription ACK`, {
       path: ackPacket.result.path,
       topic: ackPacket.result.topic,
       clientMsgId,
@@ -187,7 +185,7 @@ export class AckManager implements IAckManager {
 
     if (clientMsgId) {
       requestId = this.#subscriptionMsgIdToRequestId.get(clientMsgId);
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Looking up clientMsgId in mappings`,
         {
           clientMsgId,
@@ -197,7 +195,7 @@ export class AckManager implements IAckManager {
 
       if (requestId) {
         pending = this.#pendingSubscriptions.get(requestId);
-        logger.info(
+        console.log(
           `[${this.#connectionId}] Looking up requestId in pending subscriptions`,
           {
             requestId,
@@ -207,7 +205,7 @@ export class AckManager implements IAckManager {
       } else {
         // Fallback: Check if clientMsgId directly matches a pending requestId
         // This handles cases where server echoes requestId as clientMsgId
-        logger.info(
+        console.log(
           `[${this.#connectionId}] No direct mapping found, checking if clientMsgId matches a requestId`,
           {
             clientMsgId,
@@ -216,7 +214,7 @@ export class AckManager implements IAckManager {
         pending = this.#pendingSubscriptions.get(clientMsgId);
         if (pending) {
           requestId = clientMsgId;
-          logger.info(
+          console.log(
             `[${this.#connectionId}] Found pending subscription by matching clientMsgId to requestId`,
             {
               clientMsgId,
@@ -229,7 +227,7 @@ export class AckManager implements IAckManager {
 
     if (!pending) {
       // No tracked subscription - this is normal for optimistic subscriptions
-      logger.info(
+      console.log(
         `[${this.#connectionId}] Received untracked subscription ACK`,
         {
           path: ackPacket.result.path,
@@ -241,7 +239,7 @@ export class AckManager implements IAckManager {
       return;
     }
 
-    logger.info(`[${this.#connectionId}] Handling tracked subscription ACK`, {
+    console.log(`[${this.#connectionId}] Handling tracked subscription ACK`, {
       requestId,
       clientMsgId,
       topic: pending.topic,
@@ -262,7 +260,7 @@ export class AckManager implements IAckManager {
     // Create response based on ACK type
     const response = this.#createSubscriptionResponse(ackPacket, pending);
 
-    logger.info(`[${this.#connectionId}] Calling subscription ACK callback`, {
+    console.log(`[${this.#connectionId}] Calling subscription ACK callback`, {
       requestId,
       clientMsgId,
       topic: pending.topic,
@@ -272,7 +270,7 @@ export class AckManager implements IAckManager {
     try {
       pending.callback(response);
     } catch (error) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Error in subscription ACK callback`,
         {
           error,
@@ -285,7 +283,7 @@ export class AckManager implements IAckManager {
   }
 
   handlePublishTimeout(requestId: string): void {
-    logger.warn(`[${this.#connectionId}] Publish ACK timeout`, { requestId });
+    console.warn(`[${this.#connectionId}] Publish ACK timeout`, { requestId });
 
     const pending = this.#pendingPublishes.get(requestId);
     if (!pending) {
@@ -310,7 +308,7 @@ export class AckManager implements IAckManager {
     try {
       pending.callback(response);
     } catch (error) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Error in publish timeout callback`,
         {
           error,
@@ -321,7 +319,7 @@ export class AckManager implements IAckManager {
   }
 
   handleSubscriptionTimeout(requestId: string): void {
-    logger.warn(`[${this.#connectionId}] Subscription ACK timeout`, {
+    console.warn(`[${this.#connectionId}] Subscription ACK timeout`, {
       requestId,
     });
 
@@ -350,7 +348,7 @@ export class AckManager implements IAckManager {
     try {
       pending.callback(response);
     } catch (error) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Error in subscription timeout callback`,
         {
           error,
@@ -362,7 +360,7 @@ export class AckManager implements IAckManager {
   }
 
   cleanup(reason: string): void {
-    logger.info(`[${this.#connectionId}] Cleaning up pending operations`, {
+    console.log(`[${this.#connectionId}] Cleaning up pending operations`, {
       publishCount: this.#pendingPublishes.size,
       subscriptionCount: this.#pendingSubscriptions.size,
       reason,
@@ -389,7 +387,7 @@ export class AckManager implements IAckManager {
       try {
         pending.callback(response);
       } catch (error) {
-        logger.error(
+        console.error(
           `[${this.#connectionId}] Error in publish cleanup callback`,
           {
             error,
@@ -421,7 +419,7 @@ export class AckManager implements IAckManager {
       try {
         pending.callback(response);
       } catch (error) {
-        logger.error(
+        console.error(
           `[${this.#connectionId}] Error in subscription cleanup callback`,
           {
             error,
@@ -486,7 +484,7 @@ export class AckManager implements IAckManager {
       }
     } else {
       // Non-publish ACK (subscription, etc.) - these are handled elsewhere or ignored
-      logger.info(`[${this.#connectionId}] Received non-publish ACK`, {
+      console.log(`[${this.#connectionId}] Received non-publish ACK`, {
         path: ackPacket.result.path,
         clientMsgId: ackPacket.clientMsgId,
         note: "Subscription ACKs are not tracked in AckManager",

@@ -1,5 +1,3 @@
-import { logger } from "@/internal/logger/consola";
-
 import type { ISubscriptionManager, SubscriptionStatus } from "./interfaces";
 
 /**
@@ -13,7 +11,7 @@ export class SubscriptionManager implements ISubscriptionManager {
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
-    logger.info(`[${this.#connectionId}] SubscriptionManager created`);
+    console.log(`[${this.#connectionId}] SubscriptionManager created`);
   }
 
   // Getters
@@ -36,12 +34,12 @@ export class SubscriptionManager implements ISubscriptionManager {
   }
 
   subscribe(topic: string): boolean {
-    logger.info(`[${this.#connectionId}] Subscribe to topic`, { topic });
+    console.log(`[${this.#connectionId}] Subscribe to topic`, { topic });
 
     // Validate topic
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      logger.error(`[${this.#connectionId}] ${error}`, { topic });
+      console.error(`[${this.#connectionId}] ${error}`, { topic });
       throw new Error(error);
     }
 
@@ -51,14 +49,14 @@ export class SubscriptionManager implements ISubscriptionManager {
 
     // Check if the topic is already subscribed
     if (this.#subs.has(topic)) {
-      logger.info(`[${this.#connectionId}] Topic already subscribed`, {
+      console.log(`[${this.#connectionId}] Topic already subscribed`, {
         topic,
       });
       return false; // already subscribed
     }
 
     this.#subs.add(topic);
-    logger.info(`[${this.#connectionId}] Topic added to subscriptions`, {
+    console.log(`[${this.#connectionId}] Topic added to subscriptions`, {
       topic,
       totalSubs: this.#subs.size,
     });
@@ -67,18 +65,18 @@ export class SubscriptionManager implements ISubscriptionManager {
   }
 
   unsubscribe(topic: string): boolean {
-    logger.info(`[${this.#connectionId}] Unsubscribe from topic`, { topic });
+    console.log(`[${this.#connectionId}] Unsubscribe from topic`, { topic });
 
     // Validate topic
     if (!topic || typeof topic !== "string" || topic.trim().length === 0) {
       const error = "Invalid topic: must be a non-empty string";
-      logger.error(`[${this.#connectionId}] ${error}`, { topic });
+      console.error(`[${this.#connectionId}] ${error}`, { topic });
       throw new Error(error);
     }
 
     // Check if the topic is already unsubscribed
     if (!this.#subs.has(topic)) {
-      logger.info(`[${this.#connectionId}] Topic already unsubscribed`, {
+      console.log(`[${this.#connectionId}] Topic already unsubscribed`, {
         topic,
       });
       return false; // already unsubscribed
@@ -89,7 +87,7 @@ export class SubscriptionManager implements ISubscriptionManager {
     this.#subscribedTopics.delete(topic); // Remove from subscribed
 
     this.#subs.delete(topic);
-    logger.info(`[${this.#connectionId}] Topic removed from subscriptions`, {
+    console.log(`[${this.#connectionId}] Topic removed from subscriptions`, {
       topic,
       totalSubs: this.#subs.size,
     });
@@ -117,7 +115,7 @@ export class SubscriptionManager implements ISubscriptionManager {
   }
 
   clear(): void {
-    logger.info(`[${this.#connectionId}] Clearing all subscriptions`);
+    console.log(`[${this.#connectionId}] Clearing all subscriptions`);
     this.#subs.clear();
     this.#subscribedTopics.clear();
     this.#unsubscribedTopics.clear();
@@ -152,7 +150,7 @@ export class SubscriptionManager implements ISubscriptionManager {
    * Update subscription status based on server confirmation
    */
   confirmSubscription(topic: string): void {
-    logger.info(`[${this.#connectionId}] Confirming subscription`, { topic });
+    console.log(`[${this.#connectionId}] Confirming subscription`, { topic });
     this.#subscribedTopics.add(topic);
     this.#unsubscribedTopics.delete(topic);
   }
@@ -161,7 +159,7 @@ export class SubscriptionManager implements ISubscriptionManager {
    * Update subscription status based on server confirmation
    */
   confirmUnsubscription(topic: string): void {
-    logger.info(`[${this.#connectionId}] Confirming unsubscription`, { topic });
+    console.log(`[${this.#connectionId}] Confirming unsubscription`, { topic });
     this.#unsubscribedTopics.add(topic);
     this.#subscribedTopics.delete(topic);
     this.#subs.delete(topic);

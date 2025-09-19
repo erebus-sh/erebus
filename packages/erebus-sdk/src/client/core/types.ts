@@ -1,7 +1,5 @@
 import type { AckPacketType } from "../../../../schemas/packetEnvelope";
 
-import { logger } from "@/internal/logger/consola";
-
 export type ErebusOptions = {
   wsUrl: string; // wss://...
   tokenProvider: () => Promise<string> | string; // calls EREBUS_GRANT_URL
@@ -113,7 +111,7 @@ export type PendingSubscription = {
 };
 
 export function logTypeInfo(label: string, value: unknown): void {
-  logger.info("type info", { label, valueType: typeof value });
+  console.log("type info", { label, valueType: typeof value });
 }
 
 export type Presence = {

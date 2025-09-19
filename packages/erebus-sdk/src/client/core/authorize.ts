@@ -1,4 +1,3 @@
-import { logger } from "@/internal/logger/consola";
 import { createRpcClient } from "@/server/rpc";
 
 /**
@@ -8,9 +7,9 @@ export class Authorize {
   private client: ReturnType<typeof createRpcClient>;
 
   constructor(baseUrl: string) {
-    logger.info("[AUTHORIZE] Constructor called with baseUrl:", baseUrl);
+    console.log("[AUTHORIZE] Constructor called with baseUrl:", baseUrl);
     this.client = createRpcClient(baseUrl);
-    logger.info("[AUTHORIZE] RPC client created successfully");
+    console.log("[AUTHORIZE] RPC client created successfully");
   }
 
   /**
@@ -18,9 +17,9 @@ export class Authorize {
    * @returns The grant JWT token
    */
   async generateToken(channel: string): Promise<string> {
-    logger.info("[AUTHORIZE] generateToken called with channel:", channel);
+    console.log("[AUTHORIZE] generateToken called with channel:", channel);
     try {
-      logger.info("[AUTHORIZE] Making POST request to generate-token endpoint");
+      console.log("[AUTHORIZE] Making POST request to generate-token endpoint");
       const response = await this.client["api"]["erebus"]["pubsub"][
         "grant"
       ].$post({
@@ -30,7 +29,7 @@ export class Authorize {
       });
 
       if (!response.ok) {
-        logger.error(
+        console.error(
           `[AUTHORIZE] generateToken failed with status: ${response.status} ${response.statusText}`,
         );
         throw new Error(
@@ -39,10 +38,10 @@ export class Authorize {
       }
 
       const data = await response.json();
-      logger.info("[AUTHORIZE] generateToken successful, token generated");
+      console.log("[AUTHORIZE] generateToken successful, token generated");
       return data.grant_jwt;
     } catch (error) {
-      logger.error(
+      console.error(
         `[AUTHORIZE] generateToken error: ${error instanceof Error ? error.message : "Unknown error"}`,
         {
           error: error instanceof Error ? error.message : "Unknown error",

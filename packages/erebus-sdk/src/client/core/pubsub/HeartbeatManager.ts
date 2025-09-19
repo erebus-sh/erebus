@@ -1,5 +1,3 @@
-import { logger } from "@/internal/logger/consola";
-
 import type { IHeartbeatManager, Logger } from "./interfaces";
 
 /**
@@ -22,7 +20,7 @@ export class HeartbeatManager implements IHeartbeatManager {
     this.#intervalMs = intervalMs;
     this.#sendHeartbeat = sendHeartbeat;
     this.#log = log;
-    logger.info(`[${this.#connectionId}] HeartbeatManager created`, {
+    console.log(`[${this.#connectionId}] HeartbeatManager created`, {
       intervalMs,
     });
   }
@@ -32,7 +30,7 @@ export class HeartbeatManager implements IHeartbeatManager {
   }
 
   start(): void {
-    logger.info(`[${this.#connectionId}] Starting heartbeat`, {
+    console.log(`[${this.#connectionId}] Starting heartbeat`, {
       intervalMs: this.#intervalMs,
     });
 
@@ -46,10 +44,10 @@ export class HeartbeatManager implements IHeartbeatManager {
          * it gets an auto response `pong` from the cloudflare gateway if it's still alive
          */
         this.#log("info", "sending heartbeat ping");
-        logger.info(`[${this.#connectionId}] Sending heartbeat ping`);
+        console.log(`[${this.#connectionId}] Sending heartbeat ping`);
         this.#sendHeartbeat();
       } catch (error) {
-        logger.error(`[${this.#connectionId}] Error sending heartbeat`, {
+        console.error(`[${this.#connectionId}] Error sending heartbeat`, {
           error,
         });
         // The error will be handled by the caller (typically the connection manager)
@@ -57,16 +55,16 @@ export class HeartbeatManager implements IHeartbeatManager {
       }
     }, this.#intervalMs);
 
-    logger.info(`[${this.#connectionId}] Heartbeat started successfully`);
+    console.log(`[${this.#connectionId}] Heartbeat started successfully`);
   }
 
   stop(): void {
     if (this.#intervalId) {
-      logger.info(`[${this.#connectionId}] Stopping heartbeat`);
+      console.log(`[${this.#connectionId}] Stopping heartbeat`);
       clearInterval(this.#intervalId);
       this.#intervalId = undefined;
     } else {
-      logger.debug(`[${this.#connectionId}] No heartbeat to stop`);
+      console.log(`[${this.#connectionId}] No heartbeat to stop`);
     }
   }
 
@@ -74,7 +72,7 @@ export class HeartbeatManager implements IHeartbeatManager {
    * Update the heartbeat interval (requires restart if running)
    */
   setInterval(intervalMs: number): void {
-    logger.info(`[${this.#connectionId}] Updating heartbeat interval`, {
+    console.log(`[${this.#connectionId}] Updating heartbeat interval`, {
       oldInterval: this.#intervalMs,
       newInterval: intervalMs,
     });

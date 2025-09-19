@@ -108,6 +108,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
       client.subscribe(
         topic,
         (msg) => {
+          console.log("[useChannelInternal] Received message", msg);
           // msg.payload contains the payload, so we parse it
           if (!schema[channelName]) {
             throw new ErebusError(

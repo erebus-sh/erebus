@@ -1,5 +1,3 @@
-import { logger } from "@/internal/logger/consola";
-
 import type { Handler } from "./ErebusPubSubClient";
 import type { ConnectionState, SubscriptionStatus } from "./interfaces";
 
@@ -22,7 +20,7 @@ export class StateManager {
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
-    logger.info(`[${this.#connectionId}] StateManager created`);
+    console.log(`[${this.#connectionId}] StateManager created`);
   }
 
   // Connection State Management
@@ -31,7 +29,7 @@ export class StateManager {
   }
 
   setConnectionState(state: ConnectionState): void {
-    logger.info(`[${this.#connectionId}] Connection state changed`, {
+    console.log(`[${this.#connectionId}] Connection state changed`, {
       from: this.#connectionState,
       to: state,
     });
@@ -61,7 +59,7 @@ export class StateManager {
   }
 
   setChannel(channel: string): void {
-    logger.info(`[${this.#connectionId}] Channel set`, { channel });
+    console.log(`[${this.#connectionId}] Channel set`, { channel });
     this.#channel = channel;
     this.#updateActivity();
   }
@@ -94,7 +92,7 @@ export class StateManager {
   }
 
   setSubscriptionStatus(topic: string, status: SubscriptionStatus): void {
-    logger.info(`[${this.#connectionId}] Subscription status updated`, {
+    console.log(`[${this.#connectionId}] Subscription status updated`, {
       topic,
       status,
     });
@@ -140,7 +138,7 @@ export class StateManager {
   }
 
   clearProcessedMessages(): void {
-    logger.info(`[${this.#connectionId}] Clearing processed messages`);
+    console.log(`[${this.#connectionId}] Clearing processed messages`);
     this.#processedMessages.clear();
   }
 
@@ -205,7 +203,7 @@ export class StateManager {
   }
 
   clearPendingSubscriptions(): void {
-    logger.info(`[${this.#connectionId}] Clearing pending subscriptions`);
+    console.log(`[${this.#connectionId}] Clearing pending subscriptions`);
     this.#pendingSubscriptions.clear();
   }
 
@@ -219,13 +217,13 @@ export class StateManager {
   }
 
   setError(error: Error): void {
-    logger.error(`[${this.#connectionId}] Error set`, { error });
+    console.error(`[${this.#connectionId}] Error set`, { error });
     this.#error = error;
     this.#updateActivity();
   }
 
   clearError(): void {
-    logger.info(`[${this.#connectionId}] Error cleared`);
+    console.log(`[${this.#connectionId}] Error cleared`);
     this.#error = null;
     this.#updateActivity();
   }
@@ -292,7 +290,7 @@ export class StateManager {
 
   // Reset and Cleanup
   reset(): void {
-    logger.info(`[${this.#connectionId}] Resetting state manager`);
+    console.log(`[${this.#connectionId}] Resetting state manager`);
     this.#connectionState = "idle";
     this.#channel = null;
     this.#subscriptions.clear();
@@ -306,7 +304,7 @@ export class StateManager {
   }
 
   clear(): void {
-    logger.info(`[${this.#connectionId}] Clearing state manager`);
+    console.log(`[${this.#connectionId}] Clearing state manager`);
     this.#subscriptions.clear();
     this.#processedMessages.clear();
     this.#pendingSubscriptions.clear();

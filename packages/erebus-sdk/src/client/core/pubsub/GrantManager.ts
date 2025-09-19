@@ -1,5 +1,3 @@
-import { logger } from "@/internal/logger/consola";
-
 import type { IGrantManager, TokenProvider } from "./interfaces";
 
 const GRANT_CACHE_KEY = "erebus:grant";
@@ -20,30 +18,30 @@ export class GrantManager implements IGrantManager {
   constructor(connectionId: string, tokenProvider: TokenProvider) {
     this.#connectionId = connectionId;
     this.#tokenProvider = tokenProvider;
-    logger.info(`[${this.#connectionId}] GrantManager created`);
+    console.log(`[${this.#connectionId}] GrantManager created`);
   }
 
   getCachedGrant(): string | undefined {
-    logger.info(`[${this.#connectionId}] Attempting to get cached grant`);
+    console.log(`[${this.#connectionId}] Attempting to get cached grant`);
     try {
       // Only in browser environments
       if (typeof localStorage !== "undefined") {
         const v = localStorage.getItem(GRANT_CACHE_KEY);
         if (v) {
-          logger.info(`[${this.#connectionId}] Cached grant found`, {
+          console.log(`[${this.#connectionId}] Cached grant found`, {
             grantPreview: logSensitiveData(v, "cached_grant"),
           });
         } else {
-          logger.info(`[${this.#connectionId}] No cached grant found`);
+          console.log(`[${this.#connectionId}] No cached grant found`);
         }
         return v ?? undefined;
       } else {
-        logger.info(
+        console.log(
           `[${this.#connectionId}] localStorage not available (non-browser environment)`,
         );
       }
     } catch (error) {
-      logger.warn(`[${this.#connectionId}] Error accessing cached grant`, {
+      console.warn(`[${this.#connectionId}] Error accessing cached grant`, {
         error,
       });
       // ignore storage access errors (Safari ITP, quota, etc.)
@@ -52,39 +50,39 @@ export class GrantManager implements IGrantManager {
   }
 
   setCachedGrant(token: string): void {
-    logger.info(`[${this.#connectionId}] Setting cached grant`, {
+    console.log(`[${this.#connectionId}] Setting cached grant`, {
       grantPreview: logSensitiveData(token, "grant_to_cache"),
     });
     try {
       if (typeof localStorage !== "undefined") {
         localStorage.setItem(GRANT_CACHE_KEY, token);
-        logger.info(`[${this.#connectionId}] Grant cached successfully`);
+        console.log(`[${this.#connectionId}] Grant cached successfully`);
       } else {
-        logger.info(
+        console.log(
           `[${this.#connectionId}] Cannot cache grant - localStorage not available`,
         );
       }
     } catch (error) {
-      logger.warn(`[${this.#connectionId}] Error caching grant`, { error });
+      console.warn(`[${this.#connectionId}] Error caching grant`, { error });
       // ignore
     }
   }
 
   clearCachedGrant(): void {
-    logger.info(`[${this.#connectionId}] Clearing cached grant`);
+    console.log(`[${this.#connectionId}] Clearing cached grant`);
     try {
       if (typeof localStorage !== "undefined") {
         localStorage.removeItem(GRANT_CACHE_KEY);
-        logger.info(
+        console.log(
           `[${this.#connectionId}] Cached grant cleared successfully`,
         );
       } else {
-        logger.info(
+        console.log(
           `[${this.#connectionId}] Cannot clear grant - localStorage not available`,
         );
       }
     } catch (error) {
-      logger.warn(`[${this.#connectionId}] Error clearing cached grant`, {
+      console.warn(`[${this.#connectionId}] Error clearing cached grant`, {
         error,
       });
       // ignore
@@ -92,24 +90,24 @@ export class GrantManager implements IGrantManager {
   }
 
   async getToken(channel: string): Promise<string> {
-    logger.info(`[${this.#connectionId}] Getting token from provider`, {
+    console.log(`[${this.#connectionId}] Getting token from provider`, {
       channel,
     });
     try {
       const token = await this.#tokenProvider(channel);
       if (!token) {
-        logger.error(
+        console.error(
           `[${this.#connectionId}] No token provided by token provider`,
         );
         throw new Error("No token provided");
       }
-      logger.info(`[${this.#connectionId}] Token received`, {
+      console.log(`[${this.#connectionId}] Token received`, {
         tokenPreview: logSensitiveData(token, "token"),
         channel,
       });
       return token;
     } catch (error) {
-      logger.error(
+      console.error(
         `[${this.#connectionId}] Error getting token from provider`,
         { error, channel },
       );
@@ -123,12 +121,12 @@ export class GrantManager implements IGrantManager {
   async getTokenWithCache(channel: string): Promise<string> {
     // Always try to get a fresh token from the provider first
     // The provider will handle its own caching logic (external cache)
-    logger.info(`[${this.#connectionId}] Requesting token from provider`, {
+    console.log(`[${this.#connectionId}] Requesting token from provider`, {
       channel,
     });
     const fresh = await this.getToken(channel);
     if (fresh) {
-      logger.info(`[${this.#connectionId}] Token received from provider`);
+      console.log(`[${this.#connectionId}] Token received from provider`);
       // Cache it internally as well for redundancy
       this.setCachedGrant(fresh);
     }
