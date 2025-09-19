@@ -4,7 +4,7 @@ import { ErebusError } from "../internal/error";
 import {
   type GrantRequest,
   secretKeySchema,
-} from "@repo/schemas/request/grantChannelRequest";
+} from "../../../schemas/request/grantChannelRequest";
 
 export class ErebusService {
   private readonly client: ReturnType<typeof baseClient>;

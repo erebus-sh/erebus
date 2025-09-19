@@ -4,19 +4,59 @@ import type { SchemaMap, Topic } from "../utils/types";
 import { z } from "zod";
 import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { joinAndConnect } from "../utils/helpers";
-import type { PerMessageStatus, PublishOptions } from "../utils/publishStatus";
+import type { PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
-import type { MessageBody } from "@repo/schemas/messageBody";
+import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { Presence } from "@/client/core/types";
 
+/**
+ * Status for sent messages
+ */
+type SentMessageStatus = "sending" | "sent" | "failed";
+
+/**
+ * Discriminated union for messages with proper type safety
+ */
+type ReceivedMessage<T> = Omit<MessageBody, "payload"> & {
+  type: "received";
+  payload: T;
+};
+
+type SentMessage<T> = Omit<MessageBody, "payload"> & {
+  type: "sent";
+  payload: T;
+  localId: string; // Always present for sent messages
+  status: SentMessageStatus;
+  attempts: number;
+  error: ErebusError | null;
+};
+
+type Message<T> = ReceivedMessage<T> | SentMessage<T>;
+/**
+ * Props for the internal useChannel hook.
+ *
+ * @template S - The schema map for all channels.
+ * @template K - The specific topic key within the schema map.
+ * @property channelName - The name of the channel to subscribe to.
+ * @property schema - The schema map for validation.
+ * @property onPresence - Callback invoked when a presence event is received.
+ */
 interface UseChannelInternalProps<S extends SchemaMap, K extends Topic<S>> {
   channelName: K;
   schema: S;
   onPresence: (presence: Presence) => void;
 }
 
+/**
+ * Internal hook to use a channel, used to infer the type of the payload
+ *
+ * @param channelName - The name of the channel to use
+ * @param schema - The schema to use for validation
+ * @param onPresence - The function to call when a presence event is received
+ * @returns
+ */
 export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   channelName,
   schema,
@@ -27,44 +67,34 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   // channelName specifies which schema to use for validation
 
   type PayloadT = z.infer<S[K]>;
-  type Message = Omit<MessageBody, "payload"> & { payload: PayloadT };
-  const [messages, setMessages] = useState<Message[]>([]);
+  type MessageT = Message<PayloadT>;
+
+  // Single array for all messages in chronological order
+  const [messages, setMessages] = useState<MessageT[]>([]);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
 
   /**
-   * Track the status of each published message individually.
-   *
-   * Each message is processed asynchronously and maintains its own state,
-   * including a local ID for reference. This allows us to display and update
-   * the status of each message (e.g., sending, success, failed) independently,
-   * rather than relying on a single global error state.
-   *
-   * We use a Map to store the status of each message by its ID.
-   * When a status changes, we force a re-render to update the UI.
+   * Helper function to update the status of a sent message.
+   * Finds the message in the array and updates its status inline.
    */
-  const statusRef = useRef<Map<string, PerMessageStatus>>(new Map());
-  const [, forceRender] = useState(0); // Used to trigger a re-render when statuses change
-
-  /**
-   * Helper function to update the status of a specific message.
-   * Mutates the status map and triggers a re-render.
-   */
-  const setMsgStatus = (id: string, patch: Partial<PerMessageStatus>) => {
-    const prev = statusRef.current.get(id) ?? {
-      id,
-      status: "idle",
-      attempts: 0,
-      error: null,
-    };
-    statusRef.current.set(id, { ...prev, ...patch });
-    forceRender((x) => x + 1);
+  const updateSentMessageStatus = (
+    localId: string,
+    updates: Partial<
+      Pick<SentMessage<PayloadT>, "status" | "attempts" | "error">
+    >,
+  ) => {
+    setMessages((prev) =>
+      prev.map((msg) => {
+        if (msg.type === "sent" && msg.localId === localId) {
+          return { ...msg, ...updates };
+        }
+        return msg;
+      }),
+    );
   };
-
-  // Expose a read-only snapshot for UI (optional)
-  const getMessageStatus = (id: string) => statusRef.current.get(id);
 
   useEffect(() => {
     (async () => {
@@ -83,11 +113,24 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
               `Schema for channel "${channelName}" is not defined.`,
             );
           }
-          const parsedPayload = schema[channelName].parse(msg.payload);
-          setMessages((prev) => [
-            ...prev,
-            { ...msg, payload: parsedPayload } as Message,
-          ]);
+          const parsedPayload = schema[channelName].parse(
+            msg.payload,
+          ) as PayloadT;
+
+          // Add as received message in chronological order
+          const receivedMessage: ReceivedMessage<PayloadT> = {
+            ...msg,
+            payload: parsedPayload,
+            type: "received",
+          };
+
+          setMessages((prev) => {
+            // Insert in chronological order by sentAt
+            const newMessages = [...prev, receivedMessage];
+            return newMessages.sort(
+              (a, b) => a.sentAt.getTime() - b.sentAt.getTime(),
+            );
+          });
         },
         (ack) => {
           console.log("[useChannelInternal] Subscription ACK", ack);
@@ -161,11 +204,27 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     const maxRetries = opts.maxRetries ?? 2;
     const baseDelay = opts.baseDelayMs ?? 250;
 
-    setMsgStatus(localId, {
-      id: localId,
+    // Create sent message immediately for optimistic UI
+    const sentMessage: SentMessage<PayloadT> = {
+      id: localId, // Use localId as temporary ID
+      topic, // Use the current topic
+      seq: "0", // Will be updated when we get the real message
+      sentAt: new Date(),
+      senderId: "unknown", // Will be updated when we get the real message
+      payload,
+      type: "sent",
+      localId,
       status: "sending",
       attempts: 0,
       error: null,
+    };
+
+    // Add to messages array in chronological order
+    setMessages((prev) => {
+      const newMessages = [...prev, sentMessage];
+      return newMessages.sort(
+        (a, b) => a.sentAt.getTime() - b.sentAt.getTime(),
+      );
     });
 
     let attempts = 0;
@@ -173,7 +232,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     const attemptOnce = () =>
       new Promise<void>((resolve, reject) => {
         attempts += 1;
-        setMsgStatus(localId, { attempts });
+        updateSentMessageStatus(localId, { attempts });
 
         if (opts.withAck) {
           client.publishWithAck({
@@ -181,7 +240,10 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
             messageBody: JSON.stringify(payload),
             onAck: (ack) => {
               if (ack.success) {
-                setMsgStatus(localId, { status: "success", error: null });
+                updateSentMessageStatus(localId, {
+                  status: "sent",
+                  error: null,
+                });
                 resolve();
               } else {
                 const code = ack.error?.code ?? "UNKNOWN";
@@ -193,7 +255,10 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
                     : new ErebusError(
                         "Publish failed: the server could not process your publish request.",
                       );
-                setMsgStatus(localId, { status: "failed", error: err });
+                updateSentMessageStatus(localId, {
+                  status: "failed",
+                  error: err,
+                });
                 reject(err);
               }
             },
@@ -204,6 +269,9 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
             topic,
             messageBody: JSON.stringify(payload),
           });
+          // For fire-and-forget, mark as sent immediately
+          updateSentMessageStatus(localId, { status: "sent" });
+          resolve();
         }
       });
 
@@ -222,23 +290,26 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
           const delay = baseDelay * Math.pow(2, i);
           await new Promise((r) => setTimeout(r, delay));
           // Mark as re-sending for UI clarity
-          setMsgStatus(localId, { status: "sending" });
+          updateSentMessageStatus(localId, { status: "sending" });
         }
       }
     }
 
     // Exhausted retries
-    setMsgStatus(localId, { status: "failed", error: lastErr });
+    updateSentMessageStatus(localId, { status: "failed", error: lastErr });
     return { localId, success: false, attempts, error: lastErr };
   }
 
   return {
     publish, // returns Promise with per-message result
-    messages,
-    // expose status accessors so UI can show per-message chips/spinners
-    getMessageStatus,
-    // you can also expose a snapshot for quick mapping:
-    messageStatuses: statusRef.current,
+    messages, // Chronologically ordered messages with discriminated union
+    // Helper functions for filtering if needed
+    sentMessages: messages.filter(
+      (msg): msg is SentMessage<PayloadT> => msg.type === "sent",
+    ),
+    receivedMessages: messages.filter(
+      (msg): msg is ReceivedMessage<PayloadT> => msg.type === "received",
+    ),
     isError,
     error,
     isSubscribed,

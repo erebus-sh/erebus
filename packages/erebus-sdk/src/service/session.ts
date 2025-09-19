@@ -1,7 +1,7 @@
-import type { Access } from "@repo/schemas/grant";
+import type { Access } from "../../../schemas/grant";
 import { baseClient } from "./baseClient";
 import { ErebusError } from "../internal/error";
-import type { GrantRequest } from "@repo/schemas/request/grantChannelRequest";
+import type { GrantRequest } from "../../../schemas/request/grantChannelRequest";
 import { HTTPError } from "ky";
 
 export class ErebusSession {

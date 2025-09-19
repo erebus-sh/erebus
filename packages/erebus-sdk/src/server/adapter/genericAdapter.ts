@@ -1,6 +1,6 @@
 import { createApp } from "@/server/app";
 import type { ErebusSession } from "@/service/session";
-import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
+import type { FireWebhookSchema } from "../../../../schemas/webhooks/fireWebhook";
 
 export type Authorize = (
   channel: string,
