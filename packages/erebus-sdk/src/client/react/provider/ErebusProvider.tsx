@@ -30,7 +30,9 @@ export function ErebusProvider({
     let cleanedWsBaseUrl = wsBaseUrl;
     if (typeof wsBaseUrl === "string") {
       cleanedWsBaseUrl = wsBaseUrl.replace(/\/+$/, "");
-      if (cleanedWsBaseUrl.match(/\/.+/)) {
+      // Check for path after the port/host (but allow protocol://)
+      const wsUrlParts = cleanedWsBaseUrl.match(/^(wss?):\/\/([^\/]+)(\/.*)?$/);
+      if (wsUrlParts && wsUrlParts[3]) {
         throw new Error(
           "wsBaseUrl must be a base URL without a trailing slash or path. Use e.g. ws://localhost:8787, not ws://localhost:8787/ or ws://localhost:8787/somepath",
         );
@@ -40,7 +42,11 @@ export function ErebusProvider({
     let cleanedAuthBaseUrl = authBaseUrl;
     if (typeof authBaseUrl === "string") {
       cleanedAuthBaseUrl = authBaseUrl.replace(/\/+$/, "");
-      if (cleanedAuthBaseUrl.match(/\/.+/)) {
+      // Check for path after the port/host (but allow protocol://)
+      const httpUrlParts = cleanedAuthBaseUrl.match(
+        /^(https?):\/\/([^\/]+)(\/.*)?$/,
+      );
+      if (httpUrlParts && httpUrlParts[3]) {
         throw new Error(
           "authBaseUrl must be a base URL without a trailing slash or path. Use e.g. http://localhost:3002, not http://localhost:3002/ or http://localhost:3002/somepath",
         );
