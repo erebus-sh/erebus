@@ -98,6 +98,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
 
   useEffect(() => {
     (async () => {
+      let attempts = 0;
       const { success, error } = await joinAndConnect(client, channelName);
       if (!success) {
         console.log("[useChannelInternal] Join and connect failed", error);
@@ -107,12 +108,16 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
       }
       console.log("[useChannelInternal] Subscribing to topic", topic);
 
-      if (!client.isConnected) {
-        console.log(
-          "[useChannelInternal] Client not connected, subscribing when connected",
-          topic,
-        );
-        return;
+      while (attempts < 3) {
+        if (!client.isConnected) {
+          console.log(
+            "[useChannelInternal] Client not connected, subscribing when connected",
+            topic,
+          );
+          return;
+        }
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+        attempts++;
       }
 
       client.subscribe(
