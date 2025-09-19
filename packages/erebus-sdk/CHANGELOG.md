@@ -1,5 +1,19 @@
 # @erebus-sh/sdk
 
+## 0.0.156
+
+### Patch Changes
+
+- Update the README.md
+- update build config, to remove console and debugger on production build
+
+## 0.0.155
+
+### Patch Changes
+
+- Update the README.md
+- update build config, to remove console and debugger on production build
+
 ## 0.0.154
 
 ### Patch Changes

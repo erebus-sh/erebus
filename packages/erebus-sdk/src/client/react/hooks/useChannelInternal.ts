@@ -4,7 +4,7 @@ import type { SchemaMap, Topic } from "../utils/types";
 import { z } from "zod";
 import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { joinAndConnect } from "../utils/helpers";
 import { genId } from "../utils/id";
 import type { MessageBody } from "../../../../../schemas/messageBody";
@@ -59,6 +59,10 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   const [error, setError] = useState<ErebusError | null>(null);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
+
+  // Use ref to store latest onPresence function to avoid re-subscription loops
+  const onPresenceRef = useRef(onPresence);
+  onPresenceRef.current = onPresence;
 
   // Helper to update sent message status
   const updateSentMessageStatus = useCallback(
@@ -157,8 +161,8 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
         );
 
         // Set up presence listener if callback provided
-        if (onPresence) {
-          client.onPresence(topic, onPresence);
+        if (onPresenceRef.current) {
+          client.onPresence(topic, onPresenceRef.current);
         }
       } catch (err) {
         if (isMounted) {
@@ -184,7 +188,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
         console.error("Error during cleanup:", error);
       }
     };
-  }, [client, topic, channelName, schema, onPresence]);
+  }, [client, topic, channelName, schema]);
 
   const publish = useCallback(
     async (
