@@ -106,6 +106,15 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
         return;
       }
       console.log("[useChannelInternal] Subscribing to topic", topic);
+
+      if (!client.isConnected) {
+        console.log(
+          "[useChannelInternal] Client not connected, subscribing when connected",
+          topic,
+        );
+        return;
+      }
+
       client.subscribe(
         topic,
         (msg) => {
