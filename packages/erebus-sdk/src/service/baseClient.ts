@@ -8,7 +8,7 @@ interface BaseClientOptions {
 
 export const baseClient = ({ base_url }: BaseClientOptions) =>
   ky.create({
-    prefixUrl: base_url ?? "https://api.erebus.sh/v1/",
+    prefixUrl: base_url ?? "https://api.erebus.sh/",
     headers: {
       "content-type": "application/json",
     },

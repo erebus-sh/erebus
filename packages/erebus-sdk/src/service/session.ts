@@ -204,8 +204,11 @@ export class ErebusSession {
         );
       }
       throw new ErebusError(
-        `Failed to get token: ${error instanceof Error ? error.message : "Unknown error"}`,
-        JSON.stringify(error),
+        [
+          `Failed to get token: ${error instanceof Error ? error.message : "Unknown error"}`,
+          `Domain probably wrong, please check if you are using the correct domain.`,
+          JSON.stringify(error),
+        ].join("\n"),
       );
     }
   }
