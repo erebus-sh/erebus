@@ -10,7 +10,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
-    "@erebus-sh/sdk": "0.0.152",
+    "@erebus-sh/sdk": "0.0.154",
     "next": "15.5.3",
     "react": "19.1.0",
     "react-dom": "19.1.0"

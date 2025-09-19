@@ -4,7 +4,7 @@ import type { SchemaMap, Topic } from "../utils/types";
 import { z } from "zod";
 import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { joinAndConnect } from "../utils/helpers";
 import type { PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
@@ -74,6 +74,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
+  const [isConnecting, setIsConnecting] = useState<boolean>(false);
   const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
 
   /**
@@ -96,108 +97,212 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     );
   };
 
-  useEffect(() => {
-    (async () => {
-      let attempts = 0;
-      const { success, error } = await joinAndConnect(client, channelName);
-      if (!success) {
-        console.log("[useChannelInternal] Join and connect failed", error);
-        setIsError(true);
-        setError(error);
-        return;
+  /**
+   * Helper function to insert a message in chronological order without sorting the entire array.
+   * Uses binary search for O(log n) insertion instead of O(n log n) sorting.
+   */
+  const insertMessageInOrder = useCallback(
+    (newMessage: MessageT, messages: MessageT[]): MessageT[] => {
+      if (messages.length === 0) {
+        return [newMessage];
       }
-      console.log("[useChannelInternal] Subscribing to topic", topic);
 
-      while (attempts < 3) {
-        if (!client.isConnected) {
-          console.log(
-            "[useChannelInternal] Client not connected, subscribing when connected",
-            topic,
-          );
+      const newMessageTime = newMessage.sentAt.getTime();
+
+      // Binary search for insertion point
+      let left = 0;
+      let right = messages.length;
+
+      while (left < right) {
+        const mid = Math.floor((left + right) / 2);
+        const midMessage = messages[mid];
+        if (midMessage && midMessage.sentAt.getTime() < newMessageTime) {
+          left = mid + 1;
+        } else {
+          right = mid;
+        }
+      }
+
+      // Insert at the found position
+      const result = [...messages];
+      result.splice(left, 0, newMessage);
+      return result;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupSubscription = async (retryCount = 0) => {
+      try {
+        // Reset error state when attempting to connect
+        setIsError(false);
+        setError(null);
+        setIsConnecting(true);
+
+        const { success, error } = await joinAndConnect(client, channelName);
+        if (!success) {
+          console.log("[useChannelInternal] Join and connect failed", error);
+          if (isMounted) {
+            setIsError(true);
+            setError(error);
+            setIsConnecting(false);
+          }
           return;
         }
-        await new Promise((resolve) => setTimeout(resolve, 1000));
-        attempts++;
-      }
 
-      client.subscribe(
-        topic,
-        (msg) => {
-          console.log("[useChannelInternal] Received message", msg);
-          // msg.payload contains the payload, so we parse it
-          if (!schema[channelName]) {
-            throw new ErebusError(
-              `Schema for channel "${channelName}" is not defined.`,
-            );
+        // Wait for connection with timeout and proper state checking
+        const maxWaitTime = 5000; // 5 seconds max wait
+        const checkInterval = 100; // Check every 100ms
+        let waited = 0;
+
+        while (waited < maxWaitTime && isMounted) {
+          if (client.isConnected) {
+            break;
           }
-          const parsedPayload = schema[channelName].parse(
-            msg.payload,
-          ) as PayloadT;
+          await new Promise((resolve) => setTimeout(resolve, checkInterval));
+          waited += checkInterval;
+        }
 
-          // Add as received message in chronological order
-          const receivedMessage: ReceivedMessage<PayloadT> = {
-            ...msg,
-            payload: parsedPayload,
-            type: "received",
-          };
+        if (!isMounted) {
+          setIsConnecting(false);
+          return;
+        }
 
-          setMessages((prev) => {
-            // Insert in chronological order by sentAt
-            const newMessages = [...prev, receivedMessage];
-            return newMessages.sort(
-              (a, b) => a.sentAt.getTime() - b.sentAt.getTime(),
-            );
-          });
-        },
-        (ack) => {
-          console.log("[useChannelInternal] Subscription ACK", ack);
-          if (!ack.success) {
-            console.log("[useChannelInternal] Subscription ACK failed", ack);
-            setIsError(true);
-            if (ack.error.code === "TIMEOUT") {
-              setError(
-                new ErebusError(
-                  "Subscription failed: the server could not process your request to subscribe to the specified topic due to a timeout.",
-                ),
-              );
-              return;
-            } else {
-              console.log("[useChannelInternal] Subscription ACK failed", ack);
-              setError(
-                new ErebusError(
-                  "Subscription failed: the server could not process your request to subscribe to the specified topic.",
-                ),
+        if (!client.isConnected) {
+          const timeoutError = new ErebusError(
+            "Connection timeout: Unable to establish connection within the expected time.",
+          );
+          setIsError(true);
+          setError(timeoutError);
+          setIsConnecting(false);
+          return;
+        }
+
+        setIsConnecting(false);
+
+        console.log("[useChannelInternal] Subscribing to topic", topic);
+
+        // Subscribe to messages
+        client.subscribe(
+          topic,
+          (msg) => {
+            if (!isMounted) return;
+
+            console.log("[useChannelInternal] Received message", msg);
+
+            // Validate schema exists
+            if (!schema[channelName]) {
+              console.error(
+                `Schema for channel "${channelName}" is not defined.`,
               );
               return;
             }
-          }
-          console.log("[useChannelInternal] Subscription ACK success", ack);
-          setIsSubscribed(true);
-        },
-      );
 
-      client.onPresence(topic, (presence) => {
-        console.log("[useChannelInternal] Received Presence", presence);
-        setPresence((prev) => {
-          /**
-           * Update the presence map by setting the presence for the specific clientId.
-           * This approach allows efficient updates and lookups for individual users,
-           * rather than replacing the entire presence map each time.
-           */
-          return new Map(prev).set(presence.clientId, presence);
+            try {
+              const parsedPayload = schema[channelName]!.parse(
+                msg.payload,
+              ) as PayloadT;
+
+              const receivedMessage: ReceivedMessage<PayloadT> = {
+                ...msg,
+                payload: parsedPayload,
+                type: "received",
+              };
+
+              setMessages((prev) => {
+                // Insert in chronological order efficiently using binary search
+                return insertMessageInOrder(receivedMessage, prev);
+              });
+            } catch (parseError) {
+              console.error(
+                "[useChannelInternal] Failed to parse message payload",
+                parseError,
+              );
+            }
+          },
+          (ack) => {
+            if (!isMounted) return;
+
+            console.log("[useChannelInternal] Subscription ACK", ack);
+
+            if (!ack.success) {
+              console.log("[useChannelInternal] Subscription ACK failed", ack);
+              setIsError(true);
+
+              const errorMessage =
+                ack.error?.code === "TIMEOUT"
+                  ? "Subscription failed: the server could not process your request to subscribe to the specified topic due to a timeout."
+                  : "Subscription failed: the server could not process your request to subscribe to the specified topic.";
+
+              setError(new ErebusError(errorMessage));
+              return;
+            }
+
+            console.log("[useChannelInternal] Subscription ACK success", ack);
+            setIsSubscribed(true);
+          },
+        );
+
+        // Set up presence listener
+        client.onPresence(topic, (presence) => {
+          if (!isMounted) return;
+
+          console.log("[useChannelInternal] Received Presence", presence);
+          setPresence((prev) => {
+            // Update the presence map efficiently
+            return new Map(prev).set(presence.clientId, presence);
+          });
+          onPresence(presence);
         });
-        onPresence(presence);
-      });
-    })();
+      } catch (error) {
+        if (isMounted) {
+          console.error("[useChannelInternal] Setup error", error);
+          setIsConnecting(false);
+
+          // Retry logic for transient errors
+          if (retryCount < 2) {
+            console.log(
+              `[useChannelInternal] Retrying setup (attempt ${retryCount + 1}/3)`,
+            );
+            setTimeout(
+              () => {
+                if (isMounted) {
+                  setupSubscription(retryCount + 1);
+                }
+              },
+              Math.pow(2, retryCount) * 1000,
+            ); // Exponential backoff
+            return;
+          }
+
+          setIsError(true);
+          setError(
+            error instanceof ErebusError
+              ? error
+              : new ErebusError(
+                  "Failed to setup subscription after multiple attempts",
+                ),
+          );
+        }
+      }
+    };
+
+    setupSubscription();
 
     return () => {
+      isMounted = false;
+
       try {
         console.log("[useChannelInternal] Unsubscribing from topic", topic);
         client.unsubscribe(topic);
         setIsSubscribed(false);
-      } catch {}
+      } catch (error) {
+        console.error("[useChannelInternal] Error during cleanup", error);
+      }
     };
-  }, [client, topic]);
+  }, [client, topic, channelName, schema, onPresence]);
 
   async function publish(
     payload: PayloadT,
@@ -237,12 +342,9 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
       error: null,
     };
 
-    // Add to messages array in chronological order
+    // Add to messages array in chronological order using optimized insertion
     setMessages((prev) => {
-      const newMessages = [...prev, sentMessage];
-      return newMessages.sort(
-        (a, b) => a.sentAt.getTime() - b.sentAt.getTime(),
-      );
+      return insertMessageInOrder(sentMessage, prev);
     });
 
     let attempts = 0;
@@ -331,6 +433,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     isError,
     error,
     isSubscribed,
+    isConnecting,
     presence: [...presence.entries()],
   };
 }
