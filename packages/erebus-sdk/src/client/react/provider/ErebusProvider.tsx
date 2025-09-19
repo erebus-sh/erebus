@@ -25,6 +25,18 @@ export function ErebusProvider({
     if (typeof window === "undefined") {
       return createNoopPubSubClient();
     }
+
+    if (typeof wsBaseUrl === "string" && wsBaseUrl.match(/\/.+/)) {
+      throw new Error(
+        "wsBaseUrl must be a base URL without a trailing slash or path. Use e.g. ws://localhost:8787, not ws://localhost:8787/ or ws://localhost:8787/somepath",
+      );
+    }
+    if (typeof authBaseUrl === "string" && authBaseUrl.match(/\/.+/)) {
+      throw new Error(
+        "authBaseUrl must be a base URL without a trailing slash or path. Use e.g. http://localhost:3002, not http://localhost:3002/ or http://localhost:3002/somepath",
+      );
+    }
+
     return ErebusClient.createClient({
       client: ErebusClientState.PubSub,
       authBaseUrl,

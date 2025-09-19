@@ -11,7 +11,8 @@ export const { POST } = createRouteHandler({
     }
 
     const service = new ErebusService({
-      secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
+      secret_api_key: "dv-er-a9ti6g5fnybi2mug3t5mi5o7w27121ehxsy8l6nf5xijxzu4",
+      base_url: "http://localhost:3000",
     });
 
     const session = await service.prepareSession({

@@ -28,7 +28,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ErebusProvider authBaseUrl="http://localhost:3002/">
+        <ErebusProvider
+          authBaseUrl="http://localhost:3002/"
+          wsBaseUrl="ws://localhost:8787/"
+        >
           {children}
         </ErebusProvider>
       </body>
