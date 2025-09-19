@@ -158,6 +158,7 @@ export class ErebusPubSubClient {
     timeoutMs: number = 3000,
   ): void {
     // Debounce it
+    logger.info("subscribe called", { topic, handler, onAck, timeoutMs });
     this.#debounceSubscribe(topic, handler, onAck, timeoutMs);
   }
 

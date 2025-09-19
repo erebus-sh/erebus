@@ -104,6 +104,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
         setError(error);
         return;
       }
+      console.log("[useChannelInternal] Subscribing to topic", topic);
       client.subscribe(
         topic,
         (msg) => {
@@ -175,6 +176,7 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
 
     return () => {
       try {
+        console.log("[useChannelInternal] Unsubscribing from topic", topic);
         client.unsubscribe(topic);
         setIsSubscribed(false);
       } catch {}

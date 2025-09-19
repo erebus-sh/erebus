@@ -44,14 +44,16 @@ export default defineConfig({
   clean: true,
   minify: {
     compress: {
-      dropConsole: true,
-      dropDebugger: true,
+      // TODO: make this configurable
+      // dropConsole: true,
+      // dropDebugger: true,
     },
   },
   treeshake: true,
   plugins: [
     typescript(),
     strip({
+      // TODO: make this configurable
       // Strip specific logger calls in production builds
       // functions: [
       //   "logger.info",
