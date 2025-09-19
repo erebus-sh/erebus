@@ -29,12 +29,34 @@ export class StateManager {
   }
 
   setConnectionState(state: ConnectionState): void {
-    console.log(`[${this.#connectionId}] Connection state changed`, {
-      from: this.#connectionState,
-      to: state,
-    });
-    this.#connectionState = state;
-    this.#updateActivity();
+    if (this.#connectionState !== state) {
+      const previousState = this.#connectionState;
+      console.log(
+        `[${this.#connectionId}] StateManager: Connection state changed`,
+        {
+          from: previousState,
+          to: state,
+        },
+      );
+      this.#connectionState = state;
+      this.#updateActivity();
+
+      // Clear error state when connection is successful
+      if (state === "open" && this.#error) {
+        this.clearError();
+      }
+
+      // Reset reconnection state when connection is successful
+      if (state === "open") {
+        this.setReconnecting(false);
+        this.resetReconnectAttempts();
+      }
+
+      // Set reconnecting state when connection is lost
+      if (state === "closed" && previousState === "open") {
+        this.setReconnecting(true);
+      }
+    }
   }
 
   get isConnected(): boolean {

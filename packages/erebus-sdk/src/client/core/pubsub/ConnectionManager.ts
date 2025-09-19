@@ -34,8 +34,15 @@ export class ConnectionManager implements IConnectionManager {
   #onMessage: OnMessage;
   #log: Logger;
   #debugHexDump: boolean;
+  #onStateChange?: (state: ConnectionState) => void;
+  #onError?: (error: Error) => void;
 
-  constructor(config: ConnectionConfig) {
+  constructor(
+    config: ConnectionConfig & {
+      onStateChange?: (state: ConnectionState) => void;
+      onError?: (error: Error) => void;
+    },
+  ) {
     this.#connectionId = `conn_${Math.random().toString(36).substring(2, 8)}`;
     console.log(`[${this.#connectionId}] ConnectionManager created`, {
       url: config.url,
@@ -55,6 +62,8 @@ export class ConnectionManager implements IConnectionManager {
     this.#log = config.log ?? ((): void => {});
     this.#autoReconnect = config.autoReconnect ?? false;
     this.#debugHexDump = config.debugHexDump ?? false;
+    this.#onStateChange = config.onStateChange;
+    this.#onError = config.onError;
   }
 
   // Getters
@@ -98,6 +107,28 @@ export class ConnectionManager implements IConnectionManager {
     return this.#channel;
   }
 
+  #setState(newState: ConnectionState, error?: Error): void {
+    if (this.#state !== newState) {
+      const oldState = this.#state;
+      this.#state = newState;
+      console.log(`[${this.#connectionId}] Connection state changed`, {
+        from: oldState,
+        to: newState,
+        hasError: !!error,
+      });
+
+      // Notify error callback if error provided
+      if (error && this.#onError) {
+        this.#onError(error);
+      }
+
+      // Notify state change callback
+      if (this.#onStateChange) {
+        this.#onStateChange(newState);
+      }
+    }
+  }
+
   async open(options: OpenOptions): Promise<void> {
     console.log(`[${this.#connectionId}] Opening connection`, {
       timeout: options.timeout,
@@ -122,7 +153,7 @@ export class ConnectionManager implements IConnectionManager {
     }
 
     console.log(`[${this.#connectionId}] Setting state to connecting`);
-    this.#state = "connecting";
+    this.#setState("connecting");
 
     // Store the grant for potential reconnections
     this.#grant = options.grant;
@@ -182,7 +213,7 @@ export class ConnectionManager implements IConnectionManager {
     this.#log("info", `connection close called (url: ${this.#url})`);
 
     // Prevent further operations
-    this.#state = "closed";
+    this.#setState("closed");
     console.log(
       `[${this.#connectionId}] Connection state set to closed (url: ${this.#url})`,
     );
@@ -354,7 +385,7 @@ export class ConnectionManager implements IConnectionManager {
       () => {
         console.log(`[${this.#connectionId}] WebSocket opened successfully`);
         this.#retry = 0;
-        this.#state = "open";
+        this.#setState("open");
         this.#log("info", "ws open");
       },
       { once: true },
@@ -372,17 +403,27 @@ export class ConnectionManager implements IConnectionManager {
       });
 
       if (event.code === (WsErrors.VersionMismatch as number)) {
-        throw new ErebusError(
+        const versionError = new ErebusError(
           `Version mismatch: ${event.reason} current client version: ${VERSION}`,
         );
+        this.#setState("closed", versionError);
+        throw versionError;
       }
+
+      // Create close event error if not a normal closure
+      const closeError =
+        event.code !== 1000
+          ? new Error(
+              `WebSocket closed with code ${event.code}: ${event.reason || "Unknown reason"}`,
+            )
+          : undefined;
 
       // Only attempt reconnect if we're not already closed and auto-reconnect is enabled
       if (this.#state !== "closed" && this.#autoReconnect) {
         this.#reconnect();
       } else {
         // Mark as closed if not auto-reconnecting
-        this.#state = "closed";
+        this.#setState("closed", closeError);
       }
     });
 
@@ -394,6 +435,14 @@ export class ConnectionManager implements IConnectionManager {
         readyState: ws.readyState,
         url: this.#url,
       });
+
+      // Report WebSocket error
+      const wsError = new Error(
+        `WebSocket error: ${e.type || "Unknown error"}`,
+      );
+      if (this.#onError) {
+        this.#onError(wsError);
+      }
     });
   }
 
@@ -482,7 +531,7 @@ export class ConnectionManager implements IConnectionManager {
     }
 
     console.log(`[${this.#connectionId}] Starting reconnect process`);
-    this.#state = "idle"; // Reset to idle to allow reconnection
+    this.#setState("idle"); // Reset to idle to allow reconnection
 
     const bckOff = backoff(this.#retry, 5000);
     this.#log("info", "scheduling reconnect", { retry: this.#retry, bckOff });
@@ -497,7 +546,7 @@ export class ConnectionManager implements IConnectionManager {
       this.open({ grant: this.#grant, timeout: 5000 }).catch(
         (error: unknown) => {
           console.error(`[${this.#connectionId}] Reconnect failed`, { error });
-          this.#state = "closed";
+          this.#setState("closed");
         },
       );
     }, bckOff);

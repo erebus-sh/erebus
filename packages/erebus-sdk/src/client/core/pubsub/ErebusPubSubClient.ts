@@ -71,8 +71,9 @@ export class ErebusPubSubClient {
       onMessage: (m: PacketEnvelope): void => this.#handleMessage(m),
     });
 
-    // Initialize state manager with connection ID and set channel immediately
+    // Initialize state manager with connection ID and set up state synchronization
     this.#stateManager = new StateManager(this.#conn.connectionId);
+    this.#conn.setStateManager(this.#stateManager);
     // Channel will be set via joinChannel
 
     console.log(`[Erebus:${instanceId}] Instance created successfully`, {
@@ -425,11 +426,11 @@ export class ErebusPubSubClient {
 
   // Getters
   get connectionState(): string {
-    return this.#conn.state;
+    return this.#stateManager.connectionState;
   }
 
   get isConnected(): boolean {
-    return this.#conn.isConnected;
+    return this.#stateManager.isConnected;
   }
 
   get channel(): string | null {
@@ -450,6 +451,22 @@ export class ErebusPubSubClient {
 
   get processedMessagesCount(): number {
     return this.#stateManager.processedMessagesCount;
+  }
+
+  get hasError(): boolean {
+    return this.#stateManager.hasError;
+  }
+
+  get error(): Error | null {
+    return this.#stateManager.error;
+  }
+
+  get isReconnecting(): boolean {
+    return this.#stateManager.isReconnecting;
+  }
+
+  get reconnectAttempts(): number {
+    return this.#stateManager.reconnectAttempts;
   }
 
   /**
@@ -538,6 +555,10 @@ export class ErebusPubSubClient {
     subscriptionCount: number;
     pendingSubscriptionsCount: number;
     processedMessagesCount: number;
+    hasError: boolean;
+    error: Error | null;
+    isReconnecting: boolean;
+    reconnectAttempts: number;
     connectionDetails: {
       state: string;
       isConnected: boolean;
@@ -560,6 +581,10 @@ export class ErebusPubSubClient {
       subscriptionCount: this.subscriptionCount,
       pendingSubscriptionsCount: this.pendingSubscriptionsCount,
       processedMessagesCount: this.processedMessagesCount,
+      hasError: this.hasError,
+      error: this.error,
+      isReconnecting: this.isReconnecting,
+      reconnectAttempts: this.reconnectAttempts,
       connectionDetails: {
         state: this.#conn.state,
         isConnected: this.#conn.isConnected,
@@ -579,14 +604,14 @@ export class ErebusPubSubClient {
    * Check if the connection is readable (can receive messages)
    */
   get isReadable(): boolean {
-    return this.#conn.isReadable;
+    return this.#stateManager.isConnected;
   }
 
   /**
    * Check if the connection is writable (can send messages)
    */
   get isWritable(): boolean {
-    return this.#conn.isWritable;
+    return this.#stateManager.isConnected;
   }
 
   #publishInternal(

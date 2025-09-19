@@ -28,6 +28,8 @@ import type {
   SubscriptionStatus,
 } from "./interfaces";
 
+import type { StateManager } from "./StateManager";
+
 // Re-export errors for backward compatibility
 export { BackpressureError, NotConnectedError };
 
@@ -44,6 +46,7 @@ export class PubSubConnection {
   #presenceManager: PresenceManager;
   #ackTimeoutMs = 30000; // 30 seconds timeout for ACKs
   #connectionId: string;
+  #stateManager?: StateManager;
 
   constructor(config: ConnectionConfig) {
     this.#connectionId = `conn_${Math.random().toString(36).slice(2, 8)}`;
@@ -69,8 +72,12 @@ export class PubSubConnection {
       this.#presenceManager,
     );
 
-    // Create connection manager with message processing
-    const connectionConfig: ConnectionConfig = {
+    // Create connection manager with message processing and state change callback
+
+    const connectionConfig: ConnectionConfig & {
+      onStateChange?: (state: ConnectionState) => void;
+      onError?: (error: Error) => void;
+    } = {
       ...config,
       onMessage: (rawMessage: PacketEnvelope & { rawData?: string }): void => {
         // Handle the message processing
@@ -79,6 +86,18 @@ export class PubSubConnection {
         } else {
           // Direct packet handling for already parsed messages
           this.#messageProcessor.handlePacket(rawMessage);
+        }
+      },
+      onStateChange: (state: ConnectionState): void => {
+        // Synchronize state with StateManager if available
+        if (this.#stateManager) {
+          this.#stateManager.setConnectionState(state);
+        }
+      },
+      onError: (error: Error): void => {
+        // Synchronize error with StateManager if available
+        if (this.#stateManager) {
+          this.#stateManager.setError(error);
         }
       },
     };
@@ -430,6 +449,16 @@ export class PubSubConnection {
     this.#connectionManager.setChannel(channel);
     // Clear cached grant when channel changes
     this.#grantManager.clearCachedGrant();
+  }
+
+  /**
+   * Set the StateManager reference for state synchronization
+   * @param stateManager - The StateManager instance to synchronize with
+   */
+  setStateManager(stateManager: import("./StateManager").StateManager): void {
+    this.#stateManager = stateManager;
+    // Immediately sync current state
+    this.#stateManager.setConnectionState(this.#connectionManager.state);
   }
 
   /**
