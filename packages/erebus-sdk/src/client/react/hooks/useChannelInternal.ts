@@ -6,7 +6,6 @@ import { ErebusError } from "@/service";
 import { useTopic } from "../context/TopicContext";
 import { useEffect, useState, useCallback } from "react";
 import { joinAndConnect } from "../utils/helpers";
-import type { PublishOptions } from "../utils/publishStatus";
 import { genId } from "../utils/id";
 import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { Presence } from "@/client/core/types";
@@ -27,35 +26,23 @@ type ReceivedMessage<T> = Omit<MessageBody, "payload"> & {
 type SentMessage<T> = Omit<MessageBody, "payload"> & {
   type: "sent";
   payload: T;
-  localId: string; // Always present for sent messages
+  localId: string;
   status: SentMessageStatus;
-  attempts: number;
   error: ErebusError | null;
 };
 
 type Message<T> = ReceivedMessage<T> | SentMessage<T>;
 /**
  * Props for the internal useChannel hook.
- *
- * @template S - The schema map for all channels.
- * @template K - The specific topic key within the schema map.
- * @property channelName - The name of the channel to subscribe to.
- * @property schema - The schema map for validation.
- * @property onPresence - Callback invoked when a presence event is received.
  */
 interface UseChannelInternalProps<S extends SchemaMap, K extends Topic<S>> {
   channelName: K;
   schema: S;
-  onPresence: (presence: Presence) => void;
+  onPresence?: (presence: Presence) => void;
 }
 
 /**
- * Internal hook to use a channel, used to infer the type of the payload
- *
- * @param channelName - The name of the channel to use
- * @param schema - The schema to use for validation
- * @param onPresence - The function to call when a presence event is received
- * @returns
+ * Simplified internal hook to use a channel
  */
 export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   channelName,
@@ -63,70 +50,29 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   onPresence,
 }: UseChannelInternalProps<S, K>) {
   const { client, topic } = useTopic();
-  // topic comes from TopicProvider (the conversation room)
-  // channelName specifies which schema to use for validation
 
   type PayloadT = z.infer<S[K]>;
   type MessageT = Message<PayloadT>;
 
-  // Single array for all messages in chronological order
   const [messages, setMessages] = useState<MessageT[]>([]);
   const [isError, setIsError] = useState<boolean>(false);
   const [error, setError] = useState<ErebusError | null>(null);
   const [isSubscribed, setIsSubscribed] = useState<boolean>(false);
   const [isConnecting, setIsConnecting] = useState<boolean>(false);
-  const [presence, setPresence] = useState<Map<string, Presence>>(new Map());
 
-  /**
-   * Helper function to update the status of a sent message.
-   * Finds the message in the array and updates its status inline.
-   */
-  const updateSentMessageStatus = (
-    localId: string,
-    updates: Partial<
-      Pick<SentMessage<PayloadT>, "status" | "attempts" | "error">
-    >,
-  ) => {
-    setMessages((prev) =>
-      prev.map((msg) => {
-        if (msg.type === "sent" && msg.localId === localId) {
-          return { ...msg, ...updates };
-        }
-        return msg;
-      }),
-    );
-  };
-
-  /**
-   * Helper function to insert a message in chronological order without sorting the entire array.
-   * Uses binary search for O(log n) insertion instead of O(n log n) sorting.
-   */
-  const insertMessageInOrder = useCallback(
-    (newMessage: MessageT, messages: MessageT[]): MessageT[] => {
-      if (messages.length === 0) {
-        return [newMessage];
-      }
-
-      const newMessageTime = newMessage.sentAt.getTime();
-
-      // Binary search for insertion point
-      let left = 0;
-      let right = messages.length;
-
-      while (left < right) {
-        const mid = Math.floor((left + right) / 2);
-        const midMessage = messages[mid];
-        if (midMessage && midMessage.sentAt.getTime() < newMessageTime) {
-          left = mid + 1;
-        } else {
-          right = mid;
-        }
-      }
-
-      // Insert at the found position
-      const result = [...messages];
-      result.splice(left, 0, newMessage);
-      return result;
+  // Helper to update sent message status
+  const updateSentMessageStatus = useCallback(
+    (
+      localId: string,
+      updates: Partial<Pick<SentMessage<PayloadT>, "status" | "error">>,
+    ) => {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.type === "sent" && msg.localId === localId
+            ? { ...msg, ...updates }
+            : msg,
+        ),
+      );
     },
     [],
   );
@@ -134,16 +80,15 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
   useEffect(() => {
     let isMounted = true;
 
-    const setupSubscription = async (retryCount = 0) => {
+    const setupSubscription = async () => {
       try {
-        // Reset error state when attempting to connect
         setIsError(false);
         setError(null);
         setIsConnecting(true);
 
+        // Connect to client
         const { success, error } = await joinAndConnect(client, channelName);
         if (!success) {
-          console.log("[useChannelInternal] Join and connect failed", error);
           if (isMounted) {
             setIsError(true);
             setError(error);
@@ -152,37 +97,23 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
           return;
         }
 
-        // Wait for connection with timeout and proper state checking
-        const maxWaitTime = 5000; // 5 seconds max wait
-        const checkInterval = 100; // Check every 100ms
-        let waited = 0;
-
-        while (waited < maxWaitTime && isMounted) {
-          if (client.isConnected) {
-            break;
-          }
-          await new Promise((resolve) => setTimeout(resolve, checkInterval));
-          waited += checkInterval;
+        // Wait for connection
+        let attempts = 0;
+        while (attempts < 50 && !client.isConnected && isMounted) {
+          await new Promise((resolve) => setTimeout(resolve, 100));
+          attempts++;
         }
 
-        if (!isMounted) {
-          setIsConnecting(false);
-          return;
-        }
+        if (!isMounted) return;
 
         if (!client.isConnected) {
-          const timeoutError = new ErebusError(
-            "Connection timeout: Unable to establish connection within the expected time.",
-          );
           setIsError(true);
-          setError(timeoutError);
+          setError(new ErebusError("Connection timeout"));
           setIsConnecting(false);
           return;
         }
 
         setIsConnecting(false);
-
-        console.log("[useChannelInternal] Subscribing to topic", topic);
 
         // Subscribe to messages
         client.subscribe(
@@ -190,13 +121,9 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
           (msg) => {
             if (!isMounted) return;
 
-            console.log("[useChannelInternal] Received message", msg);
-
-            // Validate schema exists
+            // Validate schema
             if (!schema[channelName]) {
-              console.error(
-                `Schema for channel "${channelName}" is not defined.`,
-              );
+              console.error(`Schema for channel "${channelName}" not defined`);
               return;
             }
 
@@ -211,79 +138,36 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
                 type: "received",
               };
 
-              setMessages((prev) => {
-                // Insert in chronological order efficiently using binary search
-                return insertMessageInOrder(receivedMessage, prev);
-              });
+              setMessages((prev) => [...prev, receivedMessage]);
             } catch (parseError) {
-              console.error(
-                "[useChannelInternal] Failed to parse message payload",
-                parseError,
-              );
+              console.error("Failed to parse message payload:", parseError);
             }
           },
           (ack) => {
             if (!isMounted) return;
 
-            console.log("[useChannelInternal] Subscription ACK", ack);
-
             if (!ack.success) {
-              console.log("[useChannelInternal] Subscription ACK failed", ack);
               setIsError(true);
-
-              const errorMessage =
-                ack.error?.code === "TIMEOUT"
-                  ? "Subscription failed: the server could not process your request to subscribe to the specified topic due to a timeout."
-                  : "Subscription failed: the server could not process your request to subscribe to the specified topic.";
-
-              setError(new ErebusError(errorMessage));
+              setError(new ErebusError("Subscription failed"));
               return;
             }
 
-            console.log("[useChannelInternal] Subscription ACK success", ack);
             setIsSubscribed(true);
           },
         );
 
-        // Set up presence listener
-        client.onPresence(topic, (presence) => {
-          if (!isMounted) return;
-
-          console.log("[useChannelInternal] Received Presence", presence);
-          setPresence((prev) => {
-            // Update the presence map efficiently
-            return new Map(prev).set(presence.clientId, presence);
-          });
-          onPresence(presence);
-        });
-      } catch (error) {
+        // Set up presence listener if callback provided
+        if (onPresence) {
+          client.onPresence(topic, onPresence);
+        }
+      } catch (err) {
         if (isMounted) {
-          console.error("[useChannelInternal] Setup error", error);
           setIsConnecting(false);
-
-          // Retry logic for transient errors
-          if (retryCount < 2) {
-            console.log(
-              `[useChannelInternal] Retrying setup (attempt ${retryCount + 1}/3)`,
-            );
-            setTimeout(
-              () => {
-                if (isMounted) {
-                  setupSubscription(retryCount + 1);
-                }
-              },
-              Math.pow(2, retryCount) * 1000,
-            ); // Exponential backoff
-            return;
-          }
-
           setIsError(true);
           setError(
-            error instanceof ErebusError
-              ? error
-              : new ErebusError(
-                  "Failed to setup subscription after multiple attempts",
-                ),
+            err instanceof ErebusError
+              ? err
+              : new ErebusError("Failed to setup subscription"),
           );
         }
       }
@@ -293,88 +177,61 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
 
     return () => {
       isMounted = false;
-
       try {
-        console.log("[useChannelInternal] Unsubscribing from topic", topic);
         client.unsubscribe(topic);
         setIsSubscribed(false);
       } catch (error) {
-        console.error("[useChannelInternal] Error during cleanup", error);
+        console.error("Error during cleanup:", error);
       }
     };
   }, [client, topic, channelName, schema, onPresence]);
 
-  async function publish(
-    payload: PayloadT,
-    opts: PublishOptions = {
-      withAck: true,
-    },
-  ): Promise<{
-    localId: string;
-    success: boolean;
-    attempts: number;
-    error: ErebusError | null;
-  }> {
-    // Validate before sending
-    if (!schema[channelName]) {
-      throw new ErebusError(
-        `Schema for channel "${channelName}" is not defined.`,
-      );
-    }
-    schema[channelName].parse(payload);
+  const publish = useCallback(
+    async (
+      payload: PayloadT,
+    ): Promise<{
+      localId: string;
+      success: boolean;
+      error: ErebusError | null;
+    }> => {
+      // Validate payload
+      if (!schema[channelName]) {
+        throw new ErebusError(
+          `Schema for channel "${channelName}" not defined`,
+        );
+      }
+      schema[channelName].parse(payload);
 
-    const localId = genId();
-    const maxRetries = opts.maxRetries ?? 2;
-    const baseDelay = opts.baseDelayMs ?? 250;
+      const localId = genId();
 
-    // Create sent message immediately for optimistic UI
-    const sentMessage: SentMessage<PayloadT> = {
-      id: localId, // Use localId as temporary ID
-      topic, // Use the current topic
-      seq: "0", // Will be updated when we get the real message
-      sentAt: new Date(),
-      senderId: "unknown", // Will be updated when we get the real message
-      payload,
-      type: "sent",
-      localId,
-      status: "sending",
-      attempts: 0,
-      error: null,
-    };
+      // Create optimistic message
+      const sentMessage: SentMessage<PayloadT> = {
+        id: localId,
+        topic,
+        seq: "0",
+        sentAt: new Date(),
+        senderId: "local",
+        payload,
+        type: "sent",
+        localId,
+        status: "sending",
+        error: null,
+      };
 
-    // Add to messages array in chronological order using optimized insertion
-    setMessages((prev) => {
-      return insertMessageInOrder(sentMessage, prev);
-    });
+      // Add optimistic message
+      setMessages((prev) => [...prev, sentMessage]);
 
-    let attempts = 0;
-
-    const attemptOnce = () =>
-      new Promise<void>((resolve, reject) => {
-        attempts += 1;
-        updateSentMessageStatus(localId, { attempts });
-
-        if (opts.withAck) {
+      try {
+        await new Promise<void>((resolve, reject) => {
           client.publishWithAck({
             topic,
             messageBody: JSON.stringify(payload),
             onAck: (ack) => {
               if (ack.success) {
-                updateSentMessageStatus(localId, {
-                  status: "sent",
-                  error: null,
-                });
+                updateSentMessageStatus(localId, { status: "sent" });
                 resolve();
               } else {
-                const code = ack.error?.code ?? "UNKNOWN";
-                const err =
-                  code === "TIMEOUT"
-                    ? new ErebusError(
-                        "Publish failed: the server timed out processing your publish request.",
-                      )
-                    : new ErebusError(
-                        "Publish failed: the server could not process your publish request.",
-                      );
+                const err = new ErebusError("Publish failed");
                 updateSentMessageStatus(localId, {
                   status: "failed",
                   error: err,
@@ -382,48 +239,22 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
                 reject(err);
               }
             },
-            // If your client supports an explicit per-send timeout, pass opts.timeoutMs here
           });
-        } else {
-          client.publish({
-            topic,
-            messageBody: JSON.stringify(payload),
-          });
-          // For fire-and-forget, mark as sent immediately
-          updateSentMessageStatus(localId, { status: "sent" });
-          resolve();
-        }
-      });
+        });
 
-    // Retry with exponential backoff (jitter optional)
-    let lastErr: ErebusError | null = null;
-    for (let i = 0; i <= maxRetries; i++) {
-      try {
-        await attemptOnce();
-        return { localId, success: true, attempts, error: null };
-      } catch (e) {
-        lastErr =
-          e instanceof ErebusError
-            ? e
-            : new ErebusError("Unknown publish error");
-        if (i < maxRetries) {
-          const delay = baseDelay * Math.pow(2, i);
-          await new Promise((r) => setTimeout(r, delay));
-          // Mark as re-sending for UI clarity
-          updateSentMessageStatus(localId, { status: "sending" });
-        }
+        return { localId, success: true, error: null };
+      } catch (err) {
+        const error =
+          err instanceof ErebusError ? err : new ErebusError("Unknown error");
+        return { localId, success: false, error };
       }
-    }
-
-    // Exhausted retries
-    updateSentMessageStatus(localId, { status: "failed", error: lastErr });
-    return { localId, success: false, attempts, error: lastErr };
-  }
+    },
+    [client, topic, channelName, schema, updateSentMessageStatus],
+  );
 
   return {
-    publish, // returns Promise with per-message result
-    messages, // Chronologically ordered messages with discriminated union
-    // Helper functions for filtering if needed
+    publish,
+    messages,
     sentMessages: messages.filter(
       (msg): msg is SentMessage<PayloadT> => msg.type === "sent",
     ),
@@ -434,6 +265,5 @@ export function useChannelInternal<S extends SchemaMap, K extends Topic<S>>({
     error,
     isSubscribed,
     isConnecting,
-    presence: [...presence.entries()],
   };
 }
