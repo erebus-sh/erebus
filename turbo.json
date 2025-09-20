@@ -5,7 +5,15 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "PUBLIC_KEY_JWK",
+        "PRIVATE_KEY_JWK",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN",
+        "WEBHOOK_SECRET",
+        "ACTION_SECRET"
+      ]
     },
     "lint": {
       "dependsOn": ["^lint"]
