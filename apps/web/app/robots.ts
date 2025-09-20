@@ -4,7 +4,7 @@ export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
-      allow: ["/"],
+      allow: ["/", "/pricing", "/legal/privacy", "/legal/terms"],
       disallow: ["/dashboard/", "/api/"],
     },
     sitemap: "https://erebus.sh/sitemap.xml",

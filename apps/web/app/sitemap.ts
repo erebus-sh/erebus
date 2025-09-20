@@ -9,7 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 1,
     },
     {
-      url: "https://erebus.sh/about",
+      url: "https://github.com/erebus-sh/erebus",
       lastModified: new Date(),
       changeFrequency: "weekly",
       priority: 0.8,
