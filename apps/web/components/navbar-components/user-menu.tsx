@@ -1,10 +1,12 @@
+"use client";
+
 import {
   BoltIcon,
-  BookOpenIcon,
-  Layers2Icon,
+  // BookOpenIcon,
+  // Layers2Icon,
   LogOutIcon,
-  PinIcon,
-  UserPenIcon,
+  // PinIcon,
+  // UserPenIcon,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,6 +20,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useEffect, useState } from "react";
+import { api } from "@/convex/_generated/api";
+import { useAction } from "convex/react";
+import { toast } from "sonner";
 
 interface User {
   avatar: string;
@@ -26,6 +33,23 @@ interface User {
 }
 
 export default function UserMenu({ user }: { user: User }) {
+  const { signOut } = useAuthActions();
+  const [customerPortalUrl, setCustomerPortalUrl] = useState<string | null>(
+    null,
+  );
+  const generateCustomerPortalUrl = useAction(
+    api.polar.generateCustomerPortalUrl,
+  );
+  useEffect(() => {
+    (async () => {
+      const result = await generateCustomerPortalUrl();
+      setCustomerPortalUrl(result.url);
+    })();
+
+    // Only run on mount or when slug changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -49,11 +73,19 @@ export default function UserMenu({ user }: { user: User }) {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => {
+              if (customerPortalUrl) {
+                window.open(customerPortalUrl, "_blank");
+              } else {
+                toast.error("Please wait a moment and try again.");
+              }
+            }}
+          >
             <BoltIcon size={16} className="opacity-60" aria-hidden="true" />
-            <span>Option 1</span>
+            <span>Billing Portal</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          {/* <DropdownMenuItem>
             <Layers2Icon size={16} className="opacity-60" aria-hidden="true" />
             <span>Option 2</span>
           </DropdownMenuItem>
@@ -71,11 +103,16 @@ export default function UserMenu({ user }: { user: User }) {
           <DropdownMenuItem>
             <UserPenIcon size={16} className="opacity-60" aria-hidden="true" />
             <span>Option 5</span>
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
-          <LogOutIcon size={16} className="opacity-60" aria-hidden="true" />
+          <LogOutIcon
+            size={16}
+            className="opacity-60"
+            aria-hidden="true"
+            onClick={() => void signOut()}
+          />
           <span>Logout</span>
         </DropdownMenuItem>
       </DropdownMenuContent>

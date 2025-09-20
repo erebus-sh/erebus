@@ -27,7 +27,7 @@ import {
   NavigationMenuItem,
   NavigationMenuLink,
 } from "../ui/navigation-menu";
-import SettingsMenu from "../navbar-components/settings-menu";
+// import SettingsMenu from "../navbar-components/settings-menu";
 import Banner from "../Banner";
 import { useQueryWithState } from "@/utils/query";
 import { CreditCard } from "lucide-react";
@@ -155,7 +155,7 @@ export default function NavbarConsole() {
                 </NavigationMenuList>
               </NavigationMenu>
               {/* Settings */}
-              <SettingsMenu />
+              {/* <SettingsMenu /> */}
             </div>
             {/* Note(#V0ID):Notification I have no point on using this for now
           <NotificationMenu /> */}
