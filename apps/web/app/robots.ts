@@ -7,6 +7,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: ["/", "/pricing", "/legal/privacy", "/legal/terms"],
       disallow: ["/dashboard/", "/api/"],
     },
-    sitemap: "https://erebus.sh/sitemap.xml",
+    sitemap: "https://www.erebus.sh/sitemap.xml",
   };
 }
