@@ -51,15 +51,14 @@ try {
 console.log("✅ Auth server running at http://localhost:3000");
 
 async function main() {
-  const topic = "room1341";
+  const topic = "room1";
   // Join a channel first
   client.joinChannel("chats");
   // Connect
-  client.connect();
-
-  // Wait for 5 seconds, the
-  // TODO: the .connect should be sync, but it's not right now will fix the SDK later
-  await new Promise((r) => setTimeout(r, 6000));
+  await client.connect();
+  // Wait for 5 seconds, to connect and update the state
+  // TODO: the .connect should be sync, but it's not right now, will fix the SDK later
+  await new Promise((r) => setTimeout(r, 5000));
 
   // Subscribe to a channel
   client.subscribe(topic, (msg) => {
@@ -69,17 +68,18 @@ async function main() {
   client.onPresence(topic, (presence) => {
     console.log("📩 Presence:", presence);
   });
-  // TODO: the .subscribe should be sync, but it's not right now will fix the SDK later
-  await new Promise((r) => setTimeout(r, 6000));
+
+  // Wait for 1 seconds, to subscribe and update the state
+  // TODO: the .subscribe and .onPresence should be synced and separated, but it's not right now, will fix the SDK later
+  await new Promise((r) => setTimeout(r, 1000));
 
   // Publish a message
-  await client.publish({
+  await client.publishWithAck({
     topic: topic,
     messageBody: "Hello Erebus 👋",
+    onAck: (ack) => {
+      console.log("✅ Message acknowledged:", ack.ack);
+    },
   });
-
-  // Sleep for 10 second
-  await new Promise((r) => setTimeout(r, 10000));
 }
-
 main().catch(console.error);

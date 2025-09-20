@@ -97,19 +97,31 @@ Refer to the [Channels](/docs/concepts/channels) section for more information.
 // ... Previous code ...
 
 async function main() {
+  const topic = "room1";
   // Join a channel first
-  client.joinChannel("firstChannel");
+  client.joinChannel("chats");
   // Connect
   await client.connect();
-
+  // Wait for 5 seconds, to connect and update the state
+  // TODO: the .connect should be sync, but it's not right now, will fix the SDK later
+  await new Promise((r) => setTimeout(r, 5000));
+  
   // Subscribe to a channel
-  client.subscribe("room-1", (msg) => {
+  client.subscribe(topic, (msg) => {
     console.log("📩 Received:", msg.payload, "from", msg.senderId);
   });
 
+  client.onPresence(topic, (presence) => {
+    console.log("📩 Presence:", presence);
+  });
+
+  // Wait for 1 seconds, to subscribe and update the state
+  // TODO: the .subscribe and .onPresence should be synced and separated, but it's not right now, will fix the SDK later
+  await new Promise((r) => setTimeout(r, 1000));
+
   // Publish a message
   await client.publishWithAck({
-    topic: "hello-world",
+    topic: topic,
     messageBody: "Hello Erebus 👋",
     onAck: (ack) => {
       console.log("✅ Message acknowledged:", ack.ack);
