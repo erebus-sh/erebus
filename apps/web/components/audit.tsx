@@ -9,7 +9,6 @@ import {
   TimelineTitle,
 } from "@/components/ui/timeline";
 import { formatRelativeTime } from "@/utils/timeLanguage";
-import Image from "next/image";
 
 export interface AuditProps {
   id: string;
@@ -38,7 +37,8 @@ export default function Audit({ items }: { items: AuditProps[] }) {
               </span>
             </TimelineTitle>
             <TimelineIndicator className="bg-primary/10 group-data-completed/timeline-item:bg-primary group-data-completed/timeline-item:text-primary-foreground flex size-6 items-center justify-center border-none group-data-[orientation=vertical]/timeline:-left-7">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={item.image}
                 alt={item.title}
                 className="size-6 rounded-full"
