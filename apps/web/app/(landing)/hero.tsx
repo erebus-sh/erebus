@@ -10,6 +10,9 @@ export function Hero({ id }: { id: string }) {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           <div className="sm:text-center md:mx-auto md:max-w-2xl lg:col-span-6 lg:text-left">
+            <span className="block text-xs text-zinc-500 font-black">
+              [Public Beta]
+            </span>
             <h1 className="text-foreground text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               Erebus
               <span className="text-primary block">
