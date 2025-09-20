@@ -1,15 +1,12 @@
-# chat-ts
+This is an example chat app built with TypeScript and the Erebus SDK.
 
-To install dependencies:
+## Getting Started
 
 ```bash
 bun install
-```
-
-To run:
-
-```bash
 bun run index.ts
 ```
 
-This project was created using `bun init` in bun v1.2.21. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## Usage
+
+This app uses the Erebus SDK to connect and use Erebus pub/sub channels.

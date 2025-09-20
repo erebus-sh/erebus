@@ -5,7 +5,7 @@ import Bun from "bun";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:3000", // your auth domain
+  authBaseUrl: "http://localhost:4919", // your auth domain
   wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
 });
 
@@ -39,35 +39,47 @@ const app = createGenericAdapter({
   },
 });
 
-Bun.serve({
-  port: 4919,
-  fetch: app.fetch,
-});
+try {
+  Bun.serve({
+    port: 4919,
+    fetch: app.fetch,
+  });
+} catch (e) {
+  console.log("Auth server already running");
+}
 
 console.log("✅ Auth server running at http://localhost:3000");
 
 async function main() {
+  const topic = "room1341";
   // Join a channel first
-  client.joinChannel("firstChannel");
+  client.joinChannel("chats");
   // Connect
-  await client.connect();
+  client.connect();
+
+  // Wait for 5 seconds, the
+  // TODO: the .connect should be sync, but it's not right now will fix the SDK later
+  await new Promise((r) => setTimeout(r, 6000));
 
   // Subscribe to a channel
-  client.subscribe("room-1", (msg) => {
+  client.subscribe(topic, (msg) => {
     console.log("📩 Received:", msg.payload, "from", msg.senderId);
   });
 
+  client.onPresence(topic, (presence) => {
+    console.log("📩 Presence:", presence);
+  });
+  // TODO: the .subscribe should be sync, but it's not right now will fix the SDK later
+  await new Promise((r) => setTimeout(r, 6000));
+
   // Publish a message
-  await client.publishWithAck({
-    topic: "hello-world",
+  await client.publish({
+    topic: topic,
     messageBody: "Hello Erebus 👋",
-    onAck: (ack) => {
-      console.log("✅ Message acknowledged:", ack.ack);
-    },
   });
 
-  // Sleep for 1 second
-  await new Promise((r) => setTimeout(r, 1000));
+  // Sleep for 10 second
+  await new Promise((r) => setTimeout(r, 10000));
 }
 
 main().catch(console.error);
