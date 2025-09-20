@@ -11,7 +11,7 @@ export default function ChatPage() {
  The hook is fully typed and auto completes based on the schema you defined
  */
   }
-  const { publish, presence, messages, isError, error } = useChannel("chat");
+  const { publish, messages, isError, error } = useChannel("chat");
   const [inputMessage, setInputMessage] = useState("");
 
   const handleSendMessage = async () => {
