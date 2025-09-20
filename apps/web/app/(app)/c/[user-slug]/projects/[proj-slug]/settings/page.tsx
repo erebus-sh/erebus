@@ -100,11 +100,12 @@ export default function SettingsPage() {
       }
 
       setWebhookValidation({ isValid: true, message: "Valid webhook URL" });
-    } catch (error) {
+    } catch (error: unknown) {
       setWebhookValidation({
         isValid: false,
         message: "Invalid URL format",
       });
+      console.error(error);
     }
   };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { JSX, useState } from "react";
 import ProjectLayout from "./components/project-layout";
 import { useNavStackStore } from "@/stores/navigation";
 import { useSidebarStore } from "./store/sidebar";
@@ -22,7 +22,7 @@ export default function ProjectsPage() {
       setMobileMenuOpen={setMobileMenuOpen}
     >
       {["keys", "usage", "dashboard", "audit", "settings"].map((item) => {
-        let PageComponent: React.ComponentType<any> | undefined;
+        let PageComponent: () => JSX.Element | undefined;
         if (item === "keys") {
           PageComponent = KeysPage;
         } else if (item === "usage") {

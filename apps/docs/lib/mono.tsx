@@ -1,10 +1,7 @@
 import { ImageResponse } from "next/og";
 import type { ReactNode } from "react";
-import fs from "node:fs/promises";
 import type { ImageResponseOptions } from "next/server";
 import path from "node:path";
-import Image from "next/image";
-import Logo from "@/components/logo";
 
 export interface GenerateProps {
   title: ReactNode;
@@ -32,10 +29,10 @@ export async function generateOGImage(
 
   console.log(fontPathRegular, fontPathBold);
 
-  const [fontRegularData, fontBoldData] = await Promise.all([
-    fs.readFile(fontPathRegular).then((b) => b.buffer as ArrayBuffer),
-    fs.readFile(fontPathBold).then((b) => b.buffer as ArrayBuffer),
-  ]);
+  // const [fontRegularData, fontBoldData] = await Promise.all([
+  //   fs.readFile(fontPathRegular).then((b) => b.buffer as ArrayBuffer),
+  //   fs.readFile(fontPathBold).then((b) => b.buffer as ArrayBuffer),
+  // ]);
 
   return new ImageResponse(
     generate({

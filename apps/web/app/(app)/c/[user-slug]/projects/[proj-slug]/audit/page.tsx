@@ -21,7 +21,12 @@ export default function AuditPage() {
     projectSlug: projectSlug,
   });
 
-  if (isError && !(error as any)?.message?.includes("No audit logs found")) {
+  if (
+    isError &&
+    !(error as unknown as { message: string })?.message?.includes(
+      "No audit logs found",
+    )
+  ) {
     return (
       <SidesLayout>
         <div className="mb-8">

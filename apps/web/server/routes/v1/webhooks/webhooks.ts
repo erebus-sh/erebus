@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { validator } from "hono/validator";
 
 import { UsageEventSchema } from "@repo/schemas/webhooks/usageRequest";
-import { fetchAction, fetchMutation } from "convex/nextjs";
+import { fetchAction } from "convex/nextjs";
 import { api } from "@/convex/_generated/api";
 import { verifyHmac } from "@repo/shared/utils/hmac";
 import { Id } from "@/convex/_generated/dataModel";
