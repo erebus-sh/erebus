@@ -49,10 +49,10 @@ const footerLinks = {
     { label: "Features", href: "#features" },
     { label: "Pricing", href: "#pricing" },
     { label: "Documentation", href: process.env.NEXT_PUBLIC_DOCS_URL || "#" },
-    {
-      label: "Docs Reference",
-      href: `${process.env.NEXT_PUBLIC_DOCS_URL}` || "#",
-    },
+    // {
+    //   label: "Docs Reference",
+    //   href: `${process.env.NEXT_PUBLIC_DOCS_URL}` || "#",
+    // },
   ] as FooterLink[],
   resources: [
     {
