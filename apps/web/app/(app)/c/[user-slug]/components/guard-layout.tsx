@@ -7,18 +7,14 @@ import { Reason } from "@/app/enums/reason";
 interface GuardLayoutProps {
   children: React.ReactNode;
   params: Promise<{ "user-slug": string } & Record<string, string>>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default async function GuardLayout({
   children,
   params,
-  searchParams,
 }: GuardLayoutProps) {
   const resolvedParams = await params;
-  const resolvedSearchParams = await searchParams;
   console.log("params", resolvedParams);
-  console.log("searchParams", resolvedSearchParams);
 
   const slug = resolvedParams["user-slug"];
   // Check if we're in a project route by looking for proj-slug in params

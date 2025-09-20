@@ -13,5 +13,20 @@ export const UsageEventSchema = z.object({
   }),
 });
 
+export const UsageEventSchemaArray = z.array(
+  z.object({
+    event: z.enum([
+      "websocket.connect",
+      "websocket.message",
+      "websocket.subscribe",
+    ]),
+    data: z.object({
+      projectId: z.string(),
+      keyId: z.string(),
+      payloadLength: z.number(),
+    }),
+  }),
+);
+
 export type UsagePayload = z.infer<typeof UsageEventSchema>;
 export type UsageEvent = z.infer<typeof UsageEventSchema>;
