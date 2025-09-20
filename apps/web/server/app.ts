@@ -2,7 +2,6 @@ import { Hono } from "hono";
 import { helperRoute } from "./routes/helper";
 import { v1Route } from "./routes/v1";
 import { nanoid } from "nanoid";
-import { youRoute } from "./routes/well-unknown";
 
 interface Bindings {
   RequestId: string;
@@ -25,7 +24,6 @@ app.use("*", async (c, next) => {
 const routes = app
   .route("/helper", helperRoute)
   .route("/v1", v1Route)
-  .route("/.complex", youRoute)
   .get("/health", (c) => {
     const id = c.get("RequestId");
     return c.json({ ok: true, RequestId: id }, 200);
