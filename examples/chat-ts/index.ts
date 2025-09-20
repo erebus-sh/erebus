@@ -9,16 +9,18 @@ const client = ErebusClient.createClient({
   wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
 });
 
-const SECRET_API_KEY = process.env.SECRET_API_KEY || "demo-secret-key"; // replace with your own secret_api_key from the platform
+const SECRET_API_KEY =
+  process.env.SECRET_API_KEY ||
+  "dv-er-a9ti6g5fnybi2mug3t5mi5o7w27121ehxsy8l6nf5xijxzu4"; // replace with your own secret_api_key from the platform
 
 const app = createGenericAdapter({
   authorize: async (channel, ctx) => {
     // Normally you'd check cookies, headers, or DB here
-    const userId = "demo-user";
+    const userId = Math.random().toString(36).substring(2, 15);
 
     const service = new ErebusService({
       secret_api_key: SECRET_API_KEY,
-      base_url: "http://localhost:3000", // where your service is running
+      base_url: "http://localhost:3000", // (optional if you self-host locally) where your Erebus service is running
     });
 
     // Create a session for this user
@@ -63,6 +65,9 @@ async function main() {
       console.log("✅ Message acknowledged:", ack.ack);
     },
   });
+
+  // Sleep for 1 second
+  await new Promise((r) => setTimeout(r, 1000));
 }
 
 main().catch(console.error);
