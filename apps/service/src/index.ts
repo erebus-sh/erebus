@@ -243,7 +243,7 @@ app.notFound((c) => {
   console.log(
     `[${requestId}] Endpoint not found: ${c.req.method} ${c.req.path}`,
   );
-  return c.json({ error: "Endpoint not found" }, 404);
+  return c.json({ error: "Endpoint not found, gateway.erebus.sh" }, 404);
 });
 
 // Error handler
