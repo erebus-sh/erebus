@@ -265,7 +265,14 @@ export class StateManager {
     return new Promise((resolve, reject) => {
       const checkStatus: () => void = () => {
         const status = this.getSubscriptionStatus(topic);
+        console.log(
+          `[${this.#connectionId}] Subscription status for topic: ${topic}`,
+          { status },
+        );
         if (status === "subscribed") {
+          console.log(
+            `[${this.#connectionId}] Subscription status for topic: ${topic} is subscribed, resolving promise`,
+          );
           resolve();
           return;
         }
@@ -279,13 +286,6 @@ export class StateManager {
         setTimeout(checkStatus, 50);
       };
 
-      // Set timeout for subscription readiness
-      setTimeout(() => {
-        if (this.getSubscriptionStatus(topic) !== "subscribed") {
-          reject(new Error(`Subscription timeout for topic: ${topic}`));
-        }
-      }, 10000); // 10 second timeout
-
       checkStatus();
     });
   }
@@ -297,18 +297,24 @@ export class StateManager {
     topic: string,
     timeoutMs: number = 10000,
   ): Promise<void> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
     try {
-      await Promise.race([
-        this.getSubscriptionReadyPromise(topic),
-        new Promise((_, reject) =>
-          setTimeout(() => {
-            console.error(
-              `[${this.#connectionId}] Subscription timeout for topic: ${topic}`,
-            );
-            reject(new Error(`Subscription timeout for topic: ${topic}`));
-          }, timeoutMs),
-        ),
-      ]);
+      const readyPromise = this.getSubscriptionReadyPromise(topic).then(() => {
+        settled = true;
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          if (settled) return; // avoid logging/rejecting after resolution
+          console.error(
+            `[${this.#connectionId}][waitForSubscriptionReady] Subscription timeout for topic: ${topic}`,
+          );
+          reject(new Error(`Subscription timeout for topic: ${topic}`));
+        }, timeoutMs);
+      });
+
+      await Promise.race([readyPromise, timeoutPromise]);
     } catch (error) {
       console.error(
         `[${this.#connectionId}] Failed to wait for subscription ready`,
@@ -318,6 +324,9 @@ export class StateManager {
         },
       );
       throw error;
+    } finally {
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
     }
   }
 

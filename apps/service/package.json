@@ -6,7 +6,7 @@
     "@cloudflare/workers-types": "^4.20250819.0",
     "prettier": "3.6.2",
     "typescript": "^5.5.2",
-    "wrangler": "^4.37.0"
+    "wrangler": "^4.40.0"
   },
   "private": true,
   "scripts": {

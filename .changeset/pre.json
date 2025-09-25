@@ -1,0 +1,13 @@
+{
+  "mode": "pre",
+  "tag": "beta",
+  "initialVersions": {
+    "docs": "0.0.0",
+    "@repo/service": "0.0.0",
+    "@repo/web": "0.1.0",
+    "@erebus-sh/sdk": "0.0.157",
+    "@repo/eslint-config": "0.0.0",
+    "@repo/typescript-config": "0.0.0"
+  },
+  "changesets": []
+}

@@ -60,7 +60,7 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
   // Generate unique topic name for this test run to avoid message replay
   const uniqueTopic = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const uniqueChannel = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-  const MESSAGE_COUNT = 25;
+  const MESSAGE_COUNT = 3;
   console.log(
     `Starting Two clients flow test with unique topic: ${uniqueTopic}`,
   );

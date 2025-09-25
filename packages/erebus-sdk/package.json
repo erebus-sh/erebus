@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.157",
+  "version": "0.0.164",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -27,7 +27,8 @@
     "test:logger:dev": "NODE_ENV=development bun run scripts/test-logger.ts",
     "test:logger:prod": "NODE_ENV=production bun run scripts/test-logger.ts",
     "verify:production": "bun run scripts/verify-production-build.ts",
-    "knip": "knip"
+    "knip": "knip",
+    "version:beta": ""
   },
   "devDependencies": {
     "@eslint/compat": "^1.3.2",
@@ -57,7 +58,6 @@
     "eslint-plugin-import": "^2.32.0",
     "hono": "^4.9.1",
     "ky": "^1.8.2",
-    "lodash": "^4.17.21",
     "nanoid": "^5.1.5",
     "typescript-eslint": "^8.44.1",
     "zod": "^4.0.17"

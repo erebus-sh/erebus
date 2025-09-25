@@ -51,28 +51,28 @@ try {
 console.log("✅ Auth server running at http://localhost:3000");
 
 async function main() {
-  const topic = "room1";
+  const topic = "test_123";
   // Join a channel first
   client.joinChannel("chats");
 
   // Connect
-  client.connect();
+  await client.connect();
   console.log("✅ Connected successfully!");
 
   // Subscribe to a channel
-  client.subscribe(topic, (msg) => {
+  await client.subscribe(topic, (msg) => {
     console.log("📩 Received:", msg.payload, "from", msg.senderId);
   });
   console.log("✅ Subscribed successfully!");
 
   // Register presence handler
-  client.onPresence(topic, (presence) => {
+  await client.onPresence(topic, (presence) => {
     console.log("📩 Presence:", presence);
   });
   console.log("✅ Presence handler registered!");
 
   // Publish a message
-  client.publishWithAck({
+  await client.publishWithAck({
     topic: topic,
     messageBody: "Hello Erebus 👋",
     onAck: (ack) => {

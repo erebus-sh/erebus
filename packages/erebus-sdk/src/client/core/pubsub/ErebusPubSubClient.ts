@@ -1,5 +1,4 @@
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
-import { debounce } from "lodash";
 
 import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { AckCallback, SubscriptionCallback } from "../types";
@@ -30,40 +29,10 @@ export class ErebusPubSubClient {
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
-  #debounceOpenConnection: (timeout?: number) => void;
-  #debounceSubscribe: (
-    topic: string,
-    handler: Handler,
-    onAck?: SubscriptionCallback,
-    timeoutMs?: number,
-  ) => void;
-  #debouncePresence: (topic: string, handler: PresenceHandler) => void;
 
   constructor(opts: ErebusOptions) {
     this.#debug = opts.debug ?? false;
     const instanceId = Math.random().toString(36).substring(2, 8);
-    this.#debounceOpenConnection = debounce((timeout?: number) => {
-      void this.#conn.open(timeout);
-    }, 1000);
-
-    this.#debounceSubscribe = debounce(
-      (
-        topic: string,
-        handler: Handler,
-        onAck?: SubscriptionCallback,
-        timeoutMs?: number,
-      ) => {
-        void this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
-      },
-      1000,
-    );
-
-    this.#debouncePresence = debounce(
-      (topic: string, handler: PresenceHandler) => {
-        void this.registerPresenceHandler(topic, handler);
-      },
-      1000,
-    );
 
     console.log(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
@@ -118,49 +87,86 @@ export class ErebusPubSubClient {
     this.#stateManager.clearProcessedMessages();
 
     // Open connection (debounced)
-    this.#debounceOpenConnection(timeout);
+    await this.#conn.open(timeout);
 
     // Wait for connection to be ready
     return new Promise((resolve, reject) => {
-      const cleanup = (): void => {
-        if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
-        if (checkIntervalId) clearInterval(checkIntervalId);
-      };
+      console.log(
+        "[Erebus.connect] Promise started: waiting for connection to be ready",
+      );
+      // Set timeout
+      const connectionTimeoutId = setTimeout(() => {
+        console.log("[Erebus.connect] Connection timeout reached");
+        cleanup();
+        reject(new Error(`Connection timeout after ${timeout || 30000}ms`));
+      }, timeout || 30000);
 
+      // Declare interval ID ahead of time to avoid temporal dead zone in cleanup()
+      let checkIntervalId: ReturnType<typeof setInterval> | null = null;
+
+      // Check connection state
       const checkConnection = (): void => {
+        console.log("[Erebus.connect] Checking connection state", {
+          isConnected: this.#stateManager.isConnected,
+          hasError: this.#stateManager.hasError,
+        });
         if (this.#stateManager.isConnected) {
+          console.log(
+            "[Erebus.connect] Connection established, resolving promise",
+          );
           cleanup();
           resolve();
           return;
         }
 
         if (this.#stateManager.hasError) {
+          console.log(
+            "[Erebus.connect] Connection error detected, rejecting promise",
+            {
+              error: this.#stateManager.error,
+            },
+          );
           cleanup();
           reject(this.#stateManager.error || new Error("Connection failed"));
           return;
         }
       };
 
-      // Set timeout
-      const connectionTimeoutId = setTimeout(() => {
-        cleanup();
-        reject(new Error(`Connection timeout after ${timeout || 30000}ms`));
-      }, timeout || 30000);
-
       // Check immediately and then every 100ms
+      console.log("[Erebus.connect] Initial connection check");
       checkConnection();
-      const checkIntervalId = setInterval(checkConnection, 100);
+      checkIntervalId = setInterval(() => {
+        console.log("[Erebus.connect] Periodic connection check");
+        checkConnection();
+      }, 100);
+
+      // Cleanup function
+      function cleanup(): void {
+        console.log("[Erebus.connect] Cleaning up connection wait resources");
+        if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
+        if (checkIntervalId) clearInterval(checkIntervalId);
+      }
 
       // Also resolve when connection state changes to open
       const originalSetConnectionState = this.#stateManager.setConnectionState; // eslint-disable-line @typescript-eslint/unbound-method
       this.#stateManager.setConnectionState = (
         state: ConnectionState,
       ): void => {
+        console.log("[Erebus.connect] setConnectionState called", { state });
         originalSetConnectionState.call(this.#stateManager, state);
         if (state === "open") {
+          console.log(
+            "[Erebus.connect] Connection state is open, resolving promise",
+          );
           cleanup();
           resolve();
         } else if (state === "error") {
+          console.log(
+            "[Erebus.connect] Connection state is error, rejecting promise",
+            {
+              error: this.#stateManager.error,
+            },
+          );
           cleanup();
           reject(this.#stateManager.error || new Error("Connection failed"));
         }
@@ -169,6 +175,7 @@ export class ErebusPubSubClient {
       // Also listen for connection errors directly
       const originalSetError = this.#stateManager.setError; // eslint-disable-line @typescript-eslint/unbound-method
       this.#stateManager.setError = (error: Error): void => {
+        console.log("[Erebus.connect] setError called", { error });
         originalSetError.call(this.#stateManager, error);
         cleanup();
         reject(error);
@@ -224,7 +231,7 @@ export class ErebusPubSubClient {
   ): Promise<void> {
     // Debounce it
     console.log("subscribe called", { topic, handler, onAck, timeoutMs });
-    this.#debounceSubscribe(topic, handler, onAck, timeoutMs);
+    this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
     // Return a promise that resolves when subscription is ready
     return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
@@ -381,7 +388,7 @@ export class ErebusPubSubClient {
    * @param topic - The topic to listen for presence updates on
    * @param handler - The callback function to handle presence updates
    */
-  onPresence(topic: string, handler: PresenceHandler): void {
+  async onPresence(topic: string, handler: PresenceHandler): Promise<void> {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] onPresence called`, { topic });
     console.log("Erebus.onPresence() called", { topic });
@@ -403,7 +410,7 @@ export class ErebusPubSubClient {
     }
 
     // Debounce presence handler registration to prevent duplicate calls
-    this.#debouncePresence(topic, handler);
+    await this.registerPresenceHandler(topic, handler);
   }
 
   /**
@@ -609,5 +616,9 @@ export class ErebusPubSubClient {
         }
       }
     }
+  }
+
+  get isConnected(): boolean {
+    return this.#stateManager.isConnected;
   }
 }
