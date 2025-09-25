@@ -28,7 +28,7 @@ const tabs: TabData[] = [
       "",
       "const client = ErebusClient.createClient({",
       "  client: ErebusClientState.PubSub,",
-      '  authBaseUrl: "http://localhost:3000",  // your auth domain',
+      '  authBaseUrl: "http://localhost:4919",  // your auth domain',
       '  wsBaseUrl: "ws://localhost:8787",  // your ws domain (optional if you self-host locally)',
       "});",
       "",
