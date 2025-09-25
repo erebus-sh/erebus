@@ -37,7 +37,7 @@ try {
       console.log("✅ Exited pre mode");
     } else {
       const msg = res.stderr.toString() + res.stdout.toString();
-      if (msg.includes("not in pre mode")) {
+      if (msg.includes("can only be run when")) {
         console.log("ℹ️ Not in pre mode, skipping exit");
       } else {
         console.error("⚠️ Failed to exit pre mode:", msg);
