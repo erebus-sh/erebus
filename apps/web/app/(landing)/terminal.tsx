@@ -6,7 +6,7 @@ import { Highlight, themes } from "prism-react-renderer";
 import { motion, AnimatePresence } from "framer-motion";
 import clsx from "clsx";
 
-type TabType = "cli" | "code";
+type TabType = "cli" | "client" | "server";
 
 interface TabData {
   name: TabType;
@@ -21,21 +21,98 @@ const tabs: TabData[] = [
     content: ["npm install erebus"],
   },
   {
-    name: "code",
-    label: "Code",
+    name: "client",
+    label: "Client",
     content: [
-      "import { Erebus } from '@erebus-sh/sdk';",
+      'import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";',
       "",
-      "const erebus = new Erebus({",
-      "  apiKey: 'your-api-key',",
-      "  region: 'us-east-1'",
+      "const client = ErebusClient.createClient({",
+      "  client: ErebusClientState.PubSub,",
+      '  authBaseUrl: "http://localhost:3000",  // your auth domain',
+      '  wsBaseUrl: "ws://localhost:8787",  // your ws domain (optional if you self-host locally)',
       "});",
       "",
-      "// Example usage",
-      "const result = await erebus.query({",
-      "  collection: 'users',",
-      "  filter: { status: 'active' }",
+      "async function main() {",
+      '  const topic = "room1";',
+      "  // Join a channel first",
+      '  client.joinChannel("chats");',
+      "  // Connect",
+      "  await client.connect();",
+      "  // Wait for 5 seconds, to connect and update the state",
+      "  // TODO: the .connect should be sync, but it's not right now, will fix the SDK later",
+      "  await new Promise((r) => setTimeout(r, 5000));",
+      "  ",
+      "  // Subscribe to a channel",
+      "  client.subscribe(topic, (msg) => {",
+      '    console.log("📩 Received:", msg.payload, "from", msg.senderId);',
+      "  });",
+      "",
+      "  client.onPresence(topic, (presence) => {",
+      '    console.log("📩 Presence:", presence);',
+      "  });",
+      "",
+      "  // Wait for 1 seconds, to subscribe and update the state",
+      "  // TODO: the .subscribe and .onPresence should be synced and separated, but it's not right now, will fix the SDK later",
+      "  await new Promise((r) => setTimeout(r, 1000));",
+      "",
+      "  // Publish a message",
+      "  await client.publishWithAck({",
+      "    topic: topic,",
+      '    messageBody: "Hello Erebus 👋",',
+      "    onAck: (ack) => {",
+      '      console.log("✅ Message acknowledged:", ack.ack);',
+      "    },",
+      "  });",
+      "}",
+      "",
+      "main().catch(console.error);",
+    ],
+  },
+  {
+    name: "server",
+    label: "Server",
+    content: [
+      "// ... Previous code ...",
+      "// Imports go to top of the file ofc",
+      'import { createGenericAdapter } from "@erebus-sh/sdk/server";',
+      'import { Access, ErebusService } from "@erebus-sh/sdk/service";',
+      'import Bun from "bun";',
+      "",
+      'const SECRET_API_KEY = process.env.SECRET_API_KEY || "demo-secret-key"; // replace with your own secret_api_key from the platform',
+      "",
+      "",
+      "const app = createGenericAdapter({",
+      "  authorize: async (channel, ctx) => {",
+      "    // Normally you'd check cookies, headers, or DB here",
+      "    const userId = Math.random().toString(36).substring(2, 15);",
+      "",
+      "    const service = new ErebusService({",
+      "      secret_api_key: SECRET_API_KEY,",
+      '      base_url: "http://localhost:3000", // (optional if you self-host locally) where your Erebus service is running, default is https://api.erebus.sh',
+      "    });",
+      "",
+      "    // Create a session for this user",
+      "    const session = await service.prepareSession({ userId });",
+      "",
+      "    // Join the requested channel",
+      "    session.join(channel);",
+      "",
+      "    // Allow reads + writes",
+      '    session.allow("*", Access.ReadWrite);',
+      "",
+      "    return session;",
+      "  },",
+      "  fireWebhook: async (message) => {",
+      "    // You can handle the webhook message here",
+      "  },",
       "});",
+      "",
+      "Bun.serve({",
+      "  port: 4919,",
+      "  fetch: app.fetch,",
+      "});",
+      "",
+      'console.log("✅ Auth server running at http://localhost:3000");',
     ],
   },
 ];
@@ -73,7 +150,7 @@ export function Terminal() {
       setTerminalStep((prev) =>
         prev < terminalSteps.length - 1 ? prev + 1 : prev,
       );
-    }, 500);
+    }, 50);
 
     return () => clearTimeout(timer);
   }, [terminalStep, terminalSteps.length]);
@@ -87,7 +164,7 @@ export function Terminal() {
   return (
     <AnimatePresence mode="wait">
       <motion.div
-        className="relative w-full min-w-0 overflow-hidden bg-card border border-border font-mono text-sm text-card-foreground shadow-lg ring-1 ring-ring/20 rounded-lg"
+        className="relative w-full min-w-0 max-h-[600px] overflow-hidden bg-card border border-border font-mono text-sm text-card-foreground shadow-lg ring-1 ring-ring/20 rounded-lg"
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
@@ -144,7 +221,7 @@ export function Terminal() {
 
           {/* Expanding Content Container */}
           <motion.div
-            className="overflow-hidden"
+            className="overflow-y-auto overflow-x-hidden"
             animate={{ height: containerHeight }}
             transition={{
               duration: 0.4,
@@ -152,6 +229,7 @@ export function Terminal() {
               type: "spring",
               bounce: 0,
             }}
+            style={{ maxHeight: "500px" }}
           >
             <div ref={contentRef} className="space-y-1">
               {currentTab === "cli" ? (
@@ -174,8 +252,8 @@ export function Terminal() {
                           x: index <= terminalStep ? 0 : -10,
                         }}
                         transition={{
-                          duration: 0.3,
-                          delay: index * 0.1,
+                          duration: 0.1,
+                          delay: index * 0.01,
                           ease: "easeOut",
                         }}
                       >
@@ -185,7 +263,7 @@ export function Terminal() {
                   </motion.div>
                 </AnimatePresence>
               ) : (
-                // Code Tab - Syntax highlighted with line numbers
+                // Client Tab and Server Tab - Syntax highlighted with line numbers
                 <motion.div
                   key={currentTab}
                   initial={{ opacity: 0, y: 10 }}
@@ -224,8 +302,8 @@ export function Terminal() {
                                 x: lineIndex <= terminalStep ? 0 : -10,
                               }}
                               transition={{
-                                duration: 0.3,
-                                delay: lineIndex * 0.05,
+                                duration: 0.08,
+                                delay: lineIndex * 0.005,
                                 ease: "easeOut",
                               }}
                               className="table-row"
