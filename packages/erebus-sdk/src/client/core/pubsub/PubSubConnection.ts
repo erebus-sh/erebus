@@ -230,6 +230,11 @@ export class PubSubConnection {
       return;
     }
 
+    // Update StateManager optimistically
+    if (this.#stateManager) {
+      this.#stateManager.setSubscriptionStatus(topic, "pending");
+    }
+
     if (!this.#connectionManager.isConnected) {
       console.log(
         `[${this.#connectionId}] Connection not open, subscription will be sent when connected`,

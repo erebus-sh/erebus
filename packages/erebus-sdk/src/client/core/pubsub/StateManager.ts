@@ -301,10 +301,12 @@ export class StateManager {
       await Promise.race([
         this.getSubscriptionReadyPromise(topic),
         new Promise((_, reject) =>
-          setTimeout(
-            () => reject(new Error(`Subscription timeout for topic: ${topic}`)),
-            timeoutMs,
-          ),
+          setTimeout(() => {
+            console.error(
+              `[${this.#connectionId}] Subscription timeout for topic: ${topic}`,
+            );
+            reject(new Error(`Subscription timeout for topic: ${topic}`));
+          }, timeoutMs),
         ),
       ]);
     } catch (error) {

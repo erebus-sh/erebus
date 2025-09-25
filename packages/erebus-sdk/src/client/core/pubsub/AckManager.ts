@@ -276,8 +276,15 @@ export class AckManager implements IAckManager {
       pending.callback(response);
 
       // Notify StateManager about subscription confirmation
-      if (response.success && this.#stateManager) {
-        this.#stateManager.setSubscriptionStatus(pending.topic, "subscribed");
+      if (this.#stateManager) {
+        if (response.success) {
+          this.#stateManager.setSubscriptionStatus(pending.topic, "subscribed");
+        } else {
+          this.#stateManager.setSubscriptionStatus(
+            pending.topic,
+            "unsubscribed",
+          );
+        }
       }
     } catch (error) {
       console.error(
@@ -357,6 +364,11 @@ export class AckManager implements IAckManager {
 
     try {
       pending.callback(response);
+
+      // Notify StateManager about subscription failure
+      if (this.#stateManager) {
+        this.#stateManager.setSubscriptionStatus(pending.topic, "unsubscribed");
+      }
     } catch (error) {
       console.error(
         `[${this.#connectionId}] Error in subscription timeout callback`,
@@ -366,6 +378,11 @@ export class AckManager implements IAckManager {
           topic: pending.topic,
         },
       );
+
+      // Notify StateManager about subscription failure even on error
+      if (this.#stateManager) {
+        this.#stateManager.setSubscriptionStatus(pending.topic, "unsubscribed");
+      }
     }
   }
 

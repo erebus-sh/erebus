@@ -220,7 +220,7 @@ export class ErebusPubSubClient {
     topic: string,
     handler: Handler,
     onAck?: SubscriptionCallback,
-    timeoutMs: number = 3000,
+    timeoutMs: number = 10000,
   ): Promise<void> {
     // Debounce it
     console.log("subscribe called", { topic, handler, onAck, timeoutMs });
@@ -374,106 +374,6 @@ export class ErebusPubSubClient {
         checkReadiness();
       }, 100);
     });
-  }
-
-  /**
-   * Development-only summary (counts & topics) to avoid poking at Maps in every test.
-   */
-  get __debugSummary(): {
-    handlerCount: number;
-    topics: string[];
-    counts: Record<string, number>;
-  } {
-    const instanceId = this.#conn.connectionId;
-    console.log(`[Erebus:${instanceId}] __debugSummary getter called`);
-    console.log("Erebus.__debugSummary getter called");
-
-    const counts: Record<string, number> = {};
-    let handlerCount = 0;
-    for (const topic of this.#stateManager.getTopicsWithHandlers()) {
-      const n = this.#stateManager.getHandlerCountForTopic(topic);
-      handlerCount += n;
-      counts[topic] = n;
-      console.log(`[Erebus:${instanceId}] Counting handlers for topic`, {
-        topic,
-        count: n,
-      });
-      console.log("Counting handlers for topic", {
-        topic,
-        count: n,
-      });
-    }
-    console.log(`[Erebus:${instanceId}] __debugSummary returning`, {
-      handlerCount,
-      topics: Object.keys(counts),
-      counts,
-    });
-    console.log("Erebus.__debugSummary returning", {
-      handlerCount,
-      topics: Object.keys(counts),
-      counts,
-    });
-    return {
-      handlerCount,
-      topics: Object.keys(counts),
-      counts,
-    };
-  }
-
-  /**
-   * Development-only access to the underlying Connection instance.
-   * Useful for asserting lifecycle calls in tests. Treat as read-only.
-   */
-  get __debugConn(): PubSubConnection {
-    const instanceId = this.#conn.connectionId;
-    console.log(`[Erebus:${instanceId}] __debugConn getter called`);
-    console.log("Erebus.__debugConn getter called");
-    return this.#conn;
-  }
-
-  // Getters
-  get connectionState(): string {
-    return this.#stateManager.connectionState;
-  }
-
-  get isConnected(): boolean {
-    return this.#stateManager.isConnected;
-  }
-
-  get channel(): string | null {
-    return this.#stateManager.channel;
-  }
-
-  get subscriptionCount(): number {
-    return this.#stateManager.subscriptionCount;
-  }
-
-  get activeTopics(): string[] {
-    return this.#stateManager.activeTopics;
-  }
-
-  get pendingSubscriptionsCount(): number {
-    return this.#stateManager.pendingSubscriptionsCount;
-  }
-
-  get processedMessagesCount(): number {
-    return this.#stateManager.processedMessagesCount;
-  }
-
-  get hasError(): boolean {
-    return this.#stateManager.hasError;
-  }
-
-  get error(): Error | null {
-    return this.#stateManager.error;
-  }
-
-  get isReconnecting(): boolean {
-    return this.#stateManager.isReconnecting;
-  }
-
-  get reconnectAttempts(): number {
-    return this.#stateManager.reconnectAttempts;
   }
 
   /**
