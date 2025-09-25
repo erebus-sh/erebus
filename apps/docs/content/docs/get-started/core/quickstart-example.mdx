@@ -102,7 +102,6 @@ async function main() {
   client.joinChannel("chats");
   // Connect
   await client.connect();
-  // Wait for 5 seconds, to connect and update the state
   
   // Subscribe to a channel
   await client.subscribe(topic, (msg) => {
