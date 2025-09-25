@@ -103,21 +103,15 @@ async function main() {
   // Connect
   await client.connect();
   // Wait for 5 seconds, to connect and update the state
-  // TODO: the .connect should be sync, but it's not right now, will fix the SDK later
-  await new Promise((r) => setTimeout(r, 5000));
   
   // Subscribe to a channel
-  client.subscribe(topic, (msg) => {
+  await client.subscribe(topic, (msg) => {
     console.log("📩 Received:", msg.payload, "from", msg.senderId);
   });
 
-  client.onPresence(topic, (presence) => {
+  await client.onPresence(topic, (presence) => {
     console.log("📩 Presence:", presence);
   });
-
-  // Wait for 1 seconds, to subscribe and update the state
-  // TODO: the .subscribe and .onPresence should be synced and separated, but it's not right now, will fix the SDK later
-  await new Promise((r) => setTimeout(r, 1000));
 
   // Publish a message
   await client.publishWithAck({

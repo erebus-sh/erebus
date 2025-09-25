@@ -1,7 +1,7 @@
-import type { MessageBody } from "../../../../../schemas/messageBody";
-import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { nanoid } from "nanoid";
 
+import type { MessageBody } from "../../../../../schemas/messageBody";
+import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import {
   type AckCallback,
   type PendingPublish,
@@ -10,16 +10,13 @@ import {
   VERSION,
 } from "../types";
 import { AckManager } from "./AckManager";
-import {
-  ConnectionManager,
-  BackpressureError,
-  NotConnectedError,
-} from "./ConnectionManager";
+import { ConnectionManager, NotConnectedError } from "./ConnectionManager";
 import { GrantManager } from "./GrantManager";
 import { HeartbeatManager } from "./HeartbeatManager";
 import { MessageProcessor } from "./MessageProcessor";
 import { PresenceManager } from "./Presence";
 import type { PresenceHandler } from "./Presence";
+import type { StateManager } from "./StateManager";
 import { SubscriptionManager } from "./SubscriptionManager";
 import type {
   ConnectionConfig,
@@ -27,11 +24,7 @@ import type {
   SubscriptionStatus,
 } from "./interfaces";
 
-import type { StateManager } from "./StateManager";
-
 // Re-export errors for backward compatibility
-export { BackpressureError, NotConnectedError };
-
 /**
  * Main PubSub connection orchestrator that coordinates all subsystems
  */
@@ -72,7 +65,6 @@ export class PubSubConnection {
     );
 
     // Create connection manager with message processing and state change callback
-
     const connectionConfig: ConnectionConfig & {
       onStateChange?: (state: ConnectionState) => void;
       onError?: (error: Error) => void;
@@ -147,33 +139,48 @@ export class PubSubConnection {
   }
 
   async open(timeout?: number): Promise<void> {
-    // Get grant token before opening connection
-    const grantJWT = await this.#grantManager.getTokenWithCache(
-      this.#connectionManager.channel,
-    );
+    try {
+      // Get grant token before opening connection
+      const grantJWT = await this.#grantManager.getTokenWithCache(
+        this.#connectionManager.channel,
+      );
 
-    // Open connection with grant and timeout
-    await this.#connectionManager.open({
-      grant: grantJWT,
-      timeout: timeout,
-    });
+      // Open connection with grant and timeout
+      await this.#connectionManager.open({
+        grant: grantJWT,
+        timeout: timeout,
+      });
 
-    // Send connect packet
-    this.#connectionManager.send({
-      packetType: "connect",
-      version: VERSION,
-      grantJWT,
-    });
+      // Send connect packet
+      this.#connectionManager.send({
+        packetType: "connect",
+        version: VERSION,
+        grantJWT,
+      });
 
-    // Start heartbeat
-    this.#heartbeatManager.start();
+      // Start heartbeat
+      this.#heartbeatManager.start();
 
-    // Resubscribe to existing topics
-    const topicsToResubscribe =
-      this.#subscriptionManager.getTopicsForResubscription();
-    for (const topic of topicsToResubscribe) {
-      console.log(`[${this.#connectionId}] Resubscribing to topic`, { topic });
-      this.#connectionManager.send({ packetType: "subscribe", topic });
+      // Resubscribe to existing topics
+      const topicsToResubscribe =
+        this.#subscriptionManager.getTopicsForResubscription();
+      for (const topic of topicsToResubscribe) {
+        console.log(`[${this.#connectionId}] Resubscribing to topic`, {
+          topic,
+        });
+        this.#connectionManager.send({ packetType: "subscribe", topic });
+      }
+    } catch (error) {
+      console.error(`[${this.#connectionId}] Error opening connection`, {
+        error,
+      });
+      // Call the error handler to propagate the error
+      if (this.#connectionManager.onError) {
+        this.#connectionManager.onError(
+          error instanceof Error ? error : new Error(String(error)),
+        );
+      }
+      throw error;
     }
   }
 
@@ -215,6 +222,11 @@ export class PubSubConnection {
         topic,
       });
       return;
+    }
+
+    // Update StateManager optimistically
+    if (this.#stateManager) {
+      this.#stateManager.setSubscriptionStatus(topic, "pending");
     }
 
     if (!this.#connectionManager.isConnected) {
@@ -400,6 +412,8 @@ export class PubSubConnection {
    */
   setStateManager(stateManager: import("./StateManager").StateManager): void {
     this.#stateManager = stateManager;
+    // Set StateManager reference in AckManager
+    this.#ackManager.setStateManager(stateManager);
     // Immediately sync current state
     this.#stateManager.setConnectionState(this.#connectionManager.state);
   }

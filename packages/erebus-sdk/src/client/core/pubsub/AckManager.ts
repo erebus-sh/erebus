@@ -1,11 +1,11 @@
 import type { AckPacketType } from "../../../../../schemas/packetEnvelope";
-
 import type {
   PendingPublish,
   AckResponse,
   PendingSubscription,
   SubscriptionResponse,
 } from "../types";
+import type { StateManager } from "./StateManager";
 import type { IAckManager } from "./interfaces";
 
 // Type for subscription error results (not currently in schema)
@@ -24,10 +24,15 @@ export class AckManager implements IAckManager {
   #pendingSubscriptions = new Map<string, PendingSubscription>();
   #subscriptionMsgIdToRequestId = new Map<string, string>();
   #connectionId: string;
+  #stateManager?: StateManager;
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
     console.log(`[${this.#connectionId}] AckManager created`);
+  }
+
+  setStateManager(stateManager: StateManager): void {
+    this.#stateManager = stateManager;
   }
 
   trackPublish(requestId: string, pending: PendingPublish): void {
@@ -226,16 +231,27 @@ export class AckManager implements IAckManager {
     }
 
     if (!pending) {
-      // No tracked subscription - this is normal for optimistic subscriptions
+      // No tracked subscription - optimistic subscription path.
+      // We still need to reflect the server-confirmed state so waiters can proceed.
       console.log(
         `[${this.#connectionId}] Received untracked subscription ACK`,
         {
           path: ackPacket.result.path,
           topic: ackPacket.result.topic,
           clientMsgId,
-          note: "This is normal for optimistic subscriptions",
+          note: "Optimistic subscription confirmed by server",
         },
       );
+
+      if (this.#stateManager) {
+        const topic = ackPacket.result.topic;
+        const path = ackPacket.result.path;
+        if (path === "subscribe") {
+          this.#stateManager.setSubscriptionStatus(topic, "subscribed");
+        } else if (path === "unsubscribe") {
+          this.#stateManager.setSubscriptionStatus(topic, "unsubscribed");
+        }
+      }
       return;
     }
 
@@ -269,6 +285,18 @@ export class AckManager implements IAckManager {
 
     try {
       pending.callback(response);
+
+      // Notify StateManager about subscription confirmation
+      if (this.#stateManager) {
+        if (response.success) {
+          this.#stateManager.setSubscriptionStatus(pending.topic, "subscribed");
+        } else {
+          this.#stateManager.setSubscriptionStatus(
+            pending.topic,
+            "unsubscribed",
+          );
+        }
+      }
     } catch (error) {
       console.error(
         `[${this.#connectionId}] Error in subscription ACK callback`,
@@ -347,6 +375,11 @@ export class AckManager implements IAckManager {
 
     try {
       pending.callback(response);
+
+      // Notify StateManager about subscription failure
+      if (this.#stateManager) {
+        this.#stateManager.setSubscriptionStatus(pending.topic, "unsubscribed");
+      }
     } catch (error) {
       console.error(
         `[${this.#connectionId}] Error in subscription timeout callback`,
@@ -356,6 +389,11 @@ export class AckManager implements IAckManager {
           topic: pending.topic,
         },
       );
+
+      // Notify StateManager about subscription failure even on error
+      if (this.#stateManager) {
+        this.#stateManager.setSubscriptionStatus(pending.topic, "unsubscribed");
+      }
     }
   }
 

@@ -20,7 +20,7 @@ This SDK provides type safety you can trust, Zod at the core. And application in
 
 ## Available primitives
 
-- [Pub/Sub Channels](https://docs.erebus.sh/docs/primitives/pubsub/)
+- [Pub/Sub Channels](https://docs.erebus.sh/docs/)
 - Live state (coming soon)
 - AI streams (coming soon)
 - Multiplier verticals (coming soon)
@@ -43,4 +43,4 @@ export const useChannel = createChannel(schema);
 
 ## Documentation
 
-Full SDK documentation is available on the official [documentation website](https://docs.erebus.sh/docs/primitives/pubsub/).
+Full SDK documentation is available on the official [documentation website](https://docs.erebus.sh/docs/).

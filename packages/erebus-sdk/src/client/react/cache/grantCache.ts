@@ -1,5 +1,5 @@
-export const GRANT_CACHE_KEY = "___erebus:g";
-export const GRANT_CACHE_TIMESTAMP_KEY = `${GRANT_CACHE_KEY}:ts`;
+const GRANT_CACHE_KEY = "___erebus:g";
+const GRANT_CACHE_TIMESTAMP_KEY = `${GRANT_CACHE_KEY}:ts`;
 const GRANT_CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export const getGrant = (): string | undefined => {
@@ -43,7 +43,7 @@ export const setGrant = (grant: string): void => {
   }
 };
 
-export const clearGrant = (): void => {
+const clearGrant = (): void => {
   if (typeof localStorage !== "undefined") {
     localStorage.removeItem(GRANT_CACHE_KEY);
     localStorage.removeItem(GRANT_CACHE_TIMESTAMP_KEY);

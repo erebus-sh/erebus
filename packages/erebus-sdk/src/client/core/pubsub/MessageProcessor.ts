@@ -4,6 +4,7 @@ import type {
 } from "@repo/schemas/packetEnvelope";
 
 import { parseServerFrame } from "@/client/core/wire";
+
 import type { PresenceManager } from "./Presence";
 import type { IMessageProcessor, OnMessage, IAckManager } from "./interfaces";
 

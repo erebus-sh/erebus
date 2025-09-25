@@ -12,6 +12,7 @@ export class StateManager {
   #subscriptions = new Map<string, SubscriptionStatus>();
   #processedMessages = new Set<string>();
   #pendingSubscriptions = new Set<string>();
+  #subscriptionPromises = new Map<string, Promise<void>>();
   #handlers = new Map<string, Set<Handler>>();
   #lastActivity = Date.now();
   #error: Error | null = null;
@@ -124,6 +125,8 @@ export class StateManager {
     // Update pending subscriptions set
     if (status === "subscribed") {
       this.#pendingSubscriptions.delete(topic);
+      // Resolve any pending subscription promises
+      this.markSubscriptionReady(topic);
     } else if (status === "pending") {
       this.#pendingSubscriptions.add(topic);
     }
@@ -227,6 +230,104 @@ export class StateManager {
   clearPendingSubscriptions(): void {
     console.log(`[${this.#connectionId}] Clearing pending subscriptions`);
     this.#pendingSubscriptions.clear();
+    this.#subscriptionPromises.clear();
+  }
+
+  /**
+   * Create or get a promise that resolves when a subscription is ready
+   */
+  getSubscriptionReadyPromise(topic: string): Promise<void> {
+    if (!this.#subscriptionPromises.has(topic)) {
+      this.#subscriptionPromises.set(
+        topic,
+        this.#createSubscriptionReadyPromise(topic),
+      );
+    }
+    return this.#subscriptionPromises.get(topic)!;
+  }
+
+  /**
+   * Mark a subscription as ready (resolve its promise)
+   */
+  markSubscriptionReady(topic: string): void {
+    if (this.#subscriptionPromises.has(topic)) {
+      console.log(`[${this.#connectionId}] Marking subscription ready`, {
+        topic,
+      });
+      // The promise should resolve automatically when status changes to 'subscribed'
+    }
+  }
+
+  /**
+   * Create a promise that resolves when subscription becomes ready
+   */
+  #createSubscriptionReadyPromise(topic: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const checkStatus: () => void = () => {
+        const status = this.getSubscriptionStatus(topic);
+        console.log(
+          `[${this.#connectionId}] Subscription status for topic: ${topic}`,
+          { status },
+        );
+        if (status === "subscribed") {
+          console.log(
+            `[${this.#connectionId}] Subscription status for topic: ${topic} is subscribed, resolving promise`,
+          );
+          resolve();
+          return;
+        }
+
+        if (status === "unsubscribed" || this.hasError) {
+          reject(new Error(`Subscription failed for topic: ${topic}`));
+          return;
+        }
+
+        // Check again in 50ms
+        setTimeout(checkStatus, 50);
+      };
+
+      checkStatus();
+    });
+  }
+
+  /**
+   * Wait for a subscription to be ready
+   */
+  async waitForSubscriptionReady(
+    topic: string,
+    timeoutMs: number = 10000,
+  ): Promise<void> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let settled = false;
+    try {
+      const readyPromise = this.getSubscriptionReadyPromise(topic).then(() => {
+        settled = true;
+        if (timeoutId) clearTimeout(timeoutId);
+      });
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => {
+          if (settled) return; // avoid logging/rejecting after resolution
+          console.error(
+            `[${this.#connectionId}][waitForSubscriptionReady] Subscription timeout for topic: ${topic}`,
+          );
+          reject(new Error(`Subscription timeout for topic: ${topic}`));
+        }, timeoutMs);
+      });
+
+      await Promise.race([readyPromise, timeoutPromise]);
+    } catch (error) {
+      console.error(
+        `[${this.#connectionId}] Failed to wait for subscription ready`,
+        {
+          topic,
+          error,
+        },
+      );
+      throw error;
+    } finally {
+      settled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    }
   }
 
   // Error State Management
@@ -330,6 +431,7 @@ export class StateManager {
     this.#subscriptions.clear();
     this.#processedMessages.clear();
     this.#pendingSubscriptions.clear();
+    this.#subscriptionPromises.clear();
     this.#handlers.clear();
     this.#error = null;
     this.#isReconnecting = false;
