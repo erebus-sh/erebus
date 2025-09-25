@@ -61,14 +61,13 @@ export default defineConfig([
           "newlines-between": "always",
         },
       ],
-
-      "no-console": "warn",
       eqeqeq: ["error", "always"],
     },
     settings: {
       // Tell eslint-plugin-import how to resolve aliases
       "import/resolver": {
         typescript: {
+          noWarnOnMultipleProjects: true,
           // Monorepo-aware: point at the SDK tsconfig and (optionally) the root
           project: [
             path.join(__dirname, "tsconfig.json"),

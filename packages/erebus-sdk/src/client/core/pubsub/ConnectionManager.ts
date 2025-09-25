@@ -1,10 +1,10 @@
-import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { WsErrors } from "@repo/shared/enums/wserrors";
 
 import { encodeEnvelope } from "@/client/core/wire";
 import { ErebusError } from "@/internal/error";
 import { validateWebSocketUrl } from "@/internal/validateWebSocketUrl";
 
+import type { PacketEnvelope } from "../../../../../schemas/packetEnvelope";
 import { backoff } from "../backoff";
 import { VERSION } from "../types";
 import type {
@@ -36,6 +36,10 @@ export class ConnectionManager implements IConnectionManager {
   #debugHexDump: boolean;
   #onStateChange?: (state: ConnectionState) => void;
   #onError?: (error: Error) => void;
+
+  get onError(): ((error: Error) => void) | undefined {
+    return this.#onError;
+  }
 
   constructor(
     config: ConnectionConfig & {

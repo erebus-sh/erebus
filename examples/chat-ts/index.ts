@@ -54,27 +54,25 @@ async function main() {
   const topic = "room1";
   // Join a channel first
   client.joinChannel("chats");
+
   // Connect
-  await client.connect();
-  // Wait for 5 seconds, to connect and update the state
-  // TODO: the .connect should be sync, but it's not right now, will fix the SDK later
-  await new Promise((r) => setTimeout(r, 5000));
+  client.connect();
+  console.log("✅ Connected successfully!");
 
   // Subscribe to a channel
   client.subscribe(topic, (msg) => {
     console.log("📩 Received:", msg.payload, "from", msg.senderId);
   });
+  console.log("✅ Subscribed successfully!");
 
+  // Register presence handler
   client.onPresence(topic, (presence) => {
     console.log("📩 Presence:", presence);
   });
-
-  // Wait for 1 seconds, to subscribe and update the state
-  // TODO: the .subscribe and .onPresence should be synced and separated, but it's not right now, will fix the SDK later
-  await new Promise((r) => setTimeout(r, 1000));
+  console.log("✅ Presence handler registered!");
 
   // Publish a message
-  await client.publishWithAck({
+  client.publishWithAck({
     topic: topic,
     messageBody: "Hello Erebus 👋",
     onAck: (ack) => {

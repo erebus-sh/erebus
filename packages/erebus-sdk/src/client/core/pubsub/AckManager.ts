@@ -1,11 +1,11 @@
 import type { AckPacketType } from "../../../../../schemas/packetEnvelope";
-
 import type {
   PendingPublish,
   AckResponse,
   PendingSubscription,
   SubscriptionResponse,
 } from "../types";
+import type { StateManager } from "./StateManager";
 import type { IAckManager } from "./interfaces";
 
 // Type for subscription error results (not currently in schema)
@@ -24,10 +24,15 @@ export class AckManager implements IAckManager {
   #pendingSubscriptions = new Map<string, PendingSubscription>();
   #subscriptionMsgIdToRequestId = new Map<string, string>();
   #connectionId: string;
+  #stateManager?: StateManager;
 
   constructor(connectionId: string) {
     this.#connectionId = connectionId;
     console.log(`[${this.#connectionId}] AckManager created`);
+  }
+
+  setStateManager(stateManager: StateManager): void {
+    this.#stateManager = stateManager;
   }
 
   trackPublish(requestId: string, pending: PendingPublish): void {
@@ -269,6 +274,11 @@ export class AckManager implements IAckManager {
 
     try {
       pending.callback(response);
+
+      // Notify StateManager about subscription confirmation
+      if (response.success && this.#stateManager) {
+        this.#stateManager.setSubscriptionStatus(pending.topic, "subscribed");
+      }
     } catch (error) {
       console.error(
         `[${this.#connectionId}] Error in subscription ACK callback`,

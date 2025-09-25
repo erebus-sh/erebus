@@ -1,9 +1,9 @@
-import { beforeAll, afterAll, test, expect } from "vitest";
+import { beforeAll, test, expect } from "vitest";
 import {
   ErebusClient,
   ErebusClientState,
 } from "../../../src/client/core/Erebus";
-import { startAuthServer } from "../../../src/server/app";
+import { createGenericAdapter } from "../../../src/server";
 import { ErebusService } from "../../../src/service/Service";
 import { Access } from "@repo/schemas/grant";
 import type { MessageBody } from "@repo/schemas/messageBody";
@@ -12,6 +12,7 @@ import type {
   AckSuccess,
   AckError,
 } from "../../../src/client/core/types";
+import { serve } from "@hono/node-server";
 
 // Enhanced interface for proper latency tracking
 interface MessagePayloadWithLatency extends MessageBody {
@@ -29,25 +30,30 @@ interface MessagePayloadWithLatency extends MessageBody {
 
 let authServer: any;
 
-beforeAll(async () => {
-  authServer = await startAuthServer(6969, async () => {
-    const randomUserId = crypto.randomUUID();
-    console.log("generated randomUserId", randomUserId);
-    const service = new ErebusService({
-      secret_api_key: "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
-      base_url: "http://localhost:3000", // Erebus service local server
-    });
-    const session = await service.prepareSession({ userId: randomUserId });
-    session.join("test_channel");
-    session.allow("*", Access.ReadWrite);
-    return session;
+beforeAll(() => {
+  authServer = createGenericAdapter({
+    authorize: async (channel, ctx) => {
+      const randomUserId = crypto.randomUUID();
+      console.log("generated randomUserId", randomUserId);
+      const service = new ErebusService({
+        secret_api_key:
+          "dv-er-4o7j90qw39p96bra19fa94prupp6vdcg9axrd3hg4hqy68c1",
+        base_url: "http://localhost:3000", // Erebus service local server
+      });
+      const session = await service.prepareSession({ userId: randomUserId });
+      session.join(channel);
+      session.allow("*", Access.ReadWrite);
+      return session;
+    },
+    fireWebhook: async (message) => {
+      // noop
+    },
   });
-});
 
-afterAll(async () => {
-  if (authServer) {
-    await authServer.close();
-  }
+  serve({
+    fetch: authServer.fetch,
+    port: 6969,
+  });
 });
 
 test("Two clients flow: client2 sends 25 messages to client1, all are received", async () => {
@@ -115,7 +121,6 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
       publishToServerLatency,
       serverToClientLatency,
       totalRoundtripLatency,
-      processingTime: totalRoundtripLatency, // Legacy compatibility
     };
 
     client1Messages.push(messageWithLatency);

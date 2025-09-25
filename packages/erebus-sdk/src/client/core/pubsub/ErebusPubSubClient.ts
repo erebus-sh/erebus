@@ -1,11 +1,12 @@
-import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PacketEnvelope } from "@repo/schemas/packetEnvelope";
 import { debounce } from "lodash";
 
+import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { AckCallback, SubscriptionCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
+import type { ConnectionState } from "./interfaces";
 
 export type ErebusOptions = {
   wsUrl: string;
@@ -13,6 +14,8 @@ export type ErebusOptions = {
   heartbeatMs?: number;
   log?: (l: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
   debug?: boolean;
+  connectionTimeoutMs?: number;
+  subscriptionTimeoutMs?: number;
 };
 
 export type Handler = (
@@ -34,6 +37,7 @@ export class ErebusPubSubClient {
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
   ) => void;
+  #debouncePresence: (topic: string, handler: PresenceHandler) => void;
 
   constructor(opts: ErebusOptions) {
     this.#debug = opts.debug ?? false;
@@ -49,7 +53,14 @@ export class ErebusPubSubClient {
         onAck?: SubscriptionCallback,
         timeoutMs?: number,
       ) => {
-        this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
+        void this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
+      },
+      1000,
+    );
+
+    this.#debouncePresence = debounce(
+      (topic: string, handler: PresenceHandler) => {
+        void this.registerPresenceHandler(topic, handler);
       },
       1000,
     );
@@ -84,7 +95,7 @@ export class ErebusPubSubClient {
     });
   }
 
-  connect(timeout?: number): void {
+  async connect(timeout?: number): Promise<void> {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] Connect called`, { timeout });
     console.log("Erebus.connect() called");
@@ -92,7 +103,6 @@ export class ErebusPubSubClient {
     // Check if the client is already connected
     if (this.#stateManager.isConnected) {
       console.log(`[Erebus:${instanceId}] Already connected, returning`);
-      // just return
       return;
     }
 
@@ -104,10 +114,66 @@ export class ErebusPubSubClient {
       throw new Error(error);
     }
 
-    // Channel is guaranteed to be set in constructor, no need to check
+    // Clear processed messages
     this.#stateManager.clearProcessedMessages();
-    // Debounce open
-    return this.#debounceOpenConnection(timeout);
+
+    // Open connection (debounced)
+    this.#debounceOpenConnection(timeout);
+
+    // Wait for connection to be ready
+    return new Promise((resolve, reject) => {
+      const cleanup = (): void => {
+        if (connectionTimeoutId) clearTimeout(connectionTimeoutId);
+        if (checkIntervalId) clearInterval(checkIntervalId);
+      };
+
+      const checkConnection = (): void => {
+        if (this.#stateManager.isConnected) {
+          cleanup();
+          resolve();
+          return;
+        }
+
+        if (this.#stateManager.hasError) {
+          cleanup();
+          reject(this.#stateManager.error || new Error("Connection failed"));
+          return;
+        }
+      };
+
+      // Set timeout
+      const connectionTimeoutId = setTimeout(() => {
+        cleanup();
+        reject(new Error(`Connection timeout after ${timeout || 30000}ms`));
+      }, timeout || 30000);
+
+      // Check immediately and then every 100ms
+      checkConnection();
+      const checkIntervalId = setInterval(checkConnection, 100);
+
+      // Also resolve when connection state changes to open
+      const originalSetConnectionState = this.#stateManager.setConnectionState; // eslint-disable-line @typescript-eslint/unbound-method
+      this.#stateManager.setConnectionState = (
+        state: ConnectionState,
+      ): void => {
+        originalSetConnectionState.call(this.#stateManager, state);
+        if (state === "open") {
+          cleanup();
+          resolve();
+        } else if (state === "error") {
+          cleanup();
+          reject(this.#stateManager.error || new Error("Connection failed"));
+        }
+      };
+
+      // Also listen for connection errors directly
+      const originalSetError = this.#stateManager.setError; // eslint-disable-line @typescript-eslint/unbound-method
+      this.#stateManager.setError = (error: Error): void => {
+        originalSetError.call(this.#stateManager, error);
+        cleanup();
+        reject(error);
+      };
+    });
   }
 
   // joinChannel method removed - channel is set in constructor
@@ -155,10 +221,12 @@ export class ErebusPubSubClient {
     handler: Handler,
     onAck?: SubscriptionCallback,
     timeoutMs: number = 3000,
-  ): void {
+  ): Promise<void> {
     // Debounce it
     console.log("subscribe called", { topic, handler, onAck, timeoutMs });
     this.#debounceSubscribe(topic, handler, onAck, timeoutMs);
+    // Return a promise that resolves when subscription is ready
+    return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
 
   subscribeWithCallback(
@@ -200,6 +268,7 @@ export class ErebusPubSubClient {
 
     this.#stateManager.addHandler(topic, handler);
     this.#stateManager.addPendingSubscription(topic);
+    this.#stateManager.setSubscriptionStatus(topic, "pending");
     this.#conn.subscribeWithCallback(topic, onAck, timeoutMs);
   }
 
@@ -433,14 +502,42 @@ export class ErebusPubSubClient {
       throw new Error(error);
     }
 
-    this.#conn.onPresence(topic, handler);
-    console.log(
-      `[Erebus:${instanceId}] Presence handler registered for topic`,
-      {
-        topic,
-      },
-    );
-    console.log("Presence handler registered", { topic });
+    // Debounce presence handler registration to prevent duplicate calls
+    this.#debouncePresence(topic, handler);
+  }
+
+  /**
+   * Register a presence handler after ensuring subscription is ready
+   */
+  async registerPresenceHandler(
+    topic: string,
+    handler: PresenceHandler,
+  ): Promise<void> {
+    const instanceId = this.#conn.connectionId;
+    console.log(`[Erebus:${instanceId}] registerPresenceHandler called`, {
+      topic,
+    });
+
+    // Wait for subscription to be ready before registering presence handler
+    try {
+      await this.#stateManager.waitForSubscriptionReady(topic);
+      this.#conn.onPresence(topic, handler);
+      console.log(
+        `[Erebus:${instanceId}] Presence handler registered for topic`,
+        {
+          topic,
+        },
+      );
+    } catch (error) {
+      console.error(
+        `[Erebus:${instanceId}] Failed to register presence handler`,
+        {
+          topic,
+          error,
+        },
+      );
+      throw error;
+    }
   }
 
   /**

@@ -2,7 +2,6 @@ import type {
   PacketEnvelope,
   AckPacketType,
 } from "../../../../../schemas/packetEnvelope";
-
 import type { PendingPublish, PendingSubscription } from "../types";
 // Import Handler type that's actually used in practice
 import type { Handler } from "./ErebusPubSubClient";
@@ -10,7 +9,12 @@ import type { Handler } from "./ErebusPubSubClient";
 /**
  * Basic connection states
  */
-export type ConnectionState = "idle" | "connecting" | "open" | "closed";
+export type ConnectionState =
+  | "idle"
+  | "connecting"
+  | "open"
+  | "error"
+  | "closed";
 
 /**
  * Subscription status for tracking
