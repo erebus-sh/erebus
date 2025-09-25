@@ -16,7 +16,7 @@ import type {
   OpenOptions,
 } from "./interfaces";
 
-export class BackpressureError extends Error {}
+class BackpressureError extends Error {}
 export class NotConnectedError extends Error {}
 
 /**

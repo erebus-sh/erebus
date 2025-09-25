@@ -110,7 +110,7 @@ export type PendingSubscription = {
   timeoutId?: NodeJS.Timeout;
 };
 
-export function logTypeInfo(label: string, value: unknown): void {
+function logTypeInfo(label: string, value: unknown): void {
   console.log("type info", { label, valueType: typeof value });
 }
 

@@ -1,9 +1,5 @@
 // Main orchestrator (new modular version)
-export {
-  PubSubConnection,
-  BackpressureError,
-  NotConnectedError,
-} from "./PubSubConnection";
+export { PubSubConnection } from "./PubSubConnection";
 
 // Main client export
 export { ErebusPubSubClient } from "./ErebusPubSubClient";

@@ -10,11 +10,7 @@ import {
   VERSION,
 } from "../types";
 import { AckManager } from "./AckManager";
-import {
-  ConnectionManager,
-  BackpressureError,
-  NotConnectedError,
-} from "./ConnectionManager";
+import { ConnectionManager, NotConnectedError } from "./ConnectionManager";
 import { GrantManager } from "./GrantManager";
 import { HeartbeatManager } from "./HeartbeatManager";
 import { MessageProcessor } from "./MessageProcessor";
@@ -29,8 +25,6 @@ import type {
 } from "./interfaces";
 
 // Re-export errors for backward compatibility
-export { BackpressureError, NotConnectedError };
-
 /**
  * Main PubSub connection orchestrator that coordinates all subsystems
  */

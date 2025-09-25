@@ -8,7 +8,7 @@ import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import type { ConnectionState } from "./interfaces";
 
-export type ErebusOptions = {
+type ErebusOptions = {
   wsUrl: string;
   tokenProvider: (channel: string) => Promise<string>;
   heartbeatMs?: number;
