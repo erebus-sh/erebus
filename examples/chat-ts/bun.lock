@@ -4,7 +4,7 @@
     "": {
       "name": "chat-ts",
       "dependencies": {
-        "@erebus-sh/sdk": "^0.0.164",
+        "@erebus-sh/sdk": "^0.0.165",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -15,7 +15,7 @@
     },
   },
   "packages": {
-    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.164", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "@typescript-eslint/parser": "^8.44.0", "eslint": "^9.36.0", "eslint-plugin-import": "^2.32.0", "hono": "^4.9.1", "ky": "^1.8.2", "nanoid": "^5.1.5", "typescript-eslint": "^8.44.1", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5.9.2", "zustand": "^4 || ^5" } }, "sha512-RA2+zV19/1NR1cQXM91x9+4bbV3Q6ukTOjdtKKdnZJMB7R1DIiBP9kBSDKDVNJdGhT/yKkvy7Sl5C70clXrYMg=="],
+    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.165", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "@typescript-eslint/parser": "^8.44.0", "eslint": "^9.36.0", "eslint-plugin-import": "^2.32.0", "hono": "^4.9.1", "ky": "^1.8.2", "nanoid": "^5.1.5", "typescript-eslint": "^8.44.1", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5.9.2", "zustand": "^4 || ^5" } }, "sha512-za3HA1oGPxfHRELqqSB+E4o75CaubtTiSS9owpO8Wci8WxMB9+j/gcVDtyChBjSkVme2RRkQlPAyD0VwruVPMA=="],
 
     "@eslint-community/eslint-utils": ["@eslint-community/eslint-utils@4.9.0", "", { "dependencies": { "eslint-visitor-keys": "^3.4.3" }, "peerDependencies": { "eslint": "^6.0.0 || ^7.0.0 || >=8.0.0" } }, "sha512-ayVFHdtZ+hsq1t2Dy24wCmGXGe4q9Gu3smhLYALJrr473ZH27MsnSL+LKUlimp4BWJqMDMLmPpx/Q9R3OAlL4g=="],
 
