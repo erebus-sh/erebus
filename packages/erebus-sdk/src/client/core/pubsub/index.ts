@@ -14,9 +14,7 @@ export { HeartbeatManager } from "./HeartbeatManager";
 export { StateManager } from "./StateManager";
 export { PresenceManager } from "./Presence";
 export type { PresenceHandler } from "./Presence";
+export { ErebusPubSubSchemas } from "./PubSubFacade";
 
 // Interfaces and types
 export type * from "./interfaces";
-
-// Typed Helper
-export * from "./PubSubFacade";

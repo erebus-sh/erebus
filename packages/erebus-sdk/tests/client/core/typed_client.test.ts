@@ -4,7 +4,7 @@ import {
   ErebusClientState,
 } from "../../../src/client/core/Erebus";
 import { z } from "zod";
-import ErebusPubSubSchemas from "../../../src/client/core/pubsub/PubSubFacade";
+import { ErebusPubSubSchemas } from "../../../src/client/core/pubsub/PubSubFacade";
 
 test("Testing typed facade helper for the pubsub client", async () => {
   const schemas = {

@@ -1,4 +1,4 @@
-import type { ErebusPubSubClient } from "./ErebusPubSubClient";
+import { ErebusPubSubClient } from "./ErebusPubSubClient";
 import type {
   AckCallback,
   Payload,
@@ -6,113 +6,149 @@ import type {
   SubscriptionCallback,
   Topic,
 } from "../types";
+import type { PresenceHandler } from "./Presence";
 
 /**
  * ErebusPubSubSchemas
  *
- * A typed + runtime-validated facade over the raw PubSub client.
+ * A composition-based typed facade around `ErebusPubSubClient` that enforces:
+ * - Compile-time typing: Payloads are inferred from a provided Zod schema map
+ * - Runtime validation: Payloads are validated with their Zod schema before
+ *   publishing and after subscribing
  *
- * - At compile-time: Payloads are enforced by TypeScript, inferred from the schema map.
- * - At runtime: Payloads are validated against the corresponding Zod schema before being
- *   published or after being received.
- *
- * This prevents accidental misuse (e.g. wrong fields, wrong types) and ensures
- * contract consistency between publisher and subscriber.
+ * This guarantees contract consistency between publishers and subscribers and
+ * prevents accidental misuse (wrong fields, wrong types, missing schema).
  */
-export default class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
+class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   constructor(
     private readonly client: ErebusPubSubClient,
     private readonly schemas: TSchemas,
   ) {}
 
   /**
-   * Publish a message to a topic.
-   *
-   * @param topic - The topic name (must exist in the schema map).
-   * @param payload - The payload object (must conform to the schema for this topic).
-   *
-   * - First checks that the topic has a schema.
-   * - Validates payload at runtime against the schema.
-   * - Serializes payload to JSON before passing it to the raw client.
+   * Publish a typed + validated message to a topic.
    */
   publish<K extends Topic<TSchemas>>(topic: K, payload: Payload<TSchemas, K>) {
-    if (!this.schemas[topic]) {
-      throw new Error(`Schema for topic ${topic} not found`);
-    }
-    this.schemas[topic].parse(payload); // runtime validation via Zod
-    this.client.publish({
+    this.assertSchema(topic, payload);
+    return this.client.publish({
       topic,
       messageBody: JSON.stringify(payload),
     });
   }
 
   /**
-   * Publish a message with acknowledgement handling.
-   *
-   * @param topic - The topic name (must exist in the schema map).
-   * @param payload - The payload object (validated against schema).
-   * @param onAck - Callback triggered once the message is acknowledged by the server.
-   *
-   * Same flow as `publish`, but with an ack hook.
+   * Publish a typed + validated message with acknowledgement handling.
    */
   publishWithAck<K extends Topic<TSchemas>>(
     topic: K,
     payload: Payload<TSchemas, K>,
     onAck: AckCallback,
+    timeoutMs?: number,
   ) {
-    if (!this.schemas[topic]) {
-      throw new Error(`Schema for topic ${topic} not found`);
-    }
-    this.schemas[topic].parse(payload);
-    this.client.publishWithAck({
+    this.assertSchema(topic, payload);
+    return this.client.publishWithAck({
       topic,
       messageBody: JSON.stringify(payload),
       onAck,
+      timeoutMs,
     });
   }
 
   /**
-   * Subscribe to a topic and receive strongly-typed payloads.
-   *
-   * @param topic - The topic name (must exist in the schema map).
-   * @param callback - Function that receives the validated payload object.
-   * @param onAck - Optional callback invoked on subscription acknowledgement.
-   *
-   * - Ensures schema exists for the topic.
-   * - Parses incoming raw JSON message into the correct payload type.
-   * - Validates parsed object against the schema.
-   * - Passes the validated payload to the callback.
+   * Subscribe to a topic and receive strongly typed + validated payloads.
    */
   subscribe<K extends Topic<TSchemas>>(
     topic: K,
     callback: (payload: Payload<TSchemas, K>) => void,
     onAck?: SubscriptionCallback,
+    timeoutMs?: number,
   ) {
-    if (!this.schemas[topic]) {
-      throw new Error(`Schema for topic ${topic} not found`);
-    }
-    this.client.subscribe(
+    const schema = this.getSchema(topic);
+    return this.client.subscribe(
       topic,
-      (raw) => {
-        const parsed = JSON.parse(raw.payload) as Payload<TSchemas, K>;
-        if (!this.schemas[topic]) {
-          throw new Error(`Schema for topic ${topic} not found`);
-        }
-        this.schemas[topic].parse(parsed);
+      (message) => {
+        const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
+        schema.parse(parsed);
         callback(parsed);
       },
       onAck,
+      timeoutMs,
     );
   }
 
   /**
    * Unsubscribe from a topic.
-   *
-   * @param topic - The topic name to stop listening to.
-   *
-   * Simply delegates to the raw client.
    */
   unsubscribe<K extends Topic<TSchemas>>(topic: K) {
-    this.client.unsubscribe(topic);
+    this.client.unsubscribe(topic as string);
+  }
+
+  /**
+   * Join a channel for this client instance.
+   */
+  joinChannel(channel: string) {
+    this.client.joinChannel(channel);
+  }
+
+  /**
+   * Connect the underlying client.
+   */
+  connect(timeout?: number) {
+    return this.client.connect(timeout);
+  }
+
+  /**
+   * Presence APIs passthroughs
+   */
+  onPresence(topic: string, handler: PresenceHandler) {
+    return this.client.onPresence(topic, handler);
+  }
+
+  offPresence(topic: string, handler: PresenceHandler) {
+    return this.client.offPresence(topic, handler);
+  }
+
+  clearPresenceHandlers(topic: string) {
+    return this.client.clearPresenceHandlers(topic);
+  }
+
+  close() {
+    return this.client.close();
+  }
+
+  get isConnected() {
+    return this.client.isConnected;
+  }
+
+  get isReadable() {
+    return this.client.isReadable;
+  }
+
+  get isWritable() {
+    return this.client.isWritable;
+  }
+
+  /**
+   * Internal helper to check that a schema exists and payload is valid.
+   */
+  private assertSchema<K extends Topic<TSchemas>>(
+    topic: K,
+    payload: Payload<TSchemas, K>,
+  ) {
+    const schema = this.getSchema(topic);
+    schema.parse(payload);
+  }
+
+  /**
+   * Internal helper to retrieve schema or throw an error if missing.
+   */
+  private getSchema<K extends Topic<TSchemas>>(topic: K) {
+    const schema = this.schemas[topic];
+    if (!schema) {
+      throw new Error(`Schema for topic "${topic}" not found`);
+    }
+    return schema;
   }
 }
+
+export { ErebusPubSubSchemas };
