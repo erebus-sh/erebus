@@ -5,6 +5,7 @@ import {
 } from "../../../src/client/core/Erebus";
 import { z } from "zod";
 import { ErebusPubSubSchemas } from "../../../src/client/core/pubsub/PubSubFacade";
+import type { MessageFor } from "../../../src/client/core/types";
 
 test("Testing typed facade helper for the pubsub client", async () => {
   const schemas = {
@@ -42,11 +43,11 @@ test("Testing typed facade helper for the pubsub client", async () => {
       timestamp: number;
     }>();
 
-  // Test that subscribe callback receives correctly typed payload
+  // Test that subscribe callback receives a message whose payload is correctly typed
   expectTypeOf(client.subscribe<"test_topic">)
     .parameter(1)
     .parameter(0)
-    .toEqualTypeOf<{ name: string; age: number }>();
+    .toEqualTypeOf<MessageFor<typeof schemas, "test_topic">>();
 
   // Test that publishWithAck requires correct payload type
   expectTypeOf(client.publishWithAck<"user_events">)

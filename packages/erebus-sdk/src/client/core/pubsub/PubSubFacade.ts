@@ -5,6 +5,7 @@ import type {
   SchemaMap,
   SubscriptionCallback,
   Topic,
+  MessageFor,
 } from "../types";
 import type { PresenceHandler } from "./Presence";
 
@@ -59,7 +60,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    */
   subscribe<K extends Topic<TSchemas>>(
     topic: K,
-    callback: (payload: Payload<TSchemas, K>) => void,
+    callback: (message: MessageFor<TSchemas, K>) => void,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
   ) {
@@ -69,8 +70,11 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
       (message) => {
         const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
         schema.parse(parsed);
-        // TODO: callback can include senderId, timestamp, and more stuff
-        callback(parsed);
+        const typedMessage = { ...message, payload: parsed } as MessageFor<
+          TSchemas,
+          K
+        >;
+        callback(typedMessage);
       },
       onAck,
       timeoutMs,

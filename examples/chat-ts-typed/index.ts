@@ -75,7 +75,15 @@ async function main() {
 
   // Subscribe to a channel
   await client.subscribe("test_topic", (msg) => {
-    console.log("📩 Received: Name:", msg.name, "Age:", msg.age);
+    console.log(
+      "📩 Received:",
+      "Name:",
+      msg.payload.name,
+      "from",
+      msg.senderId,
+      "age",
+      msg.payload.age,
+    );
   });
   console.log("✅ Subscribed successfully!");
 

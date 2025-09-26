@@ -1,4 +1,5 @@
 import type { AckPacketType } from "../../../../schemas/packetEnvelope";
+import type { MessageBody } from "../../../../schemas/messageBody";
 import { z } from "zod";
 
 export type ErebusOptions = {
@@ -126,3 +127,11 @@ export const VERSION = "1" as const;
 export type SchemaMap = Record<string, z.ZodType>; // Channel -> schema
 export type Topic<S extends SchemaMap> = Extract<keyof S, string>; // Topics are the keys of the schema map
 export type Payload<S extends SchemaMap, K extends Topic<S>> = z.infer<S[K]>; // Payloads are the inferred types of the schema map
+
+// A typed message that preserves all server-provided metadata while typing the payload
+export type TypedMessage<P> = Omit<MessageBody, "payload"> & { payload: P };
+
+// Convenience helper to get a typed message for a given schema map + topic
+export type MessageFor<S extends SchemaMap, K extends Topic<S>> = TypedMessage<
+  Payload<S, K>
+>;
