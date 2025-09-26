@@ -67,7 +67,7 @@ async function main() {
   );
 
   // Join a channel first
-  client.joinChannel("");
+  client.joinChannel("test_channel123");
 
   // Connect
   await client.connect();
@@ -75,13 +75,18 @@ async function main() {
 
   // Subscribe to a channel
   await client.subscribe("test_topic", (msg) => {
-    console.log("📩 Received:", msg.name, "from", msg.age);
+    console.log("📩 Received: Name:", msg.name, "Age:", msg.age);
   });
   console.log("✅ Subscribed successfully!");
 
   // Register presence handler
   await client.onPresence("test_topic", (presence) => {
-    console.log("📩 Presence:", presence);
+    console.log(
+      "📩 Presence: Status:",
+      presence.status,
+      "Topic:",
+      presence.topic,
+    );
   });
   console.log("✅ Presence handler registered!");
 

@@ -69,6 +69,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
       (message) => {
         const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
         schema.parse(parsed);
+        // TODO: callback can include senderId, timestamp, and more stuff
         callback(parsed);
       },
       onAck,
