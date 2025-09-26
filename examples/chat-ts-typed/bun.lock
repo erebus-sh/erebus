@@ -4,7 +4,7 @@
     "": {
       "name": "chat-ts-typed",
       "dependencies": {
-        "@erebus-sh/sdk": "^0.0.169",
+        "@erebus-sh/sdk": "^0.0.170",
       },
       "devDependencies": {
         "@types/bun": "latest",
@@ -15,7 +15,7 @@
     },
   },
   "packages": {
-    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.169", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "hono": "^4.9.1", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5.9.2", "zustand": "^4 || ^5" } }, "sha512-kh10Z3mSMp8VrJM737jJKe+QfJwdxUqfzENDS5H9t0g+/5To4db373LaTHc1kP4aLoo65xXMGi/5zW+fiE0X7A=="],
+    "@erebus-sh/sdk": ["@erebus-sh/sdk@0.0.170", "", { "dependencies": { "@hono/node-server": "^1.18.2", "@hono/zod-validator": "^0.7.2", "hono": "^4.9.1", "ky": "^1.8.2", "nanoid": "^5.1.5", "zod": "^4.0.17" }, "peerDependencies": { "react": "^18 || ^19", "typescript": "^5.9.2", "zustand": "^4 || ^5" } }, "sha512-9pEBHtP7RjIwdUFa8/kfEjJx5XFr7yEy4+0NnPydyLDbECMnCUWcHqLGOclru2zvV0tFUncAP/e6Vm0Dn3v/tA=="],
 
     "@hono/node-server": ["@hono/node-server@1.19.4", "", { "peerDependencies": { "hono": "^4" } }, "sha512-AWKQZ/YkHUBSHeL/5Ld8FWgUs6wFf4TxGYxqp9wLZxRdFuHBpXmgOq+CuDoL4vllkZLzovCf5HBJnypiy3EtHA=="],
 
