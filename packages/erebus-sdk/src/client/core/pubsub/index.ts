@@ -18,4 +18,5 @@ export type { PresenceHandler } from "./Presence";
 // Interfaces and types
 export type * from "./interfaces";
 
-// Legacy exports removed - use the modular architecture above
+// Typed Helper
+export * from "./PubSubFacade";
