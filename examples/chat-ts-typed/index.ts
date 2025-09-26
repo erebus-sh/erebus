@@ -50,8 +50,6 @@ try {
 console.log("✅ Auth server running at http://localhost:3000");
 
 async function main() {
-  const topic = "test_123";
-
   const schemas = {
     test_topic: z.object({
       name: z.string(),
@@ -76,24 +74,24 @@ async function main() {
   console.log("✅ Connected successfully!");
 
   // Subscribe to a channel
-  await client.subscribe(topic, (msg) => {
-    console.log("📩 Received:", msg.payload, "from", msg.senderId);
+  await client.subscribe("test_topic", (msg) => {
+    console.log("📩 Received:", msg.name, "from", msg.age);
   });
   console.log("✅ Subscribed successfully!");
 
   // Register presence handler
-  await client.onPresence(topic, (presence) => {
+  await client.onPresence("test_topic", (presence) => {
     console.log("📩 Presence:", presence);
   });
   console.log("✅ Presence handler registered!");
 
   // Publish a message
-  await client.publishWithAck({
-    topic: topic,
-    messageBody: "Hello Erebus 👋",
-    onAck: (ack) => {
+  await client.publishWithAck(
+    "test_topic",
+    { name: "John", age: 30 },
+    (ack) => {
       console.log("✅ Message acknowledged:", ack.ack);
     },
-  });
+  );
 }
 main().catch(console.error);

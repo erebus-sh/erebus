@@ -80,7 +80,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    * Unsubscribe from a topic.
    */
   unsubscribe<K extends Topic<TSchemas>>(topic: K) {
-    this.client.unsubscribe(topic as string);
+    this.client.unsubscribe(topic);
   }
 
   /**
@@ -100,15 +100,15 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Presence APIs passthroughs
    */
-  onPresence(topic: string, handler: PresenceHandler) {
+  onPresence<K extends Topic<TSchemas>>(topic: K, handler: PresenceHandler) {
     return this.client.onPresence(topic, handler);
   }
 
-  offPresence(topic: string, handler: PresenceHandler) {
+  offPresence<K extends Topic<TSchemas>>(topic: K, handler: PresenceHandler) {
     return this.client.offPresence(topic, handler);
   }
 
-  clearPresenceHandlers(topic: string) {
+  clearPresenceHandlers<K extends Topic<TSchemas>>(topic: K) {
     return this.client.clearPresenceHandlers(topic);
   }
 
