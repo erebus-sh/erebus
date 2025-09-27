@@ -9,6 +9,10 @@ import type {
 } from "../types";
 import type { PresenceHandler } from "./Presence";
 
+const mergeTopic = (topicSchema: string, topicSub: string) => {
+  return `${topicSchema}_${topicSub}`;
+};
+
 /**
  * ErebusPubSubSchemas
  *
@@ -29,8 +33,13 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Publish a typed + validated message to a topic.
    */
-  publish<K extends Topic<TSchemas>>(topic: K, payload: Payload<TSchemas, K>) {
-    this.assertSchema(topic, payload);
+  publish<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    payload: Payload<TSchemas, K>,
+  ) {
+    this.assertSchema(topicSchema, payload);
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.publish({
       topic,
       messageBody: JSON.stringify(payload),
@@ -41,12 +50,14 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    * Publish a typed + validated message with acknowledgement handling.
    */
   publishWithAck<K extends Topic<TSchemas>>(
-    topic: K,
+    topicSchema: K,
+    topicSub: string,
     payload: Payload<TSchemas, K>,
     onAck: AckCallback,
     timeoutMs?: number,
   ) {
-    this.assertSchema(topic, payload);
+    this.assertSchema(topicSchema, payload);
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.publishWithAck({
       topic,
       messageBody: JSON.stringify(payload),
@@ -59,12 +70,14 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    * Subscribe to a topic and receive strongly typed + validated payloads.
    */
   subscribe<K extends Topic<TSchemas>>(
-    topic: K,
+    topicSchema: K,
+    topicSub: string,
     callback: (message: MessageFor<TSchemas, K>) => void,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
   ) {
-    const schema = this.getSchema(topic);
+    const schema = this.getSchema(topicSchema);
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.subscribe(
       topic,
       (message) => {
@@ -84,7 +97,8 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Unsubscribe from a topic.
    */
-  unsubscribe<K extends Topic<TSchemas>>(topic: K) {
+  unsubscribe<K extends Topic<TSchemas>>(topicSchema: K, topicSub: string) {
+    const topic = mergeTopic(topicSchema, topicSub);
     this.client.unsubscribe(topic);
   }
 
@@ -105,15 +119,29 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Presence APIs passthroughs
    */
-  onPresence<K extends Topic<TSchemas>>(topic: K, handler: PresenceHandler) {
+  onPresence<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    handler: PresenceHandler,
+  ) {
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.onPresence(topic, handler);
   }
 
-  offPresence<K extends Topic<TSchemas>>(topic: K, handler: PresenceHandler) {
+  offPresence<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    handler: PresenceHandler,
+  ) {
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.offPresence(topic, handler);
   }
 
-  clearPresenceHandlers<K extends Topic<TSchemas>>(topic: K) {
+  clearPresenceHandlers<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+  ) {
+    const topic = mergeTopic(topicSchema, topicSub);
     return this.client.clearPresenceHandlers(topic);
   }
 
@@ -137,20 +165,20 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    * Internal helper to check that a schema exists and payload is valid.
    */
   private assertSchema<K extends Topic<TSchemas>>(
-    topic: K,
+    topicSchema: K,
     payload: Payload<TSchemas, K>,
   ) {
-    const schema = this.getSchema(topic);
+    const schema = this.getSchema(topicSchema);
     schema.parse(payload);
   }
 
   /**
    * Internal helper to retrieve schema or throw an error if missing.
    */
-  private getSchema<K extends Topic<TSchemas>>(topic: K) {
-    const schema = this.schemas[topic];
+  private getSchema<K extends Topic<TSchemas>>(topicSchema: K) {
+    const schema = this.schemas[topicSchema];
     if (!schema) {
-      throw new Error(`Schema for topic "${topic}" not found`);
+      throw new Error(`Schema for topic "${topicSchema}" not found`);
     }
     return schema;
   }

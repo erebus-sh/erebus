@@ -31,12 +31,12 @@ test("Testing typed facade helper for the pubsub client", async () => {
 
   // Test that publish method requires correct payload type for test_topic
   expectTypeOf(client.publish<"test_topic">)
-    .parameter(1)
+    .parameter(2)
     .toEqualTypeOf<{ name: string; age: number }>();
 
   // Test that publish method requires correct payload type for user_events
   expectTypeOf(client.publish<"user_events">)
-    .parameter(1)
+    .parameter(2)
     .toEqualTypeOf<{
       userId: string;
       action: "login" | "logout" | "signup";
@@ -45,13 +45,13 @@ test("Testing typed facade helper for the pubsub client", async () => {
 
   // Test that subscribe callback receives a message whose payload is correctly typed
   expectTypeOf(client.subscribe<"test_topic">)
-    .parameter(1)
+    .parameter(2)
     .parameter(0)
     .toEqualTypeOf<MessageFor<typeof schemas, "test_topic">>();
 
   // Test that publishWithAck requires correct payload type
   expectTypeOf(client.publishWithAck<"user_events">)
-    .parameter(1)
+    .parameter(2)
     .toEqualTypeOf<{
       userId: string;
       action: "login" | "logout" | "signup";

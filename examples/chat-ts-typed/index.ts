@@ -74,7 +74,7 @@ async function main() {
   console.log("✅ Connected successfully!");
 
   // Subscribe to a channel
-  await client.subscribe("test_topic", (msg) => {
+  await client.subscribe("test_topic", "123", (msg) => {
     console.log(
       "📩 Received:",
       "Name:",
@@ -88,7 +88,7 @@ async function main() {
   console.log("✅ Subscribed successfully!");
 
   // Register presence handler
-  await client.onPresence("test_topic", (presence) => {
+  await client.onPresence("test_topic", "123", (presence) => {
     console.log(
       "📩 Presence: Status:",
       presence.status,
@@ -101,6 +101,7 @@ async function main() {
   // Publish a message
   await client.publishWithAck(
     "test_topic",
+    "123",
     { name: "John", age: 30 },
     (ack) => {
       console.log("✅ Message acknowledged:", ack.ack);
