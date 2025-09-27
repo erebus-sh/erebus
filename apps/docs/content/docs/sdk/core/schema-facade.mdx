@@ -15,7 +15,7 @@ It ensures that every message you publish or subscribe to matches the shape defi
 The facade **wraps your PubSub client** and binds it to a `SchemaMap`.  
 Each key in the schema represents a *channel type* (e.g. `news`, `chat`, `presence`), and defines the payload shape for that channel.  
 
-At runtime, you can create many dynamic topics (e.g. `news:sports`, `news:finance`) under the same schema key.  
+At runtime, you can create many dynamic topics (e.g. `sports`, `finance`) under the same schema key.  
 All topics under the same schema key share the same payload contract.
 
 ---
