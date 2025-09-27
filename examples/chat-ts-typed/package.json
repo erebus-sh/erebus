@@ -1,0 +1,15 @@
+{
+  "name": "chat-ts-typed",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "devDependencies": {
+    "@types/bun": "latest"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "@erebus-sh/sdk": "^0.0.172"
+  }
+}

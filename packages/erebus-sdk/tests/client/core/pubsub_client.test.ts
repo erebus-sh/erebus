@@ -1,4 +1,4 @@
-import { beforeAll, test, expect } from "vitest";
+import { beforeAll, test } from "vitest";
 import {
   ErebusClient,
   ErebusClientState,
@@ -6,27 +6,7 @@ import {
 import { createGenericAdapter } from "../../../src/server";
 import { ErebusService } from "../../../src/service/Service";
 import { Access } from "@repo/schemas/grant";
-import type { MessageBody } from "@repo/schemas/messageBody";
-import type {
-  AckResponse,
-  AckSuccess,
-  AckError,
-} from "../../../src/client/core/types";
 import { serve } from "@hono/node-server";
-
-// Enhanced interface for proper latency tracking
-interface MessagePayloadWithLatency extends MessageBody {
-  receivedAt?: number; // Client timestamp when message was received
-  publishTime?: number; // Client timestamp when message was published
-
-  // Split latency metrics:
-  publishToServerLatency?: number; // sentAt - publishTime (client→server + server processing)
-  serverToClientLatency?: number; // receivedAt - sentAt (server→client)
-  totalRoundtripLatency?: number; // receivedAt - publishTime (total roundtrip)
-
-  // Legacy field for backward compatibility
-  processingTime?: number; // Same as totalRoundtripLatency
-}
 
 let authServer: any;
 
@@ -56,7 +36,7 @@ beforeAll(() => {
   });
 });
 
-test("Two clients flow: client2 sends 25 messages to client1, all are received", async () => {
+test("Two clients flow: client2 sends 3 messages to client1, all are received", async () => {
   // Generate unique topic name for this test run to avoid message replay
   const uniqueTopic = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const uniqueChannel = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
@@ -65,14 +45,14 @@ test("Two clients flow: client2 sends 25 messages to client1, all are received",
     `Starting Two clients flow test with unique topic: ${uniqueTopic}`,
   );
 
-  const client1 = await ErebusClient.createClient({
+  const client1 = ErebusClient.createClient({
     client: ErebusClientState.PubSub,
     authBaseUrl: "http://localhost:6969",
     wsBaseUrl: "ws://localhost:8787",
   });
   console.log("Client1 created");
 
-  const client2 = await ErebusClient.createClient({
+  const client2 = ErebusClient.createClient({
     client: ErebusClientState.PubSub,
     authBaseUrl: "http://localhost:6969", // Test local server [This simulate user of erebus server]
     wsBaseUrl: "ws://localhost:8787", // Cloudflare service local

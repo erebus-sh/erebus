@@ -50,7 +50,10 @@ export default function NavbarConsole() {
   const navigationLinks = [
     { href: `/c/${userSlug}`, label: "Dashboard" },
     { href: process.env.NEXT_PUBLIC_DOCS_URL, label: "Docs" },
-    { href: process.env.NEXT_PUBLIC_DOCS_URL + "/sdk", label: "SDK reference" },
+    {
+      href: process.env.NEXT_PUBLIC_DOCS_URL + "/docs/sdk",
+      label: "SDK reference",
+    },
   ];
 
   useEffect(() => {

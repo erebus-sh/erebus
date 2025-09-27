@@ -6,7 +6,11 @@ export {
 } from "./Erebus";
 
 // ========== PUBSUB CLIENT ==========
-export { ErebusPubSubClient, PubSubConnection } from "./pubsub";
+export {
+  ErebusPubSubClient,
+  PubSubConnection,
+  ErebusPubSubSchemas,
+} from "./pubsub";
 
 // ========== PUBSUB MANAGERS ==========
 export {

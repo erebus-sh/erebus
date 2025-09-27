@@ -1,0 +1,84 @@
+---
+title: Schema Facade
+description: Type-safe PubSub built on top of the Erebus SDK
+---
+
+# Schema Facade
+
+The **Schema Facade** is a helper class that adds strong typing and runtime validation to the Erebus PubSub client.  
+It ensures that every message you publish or subscribe to matches the shape defined in your schema.
+
+---
+
+## How does it work?
+
+The facade **wraps your PubSub client** and binds it to a `SchemaMap`.  
+Each key in the schema represents a *channel type* (e.g. `news`, `chat`, `presence`), and defines the payload shape for that channel.  
+
+At runtime, you can create many dynamic topics (e.g. `news:sports`, `news:finance`) under the same schema key.  
+All topics under the same schema key share the same payload contract.
+
+---
+
+## Example
+
+```ts
+import { ErebusPubSubSchemas } from "@erebus-sh/sdk";
+import { z } from "zod";
+
+// 1. Define your schema
+const schemas = {
+  news: z.object({
+    title: z.string(),
+    body: z.string(),
+    timestamp: z.number(),
+  }),
+} as const;
+
+
+const clientUnTyped = ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:4919", // your auth domain
+    wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
+});
+
+const client = new ErebusPubSubSchemas(
+    clientUnTyped,
+    schemas,
+);
+
+
+// 3. Use it with type safety
+client.publish("news", "sports", {
+  title: "Team wins the finals",
+  body: "Fans celebrate in the streets",
+  timestamp: Date.now(),
+});
+
+client.subscribe("news", "finance", (article) => {
+  console.log(`[Finance] ${article.title}`);
+});
+```
+
+## Key points
+
+<Callout title="Good to know" type="note">
+The Schema Facade automatically combines the **schema key** and the **topic ID** into a full channel name.  
+For example, using `("news", "sports")` becomes the topic string `news_sports` behind the scenes.  
+</Callout>
+
+* **Schema key/Topic Schema** → defines the payload shape (`news`, `chat`, etc.)
+* **Topic** → dynamic runtime identifier (`sports`, `finance`, `chat:123`)
+* **Compile-time safety** → TypeScript enforces correct payloads per schema key
+* **Runtime validation** → Zod ensures payloads are valid before sending/after receiving
+
+
+
+## Why use it?
+
+Without the facade, PubSub messages are just raw JSON strings.
+With the facade, you get:
+
+* Safer publishes (payload checked at compile time + runtime)
+* Safer subscriptions (payload automatically validated and typed)
+* Cleaner, self-documenting API
