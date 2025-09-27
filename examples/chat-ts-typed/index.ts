@@ -50,21 +50,20 @@ try {
 console.log("✅ Auth server running at http://localhost:3000");
 
 async function main() {
+  // 1. Define your schema
   const schemas = {
-    test_topic: z.object({
-      name: z.string(),
-      age: z.number(),
+    news: z.object({
+      title: z.string(),
+      body: z.string(),
+      timestamp: z.number(),
     }),
   } as const;
-
-  const client = new ErebusPubSubSchemas(
-    ErebusClient.createClient({
-      client: ErebusClientState.PubSub,
-      authBaseUrl: "http://localhost:4919", // your auth domain
-      wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
-    }),
-    schemas,
-  );
+  const clientUnTyped = ErebusClient.createClient({
+    client: ErebusClientState.PubSub,
+    authBaseUrl: "http://localhost:4919", // your auth domain
+    wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
+  });
+  const client = new ErebusPubSubSchemas(clientUnTyped, schemas);
 
   // Join a channel first
   client.joinChannel("test_channel123");
@@ -74,21 +73,21 @@ async function main() {
   console.log("✅ Connected successfully!");
 
   // Subscribe to a channel
-  await client.subscribe("test_topic", "123", (msg) => {
+  await client.subscribe("news", "sports", (msg) => {
     console.log(
       "📩 Received:",
-      "Name:",
-      msg.payload.name,
+      "Title:",
+      msg.payload.title,
       "from",
       msg.senderId,
-      "age",
-      msg.payload.age,
+      "timestamp",
+      msg.payload.timestamp,
     );
   });
   console.log("✅ Subscribed successfully!");
 
   // Register presence handler
-  await client.onPresence("test_topic", "123", (presence) => {
+  await client.onPresence("news", "sports", (presence) => {
     console.log(
       "📩 Presence: Status:",
       presence.status,
@@ -99,13 +98,10 @@ async function main() {
   console.log("✅ Presence handler registered!");
 
   // Publish a message
-  await client.publishWithAck(
-    "test_topic",
-    "123",
-    { name: "John", age: 30 },
-    (ack) => {
-      console.log("✅ Message acknowledged:", ack.ack);
-    },
-  );
+  await client.publish("news", "sports", {
+    title: "John",
+    body: "Hello",
+    timestamp: 30,
+  });
 }
 main().catch(console.error);
