@@ -36,19 +36,21 @@ const schemas = {
 } as const;
 
 
+// 2. Create the client without the schema
 const clientUnTyped = ErebusClient.createClient({
     client: ErebusClientState.PubSub,
     authBaseUrl: "http://localhost:4919", // your auth domain
     wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
 });
 
+// 3. Create the client with the schema
 const client = new ErebusPubSubSchemas(
     clientUnTyped,
     schemas,
 );
 
 
-// 3. Use it with type safety
+// 4. Use it with type safety
 client.publish("news", "sports", {
   title: "Team wins the finals",
   body: "Fans celebrate in the streets",
