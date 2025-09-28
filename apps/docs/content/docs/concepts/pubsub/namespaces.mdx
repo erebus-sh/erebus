@@ -1,0 +1,23 @@
+---
+title: Namespaces and Regions
+description: How namespaces helps solving CAP theorem issues and improving scalability and reliability.
+---
+
+# Namespaces and Regions
+
+Namespaces in Erebus are built on top of Durable Object namespaces.  
+Here’s the idea in simple terms:
+
+- **Per-region consistency**:  
+  Each region has its own namespace, identified like `id:{region}`.  
+  People in the same region get both **consistency** and **availability**, since their messages stay local.
+
+- **Cross-region communication**:  
+  When one region needs to talk to another (e.g. `id:{region_1} -> id:{region_2}`), the traffic goes through a Redis-backed coordination layer.  
+  These namespaces are grouped under "shards" to keep things scalable.
+
+- **Trade-offs**:  
+  Within a region → you get strong guarantees (fast and consistent).  
+  Across regions → you get AP (availability and partition tolerance), but no strict consistency, and latency is naturally higher.
+
+This setup balances the CAP theorem by separating guarantees regionally while still allowing global communication.

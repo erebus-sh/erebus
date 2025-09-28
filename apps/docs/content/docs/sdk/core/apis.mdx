@@ -1,0 +1,91 @@
+---
+title: Core Client APIs
+description: Available APIs for the Erebus pubsub client
+---
+
+# Core Client APIs
+
+The core client APIs are available for the Erebus pubsub client.
+
+## Core Client APIs
+
+### Quickstart (Client + local Bun auth server)
+
+```ts
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+import { createGenericAdapter } from "@erebus-sh/sdk/server";
+import { Access, ErebusService } from "@erebus-sh/sdk/service";
+import Bun from "bun";
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:4919", // your auth domain
+  wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
+});
+
+const SECRET_API_KEY =
+  process.env.SECRET_API_KEY ||
+  "dv-er-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"; // replace with your secret_api_key
+
+const app = createGenericAdapter({
+  authorize: async (channel, ctx) => {
+    const userId = Math.random().toString(36).substring(2, 15);
+
+    const service = new ErebusService({
+      secret_api_key: SECRET_API_KEY,
+      base_url: "http://localhost:3000", // where your Erebus service is running (optional locally)
+    });
+
+    const session = await service.prepareSession({ userId });
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+    return session;
+  },
+  fireWebhook: async (message) => {
+    // handle webhook message if needed
+  },
+});
+
+Bun.serve({ port: 4919, fetch: app.fetch });
+
+async function main() {
+  const topic = "test_123";
+  client.joinChannel("chats");
+  await client.connect();
+
+  await client.subscribe(topic, (msg) => {
+    console.log("📩 Received:", msg.payload, "from", msg.senderId);
+  });
+
+  await client.onPresence(topic, (presence) => {
+    console.log("📩 Presence:", presence);
+  });
+
+  await client.publishWithAck({
+    topic,
+    messageBody: "Hello Erebus 👋",
+    onAck: (ack) => {
+      console.log("✅ Message acknowledged:", ack.ack);
+    },
+  });
+}
+main().catch(console.error);
+```
+
+Check the full example repository in [Chat Typescript](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts)
+
+### ErebusClient
+
+- `ErebusClient.createClient({ client, authBaseUrl, wsBaseUrl })` → returns a Pub/Sub client when `client: ErebusClientState.PubSub`.
+- `joinChannel(channel: string)` → sets the channel before connecting.
+- `connect()` → establishes the WebSocket connection (uses grants from `authBaseUrl`).
+- `subscribe(topic: string, handler)` → receive real-time messages.
+- `onPresence(topic: string, handler)` → receive presence updates for a topic.
+- `publishWithAck({ topic, messageBody, onAck, timeoutMs? })` → publish and handle ack.
+- `publish({ topic, messageBody, timeoutMs? })` → publish without ack.
+
+### Types and helpers
+
+- `ErebusClientState.PubSub` – select the Pub/Sub client.
+- `Access.ReadWrite` – grant read/write permissions in sessions.
+- `createGenericAdapter({ authorize, fireWebhook? })` – minimal Bun adapter for auth + webhooks.
