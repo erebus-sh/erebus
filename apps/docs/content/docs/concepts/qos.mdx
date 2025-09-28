@@ -30,8 +30,6 @@ In short: *fire and forget.*
 Messages are sent and retried until the **server acknowledges** that they’ve been received.  
 This guarantees that the message reaches Erebus at least once, but **duplicates may occur** if the sender retransmits before receiving the ACK.
 
-Erebus uses **ULID-based sequence IDs** to make deduplication and ordering simple for clients and servers.
-
 This mode is best for:
 - Chat messages
 - Collaborative edits
@@ -42,6 +40,5 @@ In short: *guaranteed delivery, with possible duplicates.*
 ---
 
 <Callout title="Note:" type="warning">
-
 Erebus does not currently implement QoS 2 (“exactly once”), as the additional handshake adds latency and complexity. For most realtime use cases, QoS 1 combined with deduplication is the right balance of speed and reliability.
 </Callout>
