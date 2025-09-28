@@ -15,6 +15,7 @@ const SubscribePacket = z.object({
   packetType: z.literal("subscribe"),
   requestId: RequestId,
   topic: z.string().min(1),
+  streamOldMessages: z.boolean().optional(),
 });
 
 const UnsubscribePacket = z.object({

@@ -6,6 +6,7 @@ import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import type { ConnectionState } from "./interfaces";
+import type { SubscribeOptions } from "./types";
 
 type ErebusOptions = {
   wsUrl: string;
@@ -228,10 +229,11 @@ export class ErebusPubSubClient {
     handler: Handler,
     onAck?: SubscriptionCallback,
     timeoutMs: number = 10000,
+    options?: SubscribeOptions,
   ): Promise<void> {
     // Debounce it
     console.log("subscribe called", { topic, handler, onAck, timeoutMs });
-    this.subscribeWithCallback(topic, handler, onAck, timeoutMs);
+    this.subscribeWithCallback(topic, handler, onAck, timeoutMs, options);
     // Return a promise that resolves when subscription is ready
     return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
@@ -241,6 +243,7 @@ export class ErebusPubSubClient {
     handler: Handler,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
+    options?: SubscribeOptions,
   ): void {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] Subscribe called`, {
@@ -276,7 +279,7 @@ export class ErebusPubSubClient {
     this.#stateManager.addHandler(topic, handler);
     this.#stateManager.addPendingSubscription(topic);
     this.#stateManager.setSubscriptionStatus(topic, "pending");
-    this.#conn.subscribeWithCallback(topic, onAck, timeoutMs);
+    this.#conn.subscribeWithCallback(topic, onAck, timeoutMs, options);
   }
 
   unsubscribe(topic: string): void {

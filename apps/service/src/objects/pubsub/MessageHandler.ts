@@ -366,9 +366,11 @@ export class MessageHandler extends BaseService {
         client.keyId,
       );
 
-      // TODO: deliverMissedMessages can be optional or better to recv via api
-      // Retrieve and deliver missed messages
-      await this.deliverMissedMessages(client, topic);
+      // TODO: deliverMissedMessages are now optional and there will be an api to recv via HTTP API
+      if (envelope.streamOldMessages) {
+        // Retrieve and deliver missed messages
+        await this.deliverMissedMessages(client, topic);
+      }
       this.logDebug(`[WS_SUBSCRIBE] Subscribe process completed`);
     } catch (error) {
       this.logError(`[WS_SUBSCRIBE] Subscription failed: ${error}`);
