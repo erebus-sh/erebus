@@ -8,6 +8,7 @@ import type {
   MessageFor,
 } from "../types";
 import type { PresenceHandler } from "./Presence";
+import type { SubscribeOptions } from "./types";
 
 const mergeTopic = (topicSchema: string, topicSub: string) => {
   return `${topicSchema}_${topicSub}`;
@@ -75,6 +76,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     callback: (message: MessageFor<TSchemas, K>) => void,
     onAck?: SubscriptionCallback,
     timeoutMs?: number,
+    options?: SubscribeOptions,
   ) {
     const schema = this.getSchema(topicSchema);
     const topic = mergeTopic(topicSchema, topicSub);
@@ -91,6 +93,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
       },
       onAck,
       timeoutMs,
+      options,
     );
   }
 
