@@ -23,6 +23,7 @@ import type {
   ConnectionState,
   SubscriptionStatus,
 } from "./interfaces";
+import type { SubscribeOptions } from "./types";
 
 // Re-export errors for backward compatibility
 /**
@@ -209,6 +210,7 @@ export class PubSubConnection {
     topic: string,
     callback?: SubscriptionCallback,
     timeoutMs?: number,
+    options?: SubscribeOptions,
   ): void {
     console.log(`[${this.#connectionId}] Subscribe called`, {
       topic,
@@ -276,12 +278,17 @@ export class PubSubConnection {
         this.#ackManager.trackSubscription(requestId, pending);
       }
 
-      this.#connectionManager.send({
+      const subscribePacket: Extract<
+        PacketEnvelope,
+        { packetType: "subscribe" }
+      > = {
         packetType: "subscribe",
         topic,
-        ...(requestId && { requestId }),
-        ...(clientMsgId && { clientMsgId }),
-      });
+        requestId,
+        streamOldMessages: options?.streamOldMessages ?? false,
+      };
+
+      this.#connectionManager.send(subscribePacket);
     } catch (error) {
       console.error(`[${this.#connectionId}] Error sending subscribe packet`, {
         error,
