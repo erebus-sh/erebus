@@ -1,12 +1,78 @@
 ---
-title: SDK
-description: SDK for Erebus
+title: SDK Reference
+description: Type-safe client SDKs for Erebus (Core + React).
 ---
 
-# SDK
+# Erebus SDK
 
-The SDK is a set of tools for building real-time applications with Erebus.
+The Erebus SDK gives you everything you need to build real-time apps on top of Erebus pub/sub.  
+It provides a type-safe and raw **Core Client** and a type-safe **React Client** with hooks for subscription, publishing, and presence.
 
-## Available primitives
+## Installation
 
-- [Schema Facade](./sdk/core/schema-facade)
+```package-install
+@erebus-sh/sdk
+```
+
+
+
+# Packages
+Currently shipped as a single package:
+- `@erebus-sh/sdk/client` – low-level client APIs
+- `@erebus-sh/sdk/react` – React hooks on top of the core (**Experimental/Unstable**)
+- `@erebus-sh/sdk/server` – Server-side SDK for building Erebus servers
+- `@erebus-sh/sdk/service` – Helpers for server-side authorization and sessions
+But it's also available on:
+- `@erebus-sh/sdk` – All packages in one exported in a barrel file (will change in the future)
+
+
+# Core APIs
+
+The Core Client provides stable, type-safe APIs for interacting with Erebus pub/sub and messaging infrastructure. The main APIs include:
+
+- **connect**: Establishes a connection to the Erebus backend. Handles authentication and connection lifecycle.
+- **publish**: Sends messages to a specified channel, namespace, or region.
+- **subscribe**: Listens for messages on a channel (or channels), receiving real-time updates.
+- **ack**: Acknowledges receipt of a message (if required by your backend or QoS settings).
+- **sequences**: Provides access to message sequences and ordering, useful for replay or catch-up.
+- **namespaces/regions**: Allows scoping of channels and messages to logical or geographic partitions.
+
+The core APIs are designed for flexibility and reliability, making it easy to build real-time features such as chat, notifications, presence, and collaborative editing.
+
+## Quickstart: Connect, Subscribe, Publish
+
+```ts
+import { ErebusClient, ErebusClientState } from '@erebus-sh/sdk/client'
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: 'http://localhost:4919',
+  wsBaseUrl: 'ws://localhost:8787',
+})
+
+await client.joinChannel('chats')
+await client.connect()
+
+await client.subscribe('test_123', (msg) => {
+  console.log('Received:', msg.payload, 'from', msg.senderId)
+})
+
+await client.onPresence('test_123', (presence) => {
+  console.log('Presence:', presence)
+})
+
+await client.publishWithAck({
+  topic: 'test_123',
+  messageBody: 'Hello Erebus 👋',
+  onAck: (ack) => {
+    console.log('Message acknowledged:', ack.ack)
+  },
+})
+```
+
+> For a full end-to-end example (including a Bun-based auth server using `createGenericAdapter` and webhooks), see the [Core Client APIs](/docs/sdk/core/apis) page.
+
+
+# React Package (Experimental)
+
+The React package (`@erebus-sh/sdk/react`) is **experimental** and its API will change. It provides React hooks for subscription, publishing, and presence, built on top of the core client.
