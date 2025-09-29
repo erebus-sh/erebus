@@ -224,16 +224,67 @@ export class ErebusPubSubClient {
     console.log("Channel joined successfully", { channel });
   }
 
+  // Overload for subscribe with options only
   subscribe(
     topic: string,
     handler: Handler,
-    onAck?: SubscriptionCallback,
-    timeoutMs: number = 10000,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  // Overload for subscribe with onAck and options
+  subscribe(
+    topic: string,
+    handler: Handler,
+    onAck: SubscriptionCallback,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  // Overload for subscribe with onAck, timeoutMs and options
+  subscribe(
+    topic: string,
+    handler: Handler,
+    onAck: SubscriptionCallback,
+    timeoutMs: number,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  // Implementation
+  subscribe(
+    topic: string,
+    handler: Handler,
+    onAckOrOptions?: SubscriptionCallback | SubscribeOptions,
+    timeoutMsOrOptions?: number | SubscribeOptions,
     options?: SubscribeOptions,
   ): Promise<void> {
     // Debounce it
-    console.log("subscribe called", { topic, handler, onAck, timeoutMs });
-    this.subscribeWithCallback(topic, handler, onAck, timeoutMs, options);
+    console.log("subscribe called", {
+      topic,
+      handler,
+      onAckOrOptions,
+      timeoutMsOrOptions,
+      options,
+    });
+
+    // Determine the actual parameters based on the overload used
+    let onAck: SubscriptionCallback | undefined;
+    let timeoutMs: number = 10000;
+    let finalOptions: SubscribeOptions | undefined;
+
+    if (typeof onAckOrOptions === "function") {
+      // onAckOrOptions is a SubscriptionCallback
+      onAck = onAckOrOptions;
+
+      if (typeof timeoutMsOrOptions === "number") {
+        // timeoutMsOrOptions is a number
+        timeoutMs = timeoutMsOrOptions;
+        finalOptions = options;
+      } else if (timeoutMsOrOptions && typeof timeoutMsOrOptions === "object") {
+        // timeoutMsOrOptions is actually options
+        finalOptions = timeoutMsOrOptions;
+      }
+    } else if (onAckOrOptions && typeof onAckOrOptions === "object") {
+      // onAckOrOptions is actually options
+      finalOptions = onAckOrOptions;
+    }
+
+    this.subscribeWithCallback(topic, handler, onAck, timeoutMs, finalOptions);
     // Return a promise that resolves when subscription is ready
     return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
