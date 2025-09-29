@@ -70,31 +70,77 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Subscribe to a topic and receive strongly typed + validated payloads.
    */
+  // Overload for subscribe with options only
   subscribe<K extends Topic<TSchemas>>(
     topicSchema: K,
     topicSub: string,
     callback: (message: MessageFor<TSchemas, K>) => void,
-    onAck?: SubscriptionCallback,
-    timeoutMs?: number,
     options?: SubscribeOptions,
-  ) {
+  ): Promise<void>;
+  // Overload for subscribe with onAck and options
+  subscribe<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    callback: (message: MessageFor<TSchemas, K>) => void,
+    onAck: SubscriptionCallback,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  // Overload for subscribe with onAck, timeoutMs and options
+  subscribe<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    callback: (message: MessageFor<TSchemas, K>) => void,
+    onAck: SubscriptionCallback,
+    timeoutMs: number,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  // Implementation
+  subscribe<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    callback: (message: MessageFor<TSchemas, K>) => void,
+    onAckOrOptions?: SubscriptionCallback | SubscribeOptions,
+    timeoutMsOrOptions?: number | SubscribeOptions,
+    options?: SubscribeOptions,
+  ): Promise<void> {
     const schema = this.getSchema(topicSchema);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.subscribe(
-      topic,
-      (message) => {
-        const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
-        schema.parse(parsed);
-        const typedMessage = { ...message, payload: parsed } as MessageFor<
-          TSchemas,
-          K
-        >;
-        callback(typedMessage);
-      },
-      onAck,
-      timeoutMs,
-      options,
-    );
+
+    const wrappedHandler = (message: unknown) => {
+      const parsed = JSON.parse(
+        (message as { payload: string }).payload,
+      ) as Payload<TSchemas, K>;
+      schema.parse(parsed);
+      const typedMessage = {
+        ...(message as object),
+        payload: parsed,
+      } as MessageFor<TSchemas, K>;
+      callback(typedMessage);
+    };
+
+    if (typeof onAckOrOptions === "function") {
+      const onAck = onAckOrOptions;
+      if (typeof timeoutMsOrOptions === "number") {
+        return this.client.subscribe(
+          topic,
+          wrappedHandler,
+          onAck,
+          timeoutMsOrOptions,
+          options,
+        );
+      }
+      const finalOptions =
+        timeoutMsOrOptions && typeof timeoutMsOrOptions === "object"
+          ? (timeoutMsOrOptions as SubscribeOptions)
+          : options;
+      return this.client.subscribe(topic, wrappedHandler, onAck, finalOptions);
+    }
+
+    const finalOptions =
+      onAckOrOptions && typeof onAckOrOptions === "object"
+        ? (onAckOrOptions as SubscribeOptions)
+        : options;
+    return this.client.subscribe(topic, wrappedHandler, finalOptions);
   }
 
   /**
