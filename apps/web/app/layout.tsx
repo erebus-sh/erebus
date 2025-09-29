@@ -54,7 +54,7 @@ export default function RootLayout({
             <Providers>
               {children}
               <Databuddy
-                clientId="KSFT_k2gIOWKR258gygrR"
+                clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
                 enableBatching={true}
               />
             </Providers>
