@@ -80,10 +80,10 @@ test("Two clients flow: client2 sends 3 messages to client1, all are received", 
 
   // Publish messages from client2 to client1
   for (let i = 0; i < MESSAGE_COUNT; i++) {
-    await client2.publishWithAck({
-      topic: uniqueTopic,
-      messageBody: `Hello from client2! ${i}`,
-      onAck: (ack) => {
+    await client2.publishWithAck(
+      uniqueTopic,
+      `Hello from client2! ${i}`,
+      (ack) => {
         if (ack.success) {
           console.log("✅ Message acknowledged:", ack.ack);
         } else {
@@ -92,7 +92,7 @@ test("Two clients flow: client2 sends 3 messages to client1, all are received", 
           );
         }
       },
-    });
+    );
   }
 
   // Wait for all messages to be received

@@ -7,6 +7,7 @@ import type {
   Topic,
   MessageFor,
 } from "../types";
+import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PresenceHandler } from "./Presence";
 import type { SubscribeOptions } from "./types";
 
@@ -24,6 +25,10 @@ const mergeTopic = (topicSchema: string, topicSub: string) => {
  *
  * This guarantees contract consistency between publishers and subscribers and
  * prevents accidental misuse (wrong fields, wrong types, missing schema).
+ *
+ * Note: This facade wraps ErebusPubSubClient (which implements IPubSubClient).
+ * The facade provides a different public API (split topics) for better type safety,
+ * but internally calls the unified client interface after merging topics.
  */
 class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   constructor(
@@ -41,10 +46,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   ) {
     this.assertSchema(topicSchema, payload);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.publish({
-      topic,
-      messageBody: JSON.stringify(payload),
-    });
+    return this.client.publish(topic, JSON.stringify(payload));
   }
 
   /**
@@ -59,12 +61,12 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   ) {
     this.assertSchema(topicSchema, payload);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.publishWithAck({
+    return this.client.publishWithAck(
       topic,
-      messageBody: JSON.stringify(payload),
+      JSON.stringify(payload),
       onAck,
       timeoutMs,
-    });
+    );
   }
 
   /**
@@ -106,13 +108,11 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     const schema = this.getSchema(topicSchema);
     const topic = mergeTopic(topicSchema, topicSub);
 
-    const wrappedHandler = (message: unknown) => {
-      const parsed = JSON.parse(
-        (message as { payload: string }).payload,
-      ) as Payload<TSchemas, K>;
+    const wrappedHandler = (message: MessageBody) => {
+      const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
       schema.parse(parsed);
       const typedMessage = {
-        ...(message as object),
+        ...message,
         payload: parsed,
       } as MessageFor<TSchemas, K>;
       callback(typedMessage);

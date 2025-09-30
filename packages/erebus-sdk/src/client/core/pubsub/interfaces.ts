@@ -2,9 +2,16 @@ import type {
   PacketEnvelope,
   AckPacketType,
 } from "../../../../../schemas/packetEnvelope";
-import type { PendingPublish, PendingSubscription } from "../types";
+import type {
+  PendingPublish,
+  PendingSubscription,
+  AckCallback,
+  SubscriptionCallback,
+} from "../types";
 // Import Handler type that's actually used in practice
 import type { Handler } from "./ErebusPubSubClient";
+import type { PresenceHandler } from "./Presence";
+import type { SubscribeOptions } from "./types";
 
 /**
  * Basic connection states
@@ -189,4 +196,75 @@ export interface IStateManager {
   resetReconnectAttempts(): void;
   reset(): void;
   clear(): void;
+}
+
+/**
+ * Unified PubSub Client Interface
+ *
+ * Generic interface that ensures both ErebusPubSubClient and ErebusPubSubSchemas
+ * maintain consistent method signatures while preserving type safety.
+ *
+ * Note: The interface doesn't specify topic structure (single vs split) as that's
+ * an implementation detail. Both implementations handle topics internally:
+ * - ErebusPubSubClient: Uses simple topic string
+ * - ErebusPubSubSchemas: Merges topicSchema + topicSub into final topic internally
+ *
+ * @template TTopic - Topic identifier type (string for Client, Topic<TSchemas> for Facade)
+ * @template TPayload - Payload type (string for Client, Payload<TSchemas, K> for Facade)
+ * @template TMessage - Message handler type (MessageBody for Client, MessageFor<TSchemas, K> for Facade)
+ */
+export interface IPubSubClient<TTopic, TPayload, TMessage> {
+  // Connection management
+  connect(timeout?: number): Promise<void>;
+  joinChannel(channel: string): void;
+  close(): void;
+
+  // Publishing - generic to support type-safe topics in facade
+  publish<K extends TTopic>(topic: K, payload: TPayload): Promise<string>;
+
+  publishWithAck<K extends TTopic>(
+    topic: K,
+    payload: TPayload,
+    onAck: AckCallback,
+    timeoutMs?: number,
+  ): Promise<string>;
+
+  // Subscribing - with all overloads
+  subscribe<K extends TTopic>(
+    topic: K,
+    handler: (message: TMessage) => void,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+
+  subscribe<K extends TTopic>(
+    topic: K,
+    handler: (message: TMessage) => void,
+    onAck: SubscriptionCallback,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+
+  subscribe<K extends TTopic>(
+    topic: K,
+    handler: (message: TMessage) => void,
+    onAck: SubscriptionCallback,
+    timeoutMs: number,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+
+  unsubscribe<K extends TTopic>(topic: K): void;
+
+  // Presence
+  onPresence<K extends TTopic>(
+    topic: K,
+    handler: PresenceHandler,
+  ): Promise<void>;
+
+  offPresence<K extends TTopic>(topic: K, handler: PresenceHandler): void;
+
+  clearPresenceHandlers<K extends TTopic>(topic: K): void;
+
+  // Getters
+  get isConnected(): boolean;
+  get isReadable(): boolean;
+  get isWritable(): boolean;
 }

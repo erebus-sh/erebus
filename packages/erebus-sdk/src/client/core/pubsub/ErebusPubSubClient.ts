@@ -5,7 +5,7 @@ import type { AckCallback, SubscriptionCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
-import type { ConnectionState } from "./interfaces";
+import type { ConnectionState, IPubSubClient } from "./interfaces";
 import type { SubscribeOptions } from "./types";
 
 type ErebusOptions = {
@@ -26,7 +26,9 @@ export type Handler = (
 /**
  * Refactored ErebusPubSub client using modular architecture
  */
-export class ErebusPubSubClient {
+export class ErebusPubSubClient
+  implements IPubSubClient<string, string, MessageBody>
+{
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
@@ -225,66 +227,59 @@ export class ErebusPubSubClient {
   }
 
   // Overload for subscribe with options only
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    handler: (message: MessageBody) => void,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Overload for subscribe with onAck and options
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    handler: (message: MessageBody) => void,
     onAck: SubscriptionCallback,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Overload for subscribe with onAck, timeoutMs and options
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    handler: (message: MessageBody) => void,
     onAck: SubscriptionCallback,
     timeoutMs: number,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Implementation
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    handler: (message: MessageBody) => void,
     onAckOrOptions?: SubscriptionCallback | SubscribeOptions,
     timeoutMsOrOptions?: number | SubscribeOptions,
-    options?: SubscribeOptions,
+    finalOptions?: SubscribeOptions,
   ): Promise<void> {
-    // Debounce it
-    console.log("subscribe called", {
-      topic,
-      handler,
-      onAckOrOptions,
-      timeoutMsOrOptions,
-      options,
-    });
-
-    // Determine the actual parameters based on the overload used
     let onAck: SubscriptionCallback | undefined;
     let timeoutMs: number = 10000;
-    let finalOptions: SubscribeOptions | undefined;
+    let opts: SubscribeOptions | undefined;
 
     if (typeof onAckOrOptions === "function") {
-      // onAckOrOptions is a SubscriptionCallback
+      // onAckOrOptions is onAck
       onAck = onAckOrOptions;
 
       if (typeof timeoutMsOrOptions === "number") {
-        // timeoutMsOrOptions is a number
         timeoutMs = timeoutMsOrOptions;
-        finalOptions = options;
+        opts = finalOptions;
       } else if (timeoutMsOrOptions && typeof timeoutMsOrOptions === "object") {
-        // timeoutMsOrOptions is actually options
-        finalOptions = timeoutMsOrOptions;
+        opts = timeoutMsOrOptions as SubscribeOptions;
       }
     } else if (onAckOrOptions && typeof onAckOrOptions === "object") {
-      // onAckOrOptions is actually options
-      finalOptions = onAckOrOptions;
+      // onAckOrOptions is options
+      opts = onAckOrOptions as SubscribeOptions;
     }
 
-    this.subscribeWithCallback(topic, handler, onAck, timeoutMs, finalOptions);
+    // Wrap handler to match internal Handler type
+    const wrappedHandler: Handler = (payload, _meta) => {
+      handler(payload);
+    };
+
+    this.subscribeWithCallback(topic, wrappedHandler, onAck, timeoutMs, opts);
     // Return a promise that resolves when subscription is ready
     return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
@@ -333,7 +328,7 @@ export class ErebusPubSubClient {
     this.#conn.subscribeWithCallback(topic, onAck, timeoutMs, options);
   }
 
-  unsubscribe(topic: string): void {
+  unsubscribe<K extends string>(topic: K): void {
     this.unsubscribeWithCallback(topic);
   }
 
@@ -372,28 +367,17 @@ export class ErebusPubSubClient {
     this.#conn.unsubscribeWithCallback(topic, onAck, timeoutMs);
   }
 
-  publish({
-    topic,
-    messageBody,
-  }: {
-    topic: string;
-    messageBody: string;
-  }): Promise<string> {
-    return this.#publishInternal(topic, messageBody, false);
+  publish<K extends string>(topic: K, payload: string): Promise<string> {
+    return this.#publishInternal(topic, payload, false);
   }
 
-  publishWithAck({
-    topic,
-    messageBody,
-    onAck,
-    timeoutMs = 3000,
-  }: {
-    topic: string;
-    messageBody: string;
-    onAck: AckCallback;
-    timeoutMs?: number;
-  }): Promise<string> {
-    return this.#publishInternal(topic, messageBody, true, onAck, timeoutMs);
+  publishWithAck<K extends string>(
+    topic: K,
+    payload: string,
+    onAck: AckCallback,
+    timeoutMs: number = 3000,
+  ): Promise<string> {
+    return this.#publishInternal(topic, payload, true, onAck, timeoutMs);
   }
 
   close(): void {
@@ -442,7 +426,10 @@ export class ErebusPubSubClient {
    * @param topic - The topic to listen for presence updates on
    * @param handler - The callback function to handle presence updates
    */
-  async onPresence(topic: string, handler: PresenceHandler): Promise<void> {
+  async onPresence<K extends string>(
+    topic: K,
+    handler: PresenceHandler,
+  ): Promise<void> {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] onPresence called`, { topic });
     console.log("Erebus.onPresence() called", { topic });
@@ -506,7 +493,7 @@ export class ErebusPubSubClient {
    * @param topic - The topic to remove the handler from
    * @param handler - The specific handler function to remove
    */
-  offPresence(topic: string, handler: PresenceHandler): void {
+  offPresence<K extends string>(topic: K, handler: PresenceHandler): void {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] offPresence called`, { topic });
     console.log("Erebus.offPresence() called", { topic });
@@ -522,7 +509,7 @@ export class ErebusPubSubClient {
    * Remove all presence handlers for a specific topic
    * @param topic - The topic to clear all handlers for
    */
-  clearPresenceHandlers(topic: string): void {
+  clearPresenceHandlers<K extends string>(topic: K): void {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] clearPresenceHandlers called`, {
       topic,
