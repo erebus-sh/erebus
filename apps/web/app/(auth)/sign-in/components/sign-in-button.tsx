@@ -3,7 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useNextRedirect } from "@/hooks/useNextRedirect";
-import { track } from "@databuddy/sdk";
+import posthog from "posthog-js";
 import { EventName } from "@/analytics/enums";
 
 export default function SignInButton() {
@@ -12,7 +12,7 @@ export default function SignInButton() {
   return (
     <Button
       onClick={async () => {
-        await track(EventName.ClickedSignInGithub);
+        await posthog.capture(EventName.ClickedSignInGithub);
         await signIn("github", { redirectTo: hasNext ? next : "/c" });
       }}
       className="w-60 cursor-pointer rounded-full py-2"

@@ -6,7 +6,6 @@ import { Providers } from "@/components/providers";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { Toaster } from "@/components/ui/sonner";
 import { useMDXComponents } from "@/mdx-components";
-import { Databuddy } from "@databuddy/sdk/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -51,13 +50,7 @@ export default function RootLayout({
             defaultTheme="dark"
             enableSystem={false}
           >
-            <Providers>
-              {children}
-              <Databuddy
-                clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
-                enableBatching={true}
-              />
-            </Providers>
+            <Providers>{children}</Providers>
             <Toaster />
           </ThemeProvider>
         </body>
