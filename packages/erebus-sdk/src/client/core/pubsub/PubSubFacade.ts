@@ -10,7 +10,6 @@ import type {
 import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PresenceHandler } from "./Presence";
 import type { SubscribeOptions } from "./types";
-import type { IPubSubClient } from "./interfaces";
 
 const mergeTopic = (topicSchema: string, topicSub: string) => {
   return `${topicSchema}_${topicSub}`;
@@ -26,10 +25,12 @@ const mergeTopic = (topicSchema: string, topicSub: string) => {
  *
  * This guarantees contract consistency between publishers and subscribers and
  * prevents accidental misuse (wrong fields, wrong types, missing schema).
+ *
+ * Note: This facade wraps ErebusPubSubClient (which implements IPubSubClient).
+ * The facade provides a different public API (split topics) for better type safety,
+ * but internally calls the unified client interface after merging topics.
  */
-class ErebusPubSubSchemas<TSchemas extends SchemaMap>
-  implements IPubSubClient<Topic<TSchemas>, string, unknown, unknown>
-{
+class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   constructor(
     private readonly client: ErebusPubSubClient,
     private readonly schemas: TSchemas,
@@ -45,11 +46,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
   ) {
     this.assertSchema(topicSchema, payload);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.publish(
-      topic,
-      undefined as void,
-      JSON.stringify(payload),
-    );
+    return this.client.publish(topic, JSON.stringify(payload));
   }
 
   /**
@@ -66,7 +63,6 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
     const topic = mergeTopic(topicSchema, topicSub);
     return this.client.publishWithAck(
       topic,
-      undefined as void,
       JSON.stringify(payload),
       onAck,
       timeoutMs,
@@ -127,7 +123,6 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
       if (typeof timeoutMsOrOptions === "number") {
         return this.client.subscribe(
           topic,
-          undefined as void,
           wrappedHandler,
           onAck,
           timeoutMsOrOptions,
@@ -138,25 +133,14 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
         timeoutMsOrOptions && typeof timeoutMsOrOptions === "object"
           ? (timeoutMsOrOptions as SubscribeOptions)
           : options;
-      return this.client.subscribe(
-        topic,
-        undefined as void,
-        wrappedHandler,
-        onAck,
-        finalOptions,
-      );
+      return this.client.subscribe(topic, wrappedHandler, onAck, finalOptions);
     }
 
     const finalOptions =
       onAckOrOptions && typeof onAckOrOptions === "object"
         ? (onAckOrOptions as SubscribeOptions)
         : options;
-    return this.client.subscribe(
-      topic,
-      undefined as void,
-      wrappedHandler,
-      finalOptions,
-    );
+    return this.client.subscribe(topic, wrappedHandler, finalOptions);
   }
 
   /**
@@ -164,7 +148,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
    */
   unsubscribe<K extends Topic<TSchemas>>(topicSchema: K, topicSub: string) {
     const topic = mergeTopic(topicSchema, topicSub);
-    this.client.unsubscribe(topic, undefined as void);
+    this.client.unsubscribe(topic);
   }
 
   /**
@@ -190,7 +174,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
     handler: PresenceHandler,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.onPresence(topic, undefined as void, handler);
+    return this.client.onPresence(topic, handler);
   }
 
   offPresence<K extends Topic<TSchemas>>(
@@ -199,7 +183,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
     handler: PresenceHandler,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.offPresence(topic, undefined as void, handler);
+    return this.client.offPresence(topic, handler);
   }
 
   clearPresenceHandlers<K extends Topic<TSchemas>>(
@@ -207,7 +191,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap>
     topicSub: string,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.clearPresenceHandlers(topic, undefined as void);
+    return this.client.clearPresenceHandlers(topic);
   }
 
   close() {

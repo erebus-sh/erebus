@@ -204,27 +204,26 @@ export interface IStateManager {
  * Generic interface that ensures both ErebusPubSubClient and ErebusPubSubSchemas
  * maintain consistent method signatures while preserving type safety.
  *
+ * Note: The interface doesn't specify topic structure (single vs split) as that's
+ * an implementation detail. Both implementations handle topics internally:
+ * - ErebusPubSubClient: Uses simple topic string
+ * - ErebusPubSubSchemas: Merges topicSchema + topicSub into final topic internally
+ *
  * @template TTopic - Topic identifier type (string for Client, Topic<TSchemas> for Facade)
- * @template TTopicSub - Sub-topic type (void for Client, string for Facade)
  * @template TPayload - Payload type (string for Client, Payload<TSchemas, K> for Facade)
  * @template TMessage - Message handler type (MessageBody for Client, MessageFor<TSchemas, K> for Facade)
  */
-export interface IPubSubClient<TTopic, TTopicSub, TPayload, TMessage> {
+export interface IPubSubClient<TTopic, TPayload, TMessage> {
   // Connection management
   connect(timeout?: number): Promise<void>;
   joinChannel(channel: string): void;
   close(): void;
 
   // Publishing - generic to support type-safe topics in facade
-  publish<K extends TTopic>(
-    topic: K,
-    topicSub: TTopicSub,
-    payload: TPayload,
-  ): Promise<string>;
+  publish<K extends TTopic>(topic: K, payload: TPayload): Promise<string>;
 
   publishWithAck<K extends TTopic>(
     topic: K,
-    topicSub: TTopicSub,
     payload: TPayload,
     onAck: AckCallback,
     timeoutMs?: number,
@@ -233,14 +232,12 @@ export interface IPubSubClient<TTopic, TTopicSub, TPayload, TMessage> {
   // Subscribing - with all overloads
   subscribe<K extends TTopic>(
     topic: K,
-    topicSub: TTopicSub,
     handler: (message: TMessage) => void,
     options?: SubscribeOptions,
   ): Promise<void>;
 
   subscribe<K extends TTopic>(
     topic: K,
-    topicSub: TTopicSub,
     handler: (message: TMessage) => void,
     onAck: SubscriptionCallback,
     options?: SubscribeOptions,
@@ -248,29 +245,23 @@ export interface IPubSubClient<TTopic, TTopicSub, TPayload, TMessage> {
 
   subscribe<K extends TTopic>(
     topic: K,
-    topicSub: TTopicSub,
     handler: (message: TMessage) => void,
     onAck: SubscriptionCallback,
     timeoutMs: number,
     options?: SubscribeOptions,
   ): Promise<void>;
 
-  unsubscribe<K extends TTopic>(topic: K, topicSub: TTopicSub): void;
+  unsubscribe<K extends TTopic>(topic: K): void;
 
   // Presence
   onPresence<K extends TTopic>(
     topic: K,
-    topicSub: TTopicSub,
     handler: PresenceHandler,
   ): Promise<void>;
 
-  offPresence<K extends TTopic>(
-    topic: K,
-    topicSub: TTopicSub,
-    handler: PresenceHandler,
-  ): void;
+  offPresence<K extends TTopic>(topic: K, handler: PresenceHandler): void;
 
-  clearPresenceHandlers<K extends TTopic>(topic: K, topicSub: TTopicSub): void;
+  clearPresenceHandlers<K extends TTopic>(topic: K): void;
 
   // Getters
   get isConnected(): boolean;
