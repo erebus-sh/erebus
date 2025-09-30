@@ -12,6 +12,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "build": "wrangler build",
+    "preview": "wrangler deploy --env preview",
     "dev": "wrangler types && clear && wrangler dev --port 8787",
     "format": "prettier --write .",
     "test": "vitest --run --config vitest.config.ts",
