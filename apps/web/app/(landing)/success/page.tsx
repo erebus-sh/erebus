@@ -13,6 +13,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckCircleIcon } from "lucide-react";
 import { useEffect, useState } from "react";
+import { track } from "@databuddy/sdk";
+import { EventName } from "@/analytics/enums";
 
 const BEAM_COUNT = 6;
 
@@ -124,6 +126,7 @@ export default function SuccessPage() {
   }, []);
 
   const handleRedirect = () => {
+    track(EventName.FinishedSuccess);
     if (hasNext) {
       redirectNow();
     } else {

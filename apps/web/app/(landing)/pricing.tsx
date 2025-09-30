@@ -19,6 +19,8 @@ import Link from "next/link";
 import { products } from "@/convex/products";
 import { useQueryWithState } from "@/utils/query";
 import { useRouter } from "next/navigation";
+import { track } from "@databuddy/sdk";
+import { EventName } from "@/analytics/enums";
 
 interface PricingTier {
   name: string;
@@ -121,6 +123,10 @@ export default function Pricing({ id }: { id: string }) {
           );
           return;
         }
+
+        await track(EventName.CheckoutGeneratedGoingThere, {
+          productId,
+        });
 
         window.location.href = checkoutLink.url;
       } catch (error) {
