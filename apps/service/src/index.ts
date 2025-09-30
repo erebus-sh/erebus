@@ -237,13 +237,23 @@ apiRouter.get("/state/*", async (c) => {
 // Mount the versioned API router
 app.route(API_BASE_PATH, apiRouter);
 
-// 404 handler for all other routes
+// 404 handler for all unmatched routes — Erebus Gateway
 app.notFound((c) => {
   const requestId = c.get("requestId");
-  console.log(
-    `[${requestId}] Endpoint not found: ${c.req.method} ${c.req.path}`,
+  const method = c.req.method;
+  const path = c.req.path;
+  console.warn(
+    `[${requestId}] [Erebus Gateway] Attempted access to unknown endpoint: ${method} ${path}`,
   );
-  return c.json({ error: "Endpoint not found, gateway.erebus.sh" }, 404);
+  return c.json(
+    {
+      error:
+        "Erebus Gateway: The endpoint you requested does not exist. Please check your URL or consult the Erebus API documentation for available endpoints.",
+      docs: "https://docs.erebus.sh/",
+      requestId,
+    },
+    404,
+  );
 });
 
 // Error handler
