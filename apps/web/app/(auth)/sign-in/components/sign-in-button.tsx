@@ -3,15 +3,18 @@
 import { Button } from "@/components/ui/button";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { useNextRedirect } from "@/hooks/useNextRedirect";
+import { track } from "@databuddy/sdk";
+import { EventName } from "@/analytics/enums";
 
 export default function SignInButton() {
   const { signIn } = useAuthActions();
   const { hasNext, next } = useNextRedirect();
   return (
     <Button
-      onClick={() =>
-        void signIn("github", { redirectTo: hasNext ? next : "/c" })
-      }
+      onClick={async () => {
+        await track(EventName.ClickedSignInGithub);
+        await signIn("github", { redirectTo: hasNext ? next : "/c" });
+      }}
       className="w-60 cursor-pointer rounded-full py-2"
     >
       {/* GithubIcon   */}

@@ -6,6 +6,7 @@ import { Providers } from "@/components/providers";
 import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import { Toaster } from "@/components/ui/sonner";
 import { useMDXComponents } from "@/mdx-components";
+import { Databuddy } from "@databuddy/sdk/react";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -19,12 +20,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Erebus",
-  description: "The Real Time Infra At The Edge",
+  description:
+    "Real-Time as a Service platform, built on Cloudflare for fast, cheap, and reliable infrastructure to power live apps and connected experiences.",
   openGraph: {
     type: "website",
     siteName: "Erebus",
     title: "Erebus",
-    description: "The Real Time Infra At The Edge",
+    description:
+      "Real-Time as a Service platform, built on Cloudflare for fast, cheap, and reliable infrastructure to power live apps and connected experiences.",
     images: ["/opengraph.png"],
   },
 };
@@ -48,7 +51,13 @@ export default function RootLayout({
             defaultTheme="dark"
             enableSystem={false}
           >
-            <Providers>{children}</Providers>
+            <Providers>
+              {children}
+              <Databuddy
+                clientId={process.env.NEXT_PUBLIC_DATABUDDY_CLIENT_ID!}
+                enableBatching={true}
+              />
+            </Providers>
             <Toaster />
           </ThemeProvider>
         </body>
