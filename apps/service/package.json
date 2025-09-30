@@ -11,7 +11,8 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
-    "build": "wrangler build",
+    "build": "bun run --filter @erebus-sh/sdk build && bun run --filter @repo/service build:wrangler",
+    "build:wrangler": "wrangler build",
     "preview": "wrangler deploy --env preview",
     "dev": "wrangler types && clear && wrangler dev --port 8787",
     "format": "prettier --write .",
@@ -20,7 +21,7 @@
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
-    "@erebus-sh/sdk": "^0.0.177",
+    "@erebus-sh/sdk": "workspace:*",
     "@repo/schemas": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/web": "workspace:*",

@@ -14,7 +14,7 @@ import { BaseService } from "./BaseService";
 import { MessageBuffer } from "./MessageBuffer";
 import { ErebusClient } from "./ErebusClient";
 import { generateHmac } from "@repo/shared/utils/hmac";
-import { createRpcClient } from "@erebus-sh/sdk";
+import { createRpcClient } from "@erebus-sh/sdk/server";
 /**
  * Manages message broadcasting to WebSocket connections with advanced performance optimizations.
  *
