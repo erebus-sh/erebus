@@ -34,6 +34,8 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
+import { track } from "@databuddy/sdk";
+import { EventName } from "@/analytics/enums";
 
 export default function CreateNewKeyDialog() {
   const createKey = useMutation(api.keys.mutation.createKey);
@@ -79,6 +81,8 @@ export default function CreateNewKeyDialog() {
       toast.success("Key created successfully", {
         description: "Copy your new API key and store it securely.",
       });
+
+      await track(EventName.GenerateApiKey);
     } catch (error) {
       console.error("Failed to create key:", error);
       toast.error("Failed to create key", {

@@ -27,6 +27,8 @@ import {
 import { GlobeIcon, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useNavStackStore } from "@/stores/navigation";
+import { track } from "@databuddy/sdk";
+import { EventName } from "@/analytics/enums";
 
 export default function CreateProjectDialog() {
   const router = useRouter();
@@ -62,6 +64,7 @@ export default function CreateProjectDialog() {
 
       const projectHref = `/c/${userSlug}/projects/${slug}`;
 
+      await track(EventName.CreatedProject);
       pushPage({
         label: title,
         href: projectHref,
