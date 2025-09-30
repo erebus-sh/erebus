@@ -19,7 +19,7 @@ import Link from "next/link";
 import { products } from "@/convex/products";
 import { useQueryWithState } from "@/utils/query";
 import { useRouter } from "next/navigation";
-import { track } from "@databuddy/sdk";
+import posthog from "posthog-js";
 import { EventName } from "@/analytics/enums";
 
 interface PricingTier {
@@ -124,7 +124,7 @@ export default function Pricing({ id }: { id: string }) {
           return;
         }
 
-        await track(EventName.CheckoutGeneratedGoingThere, {
+        await posthog.capture(EventName.CheckoutGeneratedGoingThere, {
           productId,
         });
 

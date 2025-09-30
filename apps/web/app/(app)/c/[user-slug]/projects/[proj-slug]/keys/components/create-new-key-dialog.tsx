@@ -34,7 +34,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Info } from "lucide-react";
-import { track } from "@databuddy/sdk";
+import posthog from "posthog-js";
 import { EventName } from "@/analytics/enums";
 
 export default function CreateNewKeyDialog() {
@@ -82,7 +82,7 @@ export default function CreateNewKeyDialog() {
         description: "Copy your new API key and store it securely.",
       });
 
-      await track(EventName.GenerateApiKey);
+      await posthog.capture(EventName.GenerateApiKey);
     } catch (error) {
       console.error("Failed to create key:", error);
       toast.error("Failed to create key", {
