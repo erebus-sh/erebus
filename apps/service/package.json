@@ -11,6 +11,7 @@
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
+    "build": "wrangler build",
     "dev": "wrangler types && clear && wrangler dev --port 8787",
     "format": "prettier --write .",
     "test": "vitest --run --config vitest.config.ts",
