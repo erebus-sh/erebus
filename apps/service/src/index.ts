@@ -260,7 +260,15 @@ app.notFound((c) => {
 app.onError((err, c) => {
   const requestId = c.get("requestId");
   console.error(`[${requestId}] Unhandled error:`, err);
-  return c.json({ error: "Internal server error" }, 500);
+  return c.json(
+    {
+      error:
+        "Erebus Service: An unexpected error occurred while processing your request. Please try again later or contact support if the issue persists.",
+      requestId,
+      docs: "https://docs.erebus.sh/",
+    },
+    500,
+  );
 });
 
 export default {
