@@ -7,8 +7,10 @@ import type {
   Topic,
   MessageFor,
 } from "../types";
+import type { MessageBody } from "../../../../../schemas/messageBody";
 import type { PresenceHandler } from "./Presence";
 import type { SubscribeOptions } from "./types";
+import type { IPubSubClient } from "./interfaces";
 
 const mergeTopic = (topicSchema: string, topicSub: string) => {
   return `${topicSchema}_${topicSub}`;
@@ -25,7 +27,9 @@ const mergeTopic = (topicSchema: string, topicSub: string) => {
  * This guarantees contract consistency between publishers and subscribers and
  * prevents accidental misuse (wrong fields, wrong types, missing schema).
  */
-class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
+class ErebusPubSubSchemas<TSchemas extends SchemaMap>
+  implements IPubSubClient<Topic<TSchemas>, string, unknown, unknown>
+{
   constructor(
     private readonly client: ErebusPubSubClient,
     private readonly schemas: TSchemas,
@@ -41,10 +45,11 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   ) {
     this.assertSchema(topicSchema, payload);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.publish({
+    return this.client.publish(
       topic,
-      messageBody: JSON.stringify(payload),
-    });
+      undefined as void,
+      JSON.stringify(payload),
+    );
   }
 
   /**
@@ -59,12 +64,13 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   ) {
     this.assertSchema(topicSchema, payload);
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.publishWithAck({
+    return this.client.publishWithAck(
       topic,
-      messageBody: JSON.stringify(payload),
+      undefined as void,
+      JSON.stringify(payload),
       onAck,
       timeoutMs,
-    });
+    );
   }
 
   /**
@@ -106,13 +112,11 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     const schema = this.getSchema(topicSchema);
     const topic = mergeTopic(topicSchema, topicSub);
 
-    const wrappedHandler = (message: unknown) => {
-      const parsed = JSON.parse(
-        (message as { payload: string }).payload,
-      ) as Payload<TSchemas, K>;
+    const wrappedHandler = (message: MessageBody) => {
+      const parsed = JSON.parse(message.payload) as Payload<TSchemas, K>;
       schema.parse(parsed);
       const typedMessage = {
-        ...(message as object),
+        ...message,
         payload: parsed,
       } as MessageFor<TSchemas, K>;
       callback(typedMessage);
@@ -123,6 +127,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
       if (typeof timeoutMsOrOptions === "number") {
         return this.client.subscribe(
           topic,
+          undefined as void,
           wrappedHandler,
           onAck,
           timeoutMsOrOptions,
@@ -133,14 +138,25 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
         timeoutMsOrOptions && typeof timeoutMsOrOptions === "object"
           ? (timeoutMsOrOptions as SubscribeOptions)
           : options;
-      return this.client.subscribe(topic, wrappedHandler, onAck, finalOptions);
+      return this.client.subscribe(
+        topic,
+        undefined as void,
+        wrappedHandler,
+        onAck,
+        finalOptions,
+      );
     }
 
     const finalOptions =
       onAckOrOptions && typeof onAckOrOptions === "object"
         ? (onAckOrOptions as SubscribeOptions)
         : options;
-    return this.client.subscribe(topic, wrappedHandler, finalOptions);
+    return this.client.subscribe(
+      topic,
+      undefined as void,
+      wrappedHandler,
+      finalOptions,
+    );
   }
 
   /**
@@ -148,7 +164,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
    */
   unsubscribe<K extends Topic<TSchemas>>(topicSchema: K, topicSub: string) {
     const topic = mergeTopic(topicSchema, topicSub);
-    this.client.unsubscribe(topic);
+    this.client.unsubscribe(topic, undefined as void);
   }
 
   /**
@@ -174,7 +190,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     handler: PresenceHandler,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.onPresence(topic, handler);
+    return this.client.onPresence(topic, undefined as void, handler);
   }
 
   offPresence<K extends Topic<TSchemas>>(
@@ -183,7 +199,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     handler: PresenceHandler,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.offPresence(topic, handler);
+    return this.client.offPresence(topic, undefined as void, handler);
   }
 
   clearPresenceHandlers<K extends Topic<TSchemas>>(
@@ -191,7 +207,7 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
     topicSub: string,
   ) {
     const topic = mergeTopic(topicSchema, topicSub);
-    return this.client.clearPresenceHandlers(topic);
+    return this.client.clearPresenceHandlers(topic, undefined as void);
   }
 
   close() {

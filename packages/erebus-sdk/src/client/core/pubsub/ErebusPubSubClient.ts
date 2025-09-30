@@ -5,7 +5,7 @@ import type { AckCallback, SubscriptionCallback } from "../types";
 import type { PresenceHandler } from "./Presence";
 import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
-import type { ConnectionState } from "./interfaces";
+import type { ConnectionState, IPubSubClient } from "./interfaces";
 import type { SubscribeOptions } from "./types";
 
 type ErebusOptions = {
@@ -26,7 +26,9 @@ export type Handler = (
 /**
  * Refactored ErebusPubSub client using modular architecture
  */
-export class ErebusPubSubClient {
+export class ErebusPubSubClient
+  implements IPubSubClient<string, void, string, MessageBody>
+{
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
@@ -225,30 +227,34 @@ export class ErebusPubSubClient {
   }
 
   // Overload for subscribe with options only
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: (message: MessageBody) => void,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Overload for subscribe with onAck and options
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: (message: MessageBody) => void,
     onAck: SubscriptionCallback,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Overload for subscribe with onAck, timeoutMs and options
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: (message: MessageBody) => void,
     onAck: SubscriptionCallback,
     timeoutMs: number,
     options?: SubscribeOptions,
   ): Promise<void>;
   // Implementation
-  subscribe(
-    topic: string,
-    handler: Handler,
+  subscribe<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: (message: MessageBody) => void,
     onAckOrOptions?: SubscriptionCallback | SubscribeOptions,
     timeoutMsOrOptions?: number | SubscribeOptions,
     options?: SubscribeOptions,
@@ -261,6 +267,11 @@ export class ErebusPubSubClient {
       timeoutMsOrOptions,
       options,
     });
+
+    // Wrap handler to match internal Handler type
+    const wrappedHandler: Handler = (payload, _meta) => {
+      handler(payload);
+    };
 
     // Determine the actual parameters based on the overload used
     let onAck: SubscriptionCallback | undefined;
@@ -284,7 +295,13 @@ export class ErebusPubSubClient {
       finalOptions = onAckOrOptions;
     }
 
-    this.subscribeWithCallback(topic, handler, onAck, timeoutMs, finalOptions);
+    this.subscribeWithCallback(
+      topic,
+      wrappedHandler,
+      onAck,
+      timeoutMs,
+      finalOptions,
+    );
     // Return a promise that resolves when subscription is ready
     return this.#stateManager.waitForSubscriptionReady(topic, timeoutMs);
   }
@@ -333,7 +350,7 @@ export class ErebusPubSubClient {
     this.#conn.subscribeWithCallback(topic, onAck, timeoutMs, options);
   }
 
-  unsubscribe(topic: string): void {
+  unsubscribe<K extends string>(topic: K, _topicSub: void): void {
     this.unsubscribeWithCallback(topic);
   }
 
@@ -372,28 +389,22 @@ export class ErebusPubSubClient {
     this.#conn.unsubscribeWithCallback(topic, onAck, timeoutMs);
   }
 
-  publish({
-    topic,
-    messageBody,
-  }: {
-    topic: string;
-    messageBody: string;
-  }): Promise<string> {
-    return this.#publishInternal(topic, messageBody, false);
+  publish<K extends string>(
+    topic: K,
+    _topicSub: void,
+    payload: string,
+  ): Promise<string> {
+    return this.#publishInternal(topic, payload, false);
   }
 
-  publishWithAck({
-    topic,
-    messageBody,
-    onAck,
-    timeoutMs = 3000,
-  }: {
-    topic: string;
-    messageBody: string;
-    onAck: AckCallback;
-    timeoutMs?: number;
-  }): Promise<string> {
-    return this.#publishInternal(topic, messageBody, true, onAck, timeoutMs);
+  publishWithAck<K extends string>(
+    topic: K,
+    _topicSub: void,
+    payload: string,
+    onAck: AckCallback,
+    timeoutMs: number = 3000,
+  ): Promise<string> {
+    return this.#publishInternal(topic, payload, true, onAck, timeoutMs);
   }
 
   close(): void {
@@ -440,9 +451,14 @@ export class ErebusPubSubClient {
   /**
    * Register a presence handler for a specific topic
    * @param topic - The topic to listen for presence updates on
+   * @param _topicSub - Unused for untyped client (void)
    * @param handler - The callback function to handle presence updates
    */
-  async onPresence(topic: string, handler: PresenceHandler): Promise<void> {
+  async onPresence<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: PresenceHandler,
+  ): Promise<void> {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] onPresence called`, { topic });
     console.log("Erebus.onPresence() called", { topic });
@@ -504,9 +520,14 @@ export class ErebusPubSubClient {
   /**
    * Remove a presence handler for a specific topic
    * @param topic - The topic to remove the handler from
+   * @param _topicSub - Unused for untyped client (void)
    * @param handler - The specific handler function to remove
    */
-  offPresence(topic: string, handler: PresenceHandler): void {
+  offPresence<K extends string>(
+    topic: K,
+    _topicSub: void,
+    handler: PresenceHandler,
+  ): void {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] offPresence called`, { topic });
     console.log("Erebus.offPresence() called", { topic });
@@ -521,8 +542,9 @@ export class ErebusPubSubClient {
   /**
    * Remove all presence handlers for a specific topic
    * @param topic - The topic to clear all handlers for
+   * @param _topicSub - Unused for untyped client (void)
    */
-  clearPresenceHandlers(topic: string): void {
+  clearPresenceHandlers<K extends string>(topic: K, _topicSub: void): void {
     const instanceId = this.#conn.connectionId;
     console.log(`[Erebus:${instanceId}] clearPresenceHandlers called`, {
       topic,
