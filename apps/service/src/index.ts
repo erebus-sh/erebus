@@ -111,145 +111,137 @@ const loggingMiddleware = createMiddleware<{
 app.use("*", requestIdMiddleware);
 app.use("*", loggingMiddleware);
 
-// Create a scoped router for versioned routes
+// Create a scoped router for versioned routes and chain all handlers for RPC typing
 const apiRouter = new Hono<{
   Bindings: Env;
   Variables: HonoVariables;
-}>();
+}>()
+  .post(
+    "/root/command",
+    validator("json", (value) => RootCommandSchema.parse(value)),
+    async (c) => {
+      const rootApiKey = c.req.header("x-root-api-key");
+      const requestId = c.get("requestId");
 
-// Route: POST /root/command - Webhook from server to Durable Object
-apiRouter.post(
-  "/root/command",
-  validator("json", (value) => RootCommandSchema.parse(value)),
-  async (c) => {
-    const rootApiKey = c.req.header("x-root-api-key");
-    const requestId = c.get("requestId");
-
-    if (!rootApiKey) {
-      console.log(
-        `[${requestId}] Authentication failed: No root API key provided`,
-      );
-      return c.json(
-        {
-          error: "Authentication required: Root API key must be provided",
-        },
-        401,
-      );
-    }
-
-    if (rootApiKey !== c.env.ROOT_API_KEY) {
-      console.log(
-        `[${requestId}] Authentication failed: Invalid root API key provided`,
-      );
-      return c.json(
-        {
-          error: "Authentication failed: Invalid root API key provided",
-        },
-        401,
-      );
-    }
-
-    const command = c.req.valid("json");
-    /**
-     * Use getChannelsForProjectId to get all the channels for the project id
-     */
-    switch (command.command) {
-      /**
-       * when usage limits hit, we pause it by call stub in every avaliable
-       * do instance, they are all stored in redis, so we can just grab them
-       * and loop on them
-       */
-      case "pause_project_id":
-        await pauseProjectId({
-          projectId: command.projectId,
-          env: c.env,
-        });
-      case "unpause_project_id":
-        await unpauseProjectId({
-          projectId: command.projectId,
-          env: c.env,
-        });
-      default:
+      if (!rootApiKey) {
         console.log(
-          `[${requestId}] Unsupported command type:`,
-          command.command,
+          `[${requestId}] Authentication failed: No root API key provided`,
         );
         return c.json(
           {
-            error: "Invalid request: Unsupported command type",
+            error: "Authentication required: Root API key must be provided",
           },
-          400,
+          401,
         );
+      }
+
+      if (rootApiKey !== c.env.ROOT_API_KEY) {
+        console.log(
+          `[${requestId}] Authentication failed: Invalid root API key provided`,
+        );
+        return c.json(
+          {
+            error: "Authentication failed: Invalid root API key provided",
+          },
+          401,
+        );
+      }
+
+      const command = c.req.valid("json");
+      /**
+       * Use getChannelsForProjectId to get all the channels for the project id
+       */
+      switch (command.command) {
+        /**
+         * when usage limits hit, we pause it by call stub in every avaliable
+         * do instance, they are all stored in redis, so we can just grab them
+         * and loop on them
+         */
+        case "pause_project_id":
+          await pauseProjectId({
+            projectId: command.projectId,
+            env: c.env,
+          });
+        case "unpause_project_id":
+          await unpauseProjectId({
+            projectId: command.projectId,
+            env: c.env,
+          });
+        default:
+          console.log(
+            `[${requestId}] Unsupported command type:`,
+            command.command,
+          );
+          return c.json(
+            {
+              error: "Invalid request: Unsupported command type",
+            },
+            400,
+          );
+      }
+    },
+  )
+  .get("/pubsub/*", async (c) => {
+    const request = c.req.raw;
+    const upgrade = request.headers.get("upgrade");
+    const requestId = c.get("requestId");
+
+    if (upgrade !== "websocket") {
+      console.log(
+        `[${requestId}] WebSocket upgrade required for /${API_VERSION}/pubsub`,
+      );
+      return c.json(
+        {
+          error: "WebSocket upgrade required for this service",
+        },
+        400,
+      );
     }
-  },
-);
 
-// Route: WebSocket upgrade for /pubsub/*
-apiRouter.get("/pubsub/*", async (c) => {
-  const request = c.req.raw;
-  const upgrade = request.headers.get("upgrade");
-  const requestId = c.get("requestId");
+    const handlerProps: HandlerProps = {
+      request,
+      env: c.env,
+      locationHint: c.get("locationHint"),
+    };
 
-  if (upgrade !== "websocket") {
-    console.log(
-      `[${requestId}] WebSocket upgrade required for /${API_VERSION}/pubsub`,
-    );
-    return c.json(
-      {
-        error: "WebSocket upgrade required for this service",
-      },
-      400,
-    );
-  }
+    console.log(`[${requestId}] Routing to pubsub handler`);
+    return await pubsub(handlerProps);
+  })
+  .get("/pubsub/topics/:topicName/history", async (c) => {
+    const requestId = c.get("requestId");
 
-  const handlerProps: HandlerProps = {
-    request,
-    env: c.env,
-    locationHint: c.get("locationHint"),
-  };
+    const handlerProps: HandlerProps = {
+      request: c.req.raw,
+      env: c.env,
+      locationHint: c.get("locationHint"),
+    };
 
-  console.log(`[${requestId}] Routing to pubsub handler`);
-  return await pubsub(handlerProps);
-});
+    console.log(`[${requestId}] Routing to topic history handler`);
+    return await getTopicHistory(handlerProps);
+  })
+  .get("/state/*", async (c) => {
+    const request = c.req.raw;
+    const upgrade = request.headers.get("upgrade");
+    const requestId = c.get("requestId");
 
-// Route: HTTP GET for topic history
-apiRouter.get("/pubsub/topics/:topicName/history", async (c) => {
-  const requestId = c.get("requestId");
+    if (upgrade !== "websocket") {
+      console.log(
+        `[${requestId}] WebSocket upgrade required for /${API_VERSION}/state`,
+      );
+      return c.json(
+        {
+          error: "WebSocket upgrade required for this service",
+        },
+        400,
+      );
+    }
 
-  const handlerProps: HandlerProps = {
-    request: c.req.raw,
-    env: c.env,
-    locationHint: c.get("locationHint"),
-  };
+    console.log(`[${requestId}] /${API_VERSION}/state/ not implemented yet`);
+    throw new Error("Not implemented /" + API_VERSION + "/state/");
+  });
 
-  console.log(`[${requestId}] Routing to topic history handler`);
-  return await getTopicHistory(handlerProps);
-});
-
-// Route: WebSocket upgrade for /state/*
-apiRouter.get("/state/*", async (c) => {
-  const request = c.req.raw;
-  const upgrade = request.headers.get("upgrade");
-  const requestId = c.get("requestId");
-
-  if (upgrade !== "websocket") {
-    console.log(
-      `[${requestId}] WebSocket upgrade required for /${API_VERSION}/state`,
-    );
-    return c.json(
-      {
-        error: "WebSocket upgrade required for this service",
-      },
-      400,
-    );
-  }
-
-  console.log(`[${requestId}] /${API_VERSION}/state/ not implemented yet`);
-  throw new Error("Not implemented /" + API_VERSION + "/state/");
-});
-
-// Mount the versioned API router
-app.route(API_BASE_PATH, apiRouter);
+// Mount the versioned API router and capture for RPC typing
+const routes = app.route(API_BASE_PATH, apiRouter);
 
 // 404 handler for all unmatched routes — Erebus Gateway
 app.notFound((c) => {
@@ -342,5 +334,7 @@ export default {
 } satisfies ExportedHandler<Env>;
 
 export { ChannelV1 };
+
+export type AppType = typeof routes;
 
 // * TODO: Later as a very strict check, call the stub to give you extact location
