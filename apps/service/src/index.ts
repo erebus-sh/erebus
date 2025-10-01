@@ -1,6 +1,6 @@
 import { getLocationHint } from "./lib/location_hint";
 import { RootCommandSchema } from "@repo/schemas/rootCommands";
-import { pubsub } from "./handlers/pubsub";
+import { pubsub, getTopicHistory } from "./handlers/pubsub";
 import { Env } from "./env";
 import { ChannelV1 } from "./objects/pubsub/channel";
 import { HandlerProps } from "./types/handlerProps";
@@ -210,6 +210,20 @@ apiRouter.get("/pubsub/*", async (c) => {
 
   console.log(`[${requestId}] Routing to pubsub handler`);
   return await pubsub(handlerProps);
+});
+
+// Route: HTTP GET for topic history
+apiRouter.get("/pubsub/topics/:topicName/history", async (c) => {
+  const requestId = c.get("requestId");
+
+  const handlerProps: HandlerProps = {
+    request: c.req.raw,
+    env: c.env,
+    locationHint: c.get("locationHint"),
+  };
+
+  console.log(`[${requestId}] Routing to topic history handler`);
+  return await getTopicHistory(handlerProps);
 });
 
 // Route: WebSocket upgrade for /state/*

@@ -291,7 +291,7 @@ export class MessageHandler extends BaseService {
   }
 
   /**
-   * Handle 'subscribe' packet for topic subscription with missed message delivery.
+   * Handle 'subscribe' packet for topic subscription with missed message delivery(optional) and subscription ack.
    *
    * This method:
    * - Validates the client's grant and authorization

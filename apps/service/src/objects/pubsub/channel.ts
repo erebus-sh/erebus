@@ -445,4 +445,75 @@ export class ChannelV1
   async isPaused(): Promise<boolean> {
     return (await this.getStorageValue("paused")) ?? false;
   }
+
+  /**
+   * Public API: Retrieve historical messages for a topic with cursor-based pagination.
+   *
+   * This method provides HTTP API access to the message buffer with:
+   * - Cursor-based pagination using ULID sequences
+   * - Bidirectional navigation (forward/backward)
+   * - Automatic next cursor calculation
+   * - TTL enforcement and lazy cleanup
+   *
+   * @param projectId - Project identifier (from grant)
+   * @param channelName - Channel name (from grant)
+   * @param topic - Topic name to fetch history for
+   * @param cursor - ULID sequence to paginate from (null for first page)
+   * @param limit - Maximum messages to return (default 50, max 1000)
+   * @param direction - Pagination direction: "backward" (newest→oldest) or "forward" (oldest→newest)
+   * @returns Promise resolving to paginated message results
+   */
+  async getTopicHistory(
+    projectId: string,
+    channelName: string,
+    topic: string,
+    cursor: string | null,
+    limit: number,
+    direction: "forward" | "backward",
+  ): Promise<{ items: MessageBody[]; nextCursor: string | null }> {
+    this.log(
+      `[GET_TOPIC_HISTORY] Fetching history - topic: ${topic}, cursor: ${cursor}, limit: ${limit}, direction: ${direction}`,
+    );
+
+    // Validate and normalize limit
+    const normalizedLimit = Math.min(Math.max(1, limit), 1000);
+
+    let items: MessageBody[];
+
+    if (direction === "forward") {
+      // Forward: oldest → newest (messages after cursor)
+      items = await this.messageBuffer.getMessagesAfter({
+        projectId,
+        channelName,
+        topic,
+        afterSeq: cursor ?? undefined,
+        limit: normalizedLimit,
+      });
+    } else {
+      // Backward (default): newest → oldest (messages before cursor)
+      items = await this.messageBuffer.getMessagesBefore({
+        projectId,
+        channelName,
+        topic,
+        beforeSeq: cursor ?? undefined,
+        limit: normalizedLimit,
+      });
+    }
+
+    // Calculate next cursor from last message in results
+    // If we got fewer messages than the limit, we've reached the end
+    const nextCursor =
+      items.length === normalizedLimit && items.length > 0
+        ? items[items.length - 1].seq
+        : null;
+
+    this.log(
+      `[GET_TOPIC_HISTORY] Retrieved ${items.length} messages, nextCursor: ${nextCursor}`,
+    );
+
+    return {
+      items,
+      nextCursor,
+    };
+  }
 }
