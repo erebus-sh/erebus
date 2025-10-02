@@ -34,12 +34,165 @@ A deep dive into the choices behind Erebus infrastructure check our blog [Why Cl
 
 ---
 
-## What is inside the docs
+## 🚀 Quick Start
 
-- **Setup** – Managed beta or self host locally.  
-- **Concepts** – Channels, ordering, presence, and tokens.  
-- **SDK Guide** – Using the SDK in your apps.
-- **Reference** – API and SDK calls.  
+Get up and running in minutes:
+
+### 1. Install the SDK
+```bash
+npm install @erebus-sh/sdk
+```
+
+### 2. Choose Your Path
+
+| Your App | Recommended Approach | Time to First Message |
+|----------|---------------------|----------------------|
+| **React/Next.js** | [React SDK](/docs/get-started/next.js/quickstart-example) | ~5 minutes |
+| **Any Framework** | [Core SDK](/docs/get-started/core/quickstart-example) | ~3 minutes |
+| **Type Safety Focus** | [Schema Facade](/docs/sdk/core/schema-facade) | ~10 minutes |
+
+### 3. Basic Example
+
+```ts
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "https://your-auth-server.com"
+});
+
+// Join a channel and connect
+client.joinChannel("my-app");
+await client.connect();
+
+// Subscribe to messages
+await client.subscribe("notifications", (msg) => {
+  console.log("📩 New notification:", msg.payload);
+});
+
+// Publish a message
+await client.publish("notifications", "Hello from Erebus! 👋");
+```
+
+---
+
+## 🎯 Real-World Use Cases
+
+### Chat & Messaging
+- **Real-time messages** with guaranteed ordering
+- **Presence tracking** to show who's online
+- **Message history** for catching up on missed conversations
+
+```ts
+// Chat room with presence
+await client.subscribe("chat:general", displayMessage);
+await client.onPresence("chat:general", updateUserList);
+await client.publish("chat:general", "Hello everyone!");
+```
+
+### Live Collaboration
+- **Operational transforms** for collaborative editing
+- **Cursor tracking** for multi-user editing
+- **Conflict resolution** with ULID sequences
+
+```ts
+// Document collaboration
+await client.subscribe("doc:123", applyEdit);
+await client.publish("doc:123", JSON.stringify({
+  type: "insert", position: 10, text: "Hello"
+}));
+```
+
+### Real-time Notifications
+- **Targeted delivery** to specific users
+- **Delivery confirmations** with acknowledgments
+- **Push notification** integration
+
+```ts
+// Send notification with confirmation
+await client.publishWithAck(
+  `user:${userId}`,
+  JSON.stringify({ title: "New Message", urgent: true }),
+  (ack) => console.log("Delivered:", ack.success)
+);
+```
+
+### Live Analytics
+- **Real-time metrics** streaming
+- **Event aggregation** across multiple clients
+- **Dashboard updates** without polling
+
+```ts
+// Stream analytics events
+client.publish("analytics:pageview", JSON.stringify({
+  page: "/dashboard", userId, timestamp: Date.now()
+}));
+```
+
+---
+
+## 🏗️ Architecture Benefits
+
+### Edge-First Design
+- **Global distribution** with Cloudflare's 300+ locations
+- **Automatic scaling** with Durable Objects
+- **Zero-cost idle** - pay only for active usage
+
+### Developer Experience
+- **TypeScript-first** with full type safety
+- **Framework agnostic** - works with any JavaScript runtime
+- **Production ready** with error handling and reconnection
+
+### Reliability Features
+- **Message ordering** guaranteed with ULID sequences
+- **Automatic reconnection** with exponential backoff
+- **QoS 1 support** - at-least-once delivery with acknowledgments
+
+---
+
+## 📚 What's in the Documentation
+
+| Section | Description | Best For |
+|---------|-------------|----------|
+| **[Installation](/docs/get-started/install)** | Setup guide with troubleshooting | First-time setup |
+| **[Quickstart Guide](/docs/quickstart-example)** | Decision tree and examples | Choosing approach |
+| **[Core SDK Reference](/docs/sdk/core/getting-started-api)** | Complete API documentation | Building with Core SDK |
+| **[React SDK](/docs/get-started/next.js/quickstart-example)** | React hooks and patterns | React/Next.js apps |
+| **[Message History](/docs/sdk/core/history)** | Pagination and catch-up | Chat and audit trails |
+| **[Presence](/docs/sdk/core/presence)** | User awareness features | Social and collaborative apps |
+
+### Advanced Topics
+- **[Schema Validation](/docs/sdk/core/schema-facade)** - Type-safe messaging with Zod
+- **[Connection Management](/docs/sdk/core/connection-management)** - Robust connection handling
+- **[Error Patterns](/docs/sdk/core/connection-management#error-handling)** - Production-ready error handling
+
+---
+
+## 🎯 Choose Your Starting Point
+
+### I want to build something quickly
+→ **[Core SDK Quickstart](/docs/get-started/core/quickstart-example)**
+- Working example in 3 minutes
+- Copy-paste authentication server
+- Immediate publish/subscribe functionality
+
+### I'm building a React app
+→ **[React SDK Quickstart](/docs/get-started/next.js/quickstart-example)**
+- React hooks integration
+- Declarative subscriptions
+- Built-in state management
+
+### I need bulletproof type safety
+→ **[Schema Facade Guide](/docs/sdk/core/schema-facade)**
+- Runtime validation with Zod
+- Prevent payload mismatches
+- IDE autocompletion for message types
+
+### I'm integrating into existing infrastructure
+→ **[Installation Guide](/docs/get-started/install)**
+- Framework-specific setup
+- Environment configuration
+- Production deployment patterns
 
 ---
 

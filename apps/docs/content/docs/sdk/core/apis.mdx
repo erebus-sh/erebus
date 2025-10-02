@@ -1,867 +1,174 @@
 ---
-title: Core Client APIs
-description: Complete API reference for the Erebus PubSub client
+title: Core Client APIs Overview
+description: Navigate the Erebus PubSub client APIs organized by functionality
 ---
 
-# Core Client APIs
+# Core Client APIs Overview
 
-The Erebus PubSub client provides real-time messaging, presence tracking, and message history APIs.
+The Erebus Core SDK provides comprehensive APIs for real-time messaging, presence tracking, and message history. This overview helps you navigate to the specific functionality you need.
 
-## Quickstart
+## 📚 API Documentation Structure
 
+Our API documentation is organized into focused sections for easier learning and reference:
+
+| Section | Coverage | When to Use |
+|---------|----------|-------------|
+| **[Getting Started](/docs/sdk/core/getting-started-api)** | Basic APIs + working examples | First-time SDK users |
+| **[Messaging](/docs/sdk/core/messaging)** | Publish/subscribe + history | Building real-time features |
+| **[Connection Management](/docs/sdk/core/connection-management)** | Lifecycle + error handling | Production apps |
+| **[Presence Tracking](/docs/sdk/core/presence)** | User awareness APIs | Social features |
+| **[Types Reference](/docs/sdk/core/types-reference)** | TypeScript definitions | Type-safe development |
+
+## 🚀 Quick Navigation
+
+### New to Erebus?
+Start with **[Getting Started with APIs](/docs/sdk/core/getting-started-api)** for a practical walkthrough with working examples.
+
+### Building Real-Time Features?
+Go to **[Messaging APIs](/docs/sdk/core/messaging)** for publish/subscribe patterns and message history.
+
+### Need Robust Connections?
+Check **[Connection Management](/docs/sdk/core/connection-management)** for lifecycle management and error handling.
+
+### Adding Social Features?
+Visit **[Presence Tracking](/docs/sdk/core/presence)** for user awareness and online status.
+
+### Working with TypeScript?
+Reference **[Types Reference](/docs/sdk/core/types-reference)** for complete type definitions.
+
+## 💡 Quick Examples
+
+### Basic Usage
 ```ts
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
-import { createGenericAdapter } from "@erebus-sh/sdk/server";
-import { Access, ErebusService } from "@erebus-sh/sdk/service";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:4919",
-  wsBaseUrl: "ws://localhost:8787", // optional for self-hosted
+  authBaseUrl: "https://your-auth.com"
 });
 
-const SECRET_API_KEY = process.env.SECRET_API_KEY!;
-
-const app = createGenericAdapter({
-  authorize: async (channel) => {
-    const userId = Math.random().toString(36).substring(2, 15);
-    const service = new ErebusService({
-      secret_api_key: SECRET_API_KEY,
-      base_url: "http://localhost:3000",
-    });
-
-    const session = await service.prepareSession({ userId });
-    session.join(channel);
-    session.allow("*", Access.ReadWrite);
-    return session;
-  },
-});
-
-Bun.serve({ port: 4919, fetch: app.fetch });
-
-async function main() {
-  const topic = "chat:lobby";
-  
-  client.joinChannel("chats");
-  await client.connect();
-
-  // Subscribe to messages
-  await client.subscribe(topic, (msg) => {
-    console.log("📩", msg.payload, "from", msg.senderId);
-  });
-
-  // Track presence
-  await client.onPresence(topic, (presence) => {
-    console.log("👤", presence.status, presence.clientId);
-  });
-
-  // Publish with acknowledgement
-  await client.publishWithAck(
-    topic,
-    "Hello Erebus 👋",
-    (ack) => console.log("✅ Ack:", ack.success ? "Success" : `Failed: ${ack.error?.message}`),
-    3000
-  );
-  
-  // Fetch message history
-  const history = await client.getHistory(topic, {
-    limit: 50,
-    direction: "backward"
-  });
-  console.log("📜 History:", history.items.length, "messages");
-}
-
-main().catch(console.error);
-```
-
-Check the full example: [Chat TypeScript](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts)
-
----
-
-## API Reference
-
-### Client Creation
-
-#### `ErebusClient.createClient(options)`
-
-Creates and configures a PubSub client instance.
-
-**Parameters:**
-- `client: ErebusClientState.PubSub` - Client type selector
-- `authBaseUrl: string` - URL of your authentication server
-- `wsBaseUrl?: string` - WebSocket URL (defaults to `wss://gateway.erebus.sh`)
-
-**Returns:** `ErebusPubSubClient`
-
-```ts
-const client = ErebusClient.createClient({
-  client: ErebusClientState.PubSub,
-  authBaseUrl: "https://your-auth-server.com",
-  wsBaseUrl: "wss://gateway.erebus.sh", // optional
-});
-```
-
----
-
-### Connection Management
-
-#### `joinChannel(channel: string): void`
-
-Sets the channel for this client instance. Must be called before `connect()`.
-
-```ts
-client.joinChannel("chat-room");
-```
-
-#### `connect(timeout?: number): Promise<void>`
-
-Establishes WebSocket connection. Automatically fetches grant tokens from `authBaseUrl`.
-
-**Parameters:**
-- `timeout?: number` - Connection timeout in milliseconds (default: 30000)
-
-```ts
+client.joinChannel("my-app");
 await client.connect();
-// or with custom timeout
-await client.connect(10000);
+await client.subscribe("notifications", console.log);
+await client.publish("notifications", "Hello!");
 ```
 
-#### `close(): void`
-
-Closes the WebSocket connection and cleans up resources.
-
+### With Presence
 ```ts
-client.close();
-```
-
----
-
-### Real-Time Messaging
-
-#### `subscribe(topic, handler, options?): Promise<void>`
-
-Subscribe to messages on a topic.
-
-**Parameters:**
-- `topic: string` - Topic name to subscribe to
-- `handler: (message: MessageBody) => void` - Message callback
-- `options?: SubscribeOptions` - Optional configuration
-
-**Message Format:**
-```ts
-interface MessageBody {
-  id: string;           // Unique message ID
-  topic: string;        // Topic name
-  senderId: string;     // Sender's client ID
-  seq: string;          // Sequence number (ULID)
-  sentAt: Date;         // Server timestamp
-  payload: string;      // Message content
-  clientMsgId?: string; // Optional client correlation ID
-}
-```
-
-**Example:**
-```ts
-await client.subscribe("chat:lobby", (msg) => {
-  console.log(`${msg.senderId}: ${msg.payload}`);
-});
-
-// With options
-await client.subscribe(
-  "chat:lobby", 
-  (msg) => console.log(msg),
-  { streamOldMessages: true }
-);
-```
-
-#### `unsubscribe(topic: string): void`
-
-Unsubscribe from a topic.
-
-```ts
-client.unsubscribe("chat:lobby");
-```
-
-#### `subscribeWithCallback(topic, handler, onAck?, timeoutMs?, options?): void`
-
-Advanced subscribe method with ACK callback and custom options.
-
-**Parameters:**
-- `topic: string` - Topic to subscribe to
-- `handler: (message: MessageBody) => void` - Message callback
-- `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
-- `timeoutMs?: number` - Subscription timeout in milliseconds
-- `options?: SubscribeOptions` - Optional subscription configuration
-
-**SubscribeOptions:**
-```ts
-interface SubscribeOptions {
-  streamOldMessages?: boolean; // Deliver missed messages (default: false)
-}
-```
-
-**Example:**
-```ts
-client.subscribeWithCallback(
-  "chat:lobby",
-  (msg) => console.log("Message:", msg.payload),
-  (response) => {
-    if (response.success) {
-      console.log("Subscribed successfully");
-    } else {
-      console.error("Subscription failed:", response.error?.message);
-    }
-  },
-  10000,
-  { streamOldMessages: true }
-);
-```
-
-#### `unsubscribeWithCallback(topic, onAck?, timeoutMs?): void`
-
-Advanced unsubscribe method with ACK callback.
-
-**Parameters:**
-- `topic: string` - Topic to unsubscribe from
-- `onAck?: SubscriptionCallback` - Optional unsubscription acknowledgement callback
-- `timeoutMs?: number` - Unsubscription timeout in milliseconds
-
-**Example:**
-```ts
-client.unsubscribeWithCallback(
-  "chat:lobby",
-  (response) => {
-    if (response.success) {
-      console.log("Unsubscribed successfully");
-    }
-  },
-  5000
-);
-```
-
-#### `publish(topic, payload): Promise<string>`
-
-Publish a message without acknowledgement.
-
-**Parameters:**
-- `topic: string` - Topic to publish to
-- `payload: string` - Message content
-
-**Returns:** `Promise<string>` - Client message ID
-
-```ts
-const msgId = await client.publish("chat:lobby", "Hello!");
-```
-
-#### `publishWithAck(topic, payload, onAck, timeout?): Promise<string>`
-
-Publish with server acknowledgement.
-
-**Parameters:**
-- `topic: string` - Topic to publish to
-- `payload: string` - Message content  
-- `onAck: AckCallback` - Acknowledgement callback
-- `timeout?: number` - Timeout in milliseconds (default: 3000)
-
-**AckCallback Type:**
-```ts
-type AckCallback = (response: AckResponse) => void;
-
-type AckResponse = {
-  success: boolean;
-  ack?: AckPacketType;
-  seq?: string;
-  serverMsgId?: string;
-  topic: string;
-  error?: {
-    code: string;
-    message: string;
-  };
-};
-```
-
-**Example:**
-```ts
-await client.publishWithAck(
-  "chat:lobby",
-  "Hello!",
-  (ack) => {
-    if (ack.success) {
-      console.log("Message delivered! Seq:", ack.seq);
-    } else {
-      console.error("Failed:", ack.error?.message);
-    }
-  },
-  5000
-);
-```
-
----
-
-### Message History
-
-#### `getHistory(topic, options?): Promise<HistoryResponse>`
-
-Fetch historical messages with cursor-based pagination.
-
-**Parameters:**
-- `topic: string` - Topic to fetch history for
-- `options?: HistoryOptions`
-  - `cursor?: string` - ULID cursor for pagination
-  - `limit?: number` - Messages per page (1-1000, default: 50)
-  - `direction?: "forward" | "backward"` - Sort order (default: "backward")
-
-**Returns:**
-```ts
-interface HistoryResponse {
-  items: MessageBody[];      // Array of messages
-  nextCursor: string | null; // Cursor for next page
-}
-```
-
-**Examples:**
-
-```ts
-// Get latest 50 messages (newest first)
-const history = await client.getHistory("chat:lobby");
-console.log(history.items); // Array of 50 messages
-console.log(history.nextCursor); // Use for next page
-
-// Paginate through history
-let cursor: string | null = null;
-do {
-  const page = await client.getHistory("chat:lobby", {
-    cursor: cursor || undefined,
-    limit: 100,
-    direction: "backward"
-  });
-  
-  console.log(`Fetched ${page.items.length} messages`);
-  cursor = page.nextCursor;
-} while (cursor);
-
-// Get oldest messages first
-const oldMessages = await client.getHistory("chat:lobby", {
-  direction: "forward",
-  limit: 20
-});
-```
-
-#### `createHistoryIterator(topic, options?): () => Promise<IteratorResult | null>`
-
-Create a paginator function for convenient history iteration.
-
-**Parameters:**
-- `topic: string` - Topic to fetch history for
-- `options?: { limit?: number; direction?: "forward" | "backward" }`
-
-**Returns:** Iterator function that returns `{ items: MessageBody[]; hasMore: boolean } | null`
-
-**Example:**
-```ts
-const getNext = client.createHistoryIterator("chat:lobby", {
-  limit: 50,
-  direction: "backward"
-});
-
-// Fetch first batch
-const first = await getNext();
-if (first) {
-  console.log(`Got ${first.items.length} messages`);
-  console.log(`Has more: ${first.hasMore}`);
-}
-
-// Fetch second batch
-const second = await getNext();
-if (second) {
-  console.log(`Got ${second.items.length} more`);
-}
-
-// When exhausted, returns null
-const done = await getNext(); // null
-```
-
----
-
-### Presence Tracking
-
-#### `onPresence(topic, handler): Promise<void>`
-
-Register a presence handler for online/offline events.
-
-**Parameters:**
-- `topic: string` - Topic to track presence on
-- `handler: (presence: PresencePacket) => void` - Presence callback
-
-**Presence Format:**
-```ts
-interface PresencePacket {
-  clientId: string;           // Client that changed status
-  topic: string;              // Topic name
-  status: "online" | "offline"; // Presence status
-}
-```
-
-**Example:**
-```ts
-await client.onPresence("chat:lobby", (presence) => {
+// Track user activity
+await client.onPresence("chat:room", (presence) => {
   console.log(`${presence.clientId} is ${presence.status}`);
 });
 ```
 
-#### `offPresence(topic, handler): void`
-
-Remove a specific presence handler.
-
+### With History
 ```ts
-const handler = (p) => console.log(p);
-await client.onPresence("chat:lobby", handler);
-
-// Later...
-client.offPresence("chat:lobby", handler);
-```
-
-#### `clearPresenceHandlers(topic): void`
-
-Remove all presence handlers for a topic.
-
-```ts
-client.clearPresenceHandlers("chat:lobby");
-```
-
----
-
-### Connection State
-
-#### `isConnected: boolean`
-
-Check if WebSocket is connected.
-
-```ts
-if (client.isConnected) {
-  console.log("Ready to send messages");
-}
-```
-
-#### `isReadable: boolean`
-
-Check if client can receive messages.
-
-```ts
-if (client.isReadable) {
-  console.log("Receiving messages");
-}
-```
-
-#### `isWritable: boolean`
-
-Check if client can send messages.
-
-```ts
-if (client.isWritable) {
-  await client.publish("topic", "message");
-}
-```
-
----
-
-## Types Reference
-
-### Core Client Types
-
-#### `ErebusOptions`
-
-Configuration options for the PubSub client constructor:
-
-```ts
-interface ErebusOptions {
-  wsUrl: string;                    // WebSocket URL
-  httpBaseUrl?: string;             // HTTP base URL for history API
-  tokenProvider: (channel: string) => Promise<string>; // Token provider function
-  heartbeatMs?: number;             // Heartbeat interval (default: 25000)
-  log?: Logger;                     // Optional logging function
-  debug?: boolean;                  // Enable debug logging
-  connectionTimeoutMs?: number;     // Connection timeout
-  subscriptionTimeoutMs?: number;   // Subscription timeout
-}
-
-type Logger = (level: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
-```
-
-#### `MessageBody`
-
-Structure of received messages:
-
-```ts
-interface MessageBody {
-  id: string;              // Unique message ID (ULID)
-  topic: string;           // Topic name
-  senderId: string;        // Sender's client ID
-  seq: string;             // Sequence number (ULID)
-  sentAt: Date;            // Server timestamp
-  payload: string;         // Message content
-  clientMsgId?: string;    // Optional client correlation ID
-  clientPublishTs?: number; // Client publish timestamp
-}
-```
-
-#### `AckResponse` and Callbacks
-
-Types for acknowledgement handling:
-
-```ts
-type AckCallback = (response: AckResponse) => void;
-
-type AckResponse = AckSuccess | AckError;
-
-type AckSuccess = {
-  success: true;
-  ack: AckPacketType;
-  seq: string;
-  serverMsgId: string;
-  topic: string;
-};
-
-type AckError = {
-  success: false;
-  ack: AckPacketType;
-  error: {
-    code: string;
-    message: string;
-  };
-  topic: string;
-};
-```
-
-#### `SubscriptionCallback`
-
-Types for subscription acknowledgements:
-
-```ts
-type SubscriptionCallback = (response: SubscriptionResponse) => void;
-
-type SubscriptionResponse = SubscriptionSuccess | SubscriptionError;
-
-type SubscriptionSuccess = {
-  success: true;
-  ack: AckPacketType;
-  topic: string;
-  status: "subscribed" | "unsubscribed";
-  path: "subscribe" | "unsubscribe";
-};
-
-type SubscriptionError = {
-  success: false;
-  ack?: AckPacketType;
-  error: {
-    code: string;
-    message: string;
-  };
-  topic: string;
-  path: "subscribe" | "unsubscribe";
-};
-```
-
-#### `SubscribeOptions`
-
-Options for subscription behavior:
-
-```ts
-interface SubscribeOptions {
-  streamOldMessages?: boolean; // Deliver missed messages (default: false)
-}
-```
-
-#### `Presence`
-
-Presence event structure:
-
-```ts
-interface Presence {
-  clientId: string;                 // Client that changed status
-  topic: string;                    // Topic name
-  status: "online" | "offline";     // Presence status
-  timestamp: number;                // Event timestamp
-  subscribers?: string[];           // Optional: list of current subscribers
-}
-
-type PresenceHandler = (presence: Presence) => void;
-```
-
-### Enums
-
-#### `ErebusClientState`
-
-```ts
-enum ErebusClientState {
-  PubSub = 0  // Select PubSub client
-}
-```
-
-#### `Access`
-
-```ts
-enum Access {
-  ReadWrite = "rw",  // Full read/write access
-  Read = "r",        // Read-only access
-  Write = "w"        // Write-only access
-}
-```
-
-### Connection States
-
-```ts
-type ConnectionState = "idle" | "connecting" | "open" | "error" | "closed";
-type SubscriptionStatus = "subscribed" | "unsubscribed" | "pending";
-```
-
----
-
-## Connection Lifecycle Management
-
-### Connection States
-
-The client maintains connection state that you can monitor:
-
-```ts
-console.log(client.isConnected);  // boolean - WebSocket connected
-console.log(client.isReadable);   // boolean - Can receive messages
-console.log(client.isWritable);   // boolean - Can send messages
-```
-
-### Automatic Reconnection
-
-The SDK handles reconnection automatically with exponential backoff. Connection errors are thrown from async methods:
-
-```ts
-// Monitor connection state
-setInterval(() => {
-  if (!client.isConnected) {
-    console.log("Connection lost - SDK will reconnect automatically");
-  }
-}, 5000);
-
-// Errors are thrown from operations
-try {
-  await client.connect();
-} catch (error) {
-  console.log("Connection error:", error);
-  // SDK will attempt to reconnect automatically
-}
-```
-
-### Manual Connection Management
-
-```ts
-// Graceful shutdown
-process.on('SIGINT', () => {
-  client.close();
-  process.exit(0);
-});
-
-// Connection with custom timeout
-try {
-  await client.connect(10000); // 10 second timeout
-} catch (error) {
-  console.error("Connection failed:", error);
-}
-```
-
----
-
-## Error Handling
-
-### Common Error Patterns
-
-All async methods can throw errors. Always use try-catch:
-
-```ts
-try {
-  await client.connect();
-  await client.subscribe("topic", handler);
-} catch (error) {
-  console.error("Operation failed:", error);
-}
-```
-
-### Error Types and Handling
-
-#### Connection Errors
-```ts
-try {
-  await client.connect();
-} catch (error) {
-  if (error.message.includes("Channel must be set")) {
-    console.error("Call joinChannel() first");
-  } else if (error.message.includes("timeout")) {
-    console.error("Connection timeout - check server");
-  } else if (error.message.includes("Invalid WebSocket URL")) {
-    console.error("Check wsBaseUrl configuration");
-  }
-}
-```
-
-#### Publishing Errors
-```ts
-try {
-  await client.publish("topic", "message");
-} catch (error) {
-  if (error.message.includes("Not connected")) {
-    console.error("Connection lost - will reconnect automatically");
-  } else if (error.message.includes("Invalid topic")) {
-    console.error("Topic name must be non-empty string");
-  }
-}
-```
-
-#### History API Errors
-```ts
-try {
-  const history = await client.getHistory("topic");
-} catch (error) {
-  if (error.message.includes("HTTP base URL required")) {
-    console.error("Configure httpBaseUrl in client options");
-  } else if (error.message.includes("History API failed")) {
-    console.error("Server error - check API status");
-  }
-}
-```
-
-#### ACK and Subscription Errors
-```ts
-// Handle ACK errors
-client.publishWithAck("topic", "message", (ack) => {
-  if (!ack.success) {
-    console.error("Publish failed:", ack.error?.code, ack.error?.message);
-  }
-});
-
-// Handle subscription errors
-client.subscribeWithCallback("topic", handler, (response) => {
-  if (!response.success) {
-    console.error("Subscription failed:", response.error?.message);
-  }
+// Catch up on missed messages
+const history = await client.getHistory("chat:room", {
+  limit: 50,
+  direction: "backward"
 });
 ```
 
-### Error Recovery Patterns
-
-#### Retry with Backoff
+### With Type Safety
 ```ts
-async function connectWithRetry(maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      await client.connect();
-      console.log("Connected successfully");
-      return;
-    } catch (error) {
-      console.log(`Retry ${i + 1}/${maxRetries}`);
-      if (i === maxRetries - 1) throw error;
-      
-      // Exponential backoff
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
-    }
-  }
-}
-```
+import { ErebusPubSubSchemas } from "@erebus-sh/sdk/client";
+import { z } from "zod";
 
-#### Graceful Degradation
-```ts
-// Continue without history if HTTP API unavailable
-let historySupported = true;
-try {
-  await client.getHistory("topic", { limit: 1 });
-} catch (error) {
-  if (error.message.includes("HTTP base URL required")) {
-    historySupported = false;
-    console.warn("History API not available");
-  }
-}
+const schemas = { chat: z.object({ text: z.string() }) };
+const typed = new ErebusPubSubSchemas(client, schemas);
 
-// Adapt UI based on capabilities
-if (!historySupported) {
-  hideHistoryButton();
-}
-```
-
-### Common Error Messages
-
-| Error Message | Cause | Solution |
-|---------------|-------|----------|
-| `"Channel must be set before connecting"` | No channel set | Call `joinChannel()` first |
-| `"HTTP base URL required for history API"` | Missing HTTP config | Add `httpBaseUrl` to client options |
-| `"Connection timeout"` | Server unreachable | Check `wsBaseUrl` and network |
-| `"Not connected"` | Publishing without connection | Wait for connection or handle gracefully |
-| `"Invalid topic"` | Empty/invalid topic name | Use non-empty string topics |
-| `"ACK callback required"` | Missing callback in `publishWithAck` | Provide ACK callback function |
-
----
-
-## Best Practices
-
-### 1. Always set channel before connecting
-
-```ts
-client.joinChannel("my-channel");
-await client.connect();
-```
-
-### 2. Handle reconnection
-
-```ts
-async function connectWithRetry(maxRetries = 3) {
-  for (let i = 0; i < maxRetries; i++) {
-    try {
-      await client.connect();
-      return;
-    } catch (error) {
-      console.log(`Retry ${i + 1}/${maxRetries}`);
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-    }
-  }
-  throw new Error("Failed to connect after retries");
-}
-```
-
-### 3. Clean up on exit
-
-```ts
-process.on("SIGINT", () => {
-  client.close();
-  process.exit(0);
+await typed.subscribe("chat", "room", (msg) => {
+  console.log(msg.payload.text); // ✅ Fully typed
 });
-```
-
-### 4. Use history for catch-up
-
-```ts
-// Get messages since last seen
-const lastSeq = localStorage.getItem("lastSeq");
-const history = await client.getHistory("topic", {
-  cursor: lastSeq || undefined,
-  direction: "forward"
-});
-
-// Process historical messages
-history.items.forEach(msg => processMessage(msg));
-
-// Save latest sequence
-if (history.items.length > 0) {
-  const latestSeq = history.items[history.items.length - 1].seq;
-  localStorage.setItem("lastSeq", latestSeq);
-}
-
-// Now subscribe for real-time
-await client.subscribe("topic", processMessage);
 ```
 
 ---
 
-## Examples
+## 🔗 Related Resources
 
-Find complete working examples:
+- **[Complete Examples](https://github.com/erebus-sh/erebus/tree/master/examples)** - Working applications
+- **[Quick Reference](/docs/sdk/core/quick-reference)** - API cheat sheet
+- **[Schema Facade](/docs/sdk/core/schema-facade)** - Type-safe messaging
+- **[Message History Guide](/docs/sdk/core/history)** - Advanced pagination patterns
 
-- [Basic Chat (TypeScript)](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts)
-- [Typed Client](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts-typed)
-- [TUI Chat](https://github.com/erebus-sh/erebus/tree/master/examples/chat-tui)
-- [Next.js Chat App](https://github.com/erebus-sh/erebus/tree/master/examples/chat-app)
+---
+
+## 📖 Detailed API Documentation
+
+The API documentation has been reorganized into focused sections for better navigation:
+
+### 🏁 [Getting Started with APIs](/docs/sdk/core/getting-started-api)
+- **Complete working example** with auth server setup
+- **Step-by-step walkthrough** of core APIs
+- **Common use case patterns** for chat, notifications, collaboration
+
+### 📡 [Messaging APIs](/docs/sdk/core/messaging)  
+- **Publish/subscribe patterns** with examples
+- **Advanced subscription options** and callbacks
+- **Message history** with pagination and iterators
+
+### 🔌 [Connection Management](/docs/sdk/core/connection-management)
+- **Connection lifecycle** and state monitoring
+- **Error handling patterns** and recovery strategies  
+- **Production best practices** and monitoring
+
+### 👥 [Presence Tracking](/docs/sdk/core/presence)
+- **User awareness APIs** for online/offline status
+- **Advanced presence patterns** for typing indicators
+- **Multi-topic presence management**
+
+### 📋 [Types Reference](/docs/sdk/core/types-reference)
+- **Complete TypeScript definitions** for all APIs
+- **Interface documentation** with usage examples  
+- **Type guards and utility types**
+
+---
+
+## 🎯 Quick API Examples
+
+### Basic Publish/Subscribe
+```ts
+// Simple messaging
+await client.subscribe("notifications", (msg) => {
+  console.log("📩", msg.payload);
+});
+
+await client.publish("notifications", "Hello World!");
+```
+
+### With Acknowledgments
+```ts
+// Reliable delivery
+await client.publishWithAck(
+  "alerts",
+  "System maintenance starting",
+  (ack) => console.log("Delivered:", ack.success)
+);
+```
+
+### With Presence
+```ts
+// Track user activity
+await client.onPresence("chat:room", (presence) => {
+  updateUserList(presence.clientId, presence.status);
+});
+```
+
+### With History
+```ts
+// Load message history
+const history = await client.getHistory("chat:room", { limit: 50 });
+history.items.forEach(displayMessage);
+```
+
+---
+
+## 🔗 Quick Links
+
+| Resource | Description |
+|----------|-------------|
+| **[Getting Started](/docs/sdk/core/getting-started-api)** | Complete walkthrough with examples |
+| **[Message History](/docs/sdk/core/history)** | Advanced pagination guide |
+| **[Schema Validation](/docs/sdk/core/schema-facade)** | Type-safe messaging |
+| **[Examples](https://github.com/erebus-sh/erebus/tree/master/examples)** | Working applications |

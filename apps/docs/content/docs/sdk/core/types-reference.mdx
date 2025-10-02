@@ -1,0 +1,549 @@
+---
+title: Types Reference
+description: Complete TypeScript type definitions for the Erebus Core SDK
+---
+
+# Types Reference
+
+Complete TypeScript type definitions and interfaces for the Erebus Core SDK. Use this reference for type-safe development and IDE autocompletion.
+
+## Core Client Types
+
+### `ErebusOptions`
+
+Configuration options for the PubSub client constructor:
+
+```ts
+interface ErebusOptions {
+  wsUrl: string;                    // WebSocket URL
+  httpBaseUrl?: string;             // HTTP base URL for history API
+  tokenProvider: (channel: string) => Promise<string>; // Token provider function
+  heartbeatMs?: number;             // Heartbeat interval (default: 25000)
+  log?: Logger;                     // Optional logging function
+  debug?: boolean;                  // Enable debug logging
+  connectionTimeoutMs?: number;     // Connection timeout
+  subscriptionTimeoutMs?: number;   // Subscription timeout
+}
+
+type Logger = (level: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
+```
+
+**Usage Example:**
+```ts
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "https://your-auth.com",
+  wsBaseUrl: "wss://gateway.erebus.sh",
+  heartbeatMs: 30000,
+  debug: process.env.NODE_ENV === 'development',
+  log: (level, msg, meta) => console[level](msg, meta)
+} as ErebusOptions);
+```
+
+### `MessageBody`
+
+Structure of received messages:
+
+```ts
+interface MessageBody {
+  id: string;              // Unique message ID (ULID)
+  topic: string;           // Topic name
+  senderId: string;        // Sender's client ID
+  seq: string;             // Sequence number (ULID)
+  sentAt: Date;            // Server timestamp
+  payload: string;         // Message content
+  clientMsgId?: string;    // Optional client correlation ID
+  clientPublishTs?: number; // Client publish timestamp
+}
+```
+
+**Usage Example:**
+```ts
+await client.subscribe("chat", (msg: MessageBody) => {
+  console.log(`[${msg.seq}] ${msg.senderId}: ${msg.payload}`);
+  console.log(`Sent at: ${msg.sentAt.toISOString()}`);
+});
+```
+
+---
+
+## Callback Types
+
+### `AckResponse` and `AckCallback`
+
+Types for acknowledgement handling:
+
+```ts
+type AckCallback = (response: AckResponse) => void;
+
+type AckResponse = AckSuccess | AckError;
+
+type AckSuccess = {
+  success: true;
+  ack: AckPacketType;
+  seq: string;
+  serverMsgId: string;
+  topic: string;
+};
+
+type AckError = {
+  success: false;
+  ack: AckPacketType;
+  error: {
+    code: string;
+    message: string;
+  };
+  topic: string;
+};
+```
+
+**Usage Example:**
+```ts
+const ackHandler: AckCallback = (response) => {
+  if (response.success) {
+    console.log("Message delivered with seq:", response.seq);
+  } else {
+    console.error("Delivery failed:", response.error.message);
+  }
+};
+
+await client.publishWithAck("topic", "message", ackHandler);
+```
+
+### `SubscriptionCallback` and Response
+
+Types for subscription acknowledgements:
+
+```ts
+type SubscriptionCallback = (response: SubscriptionResponse) => void;
+
+type SubscriptionResponse = SubscriptionSuccess | SubscriptionError;
+
+type SubscriptionSuccess = {
+  success: true;
+  ack: AckPacketType;
+  topic: string;
+  status: "subscribed" | "unsubscribed";
+  path: "subscribe" | "unsubscribe";
+};
+
+type SubscriptionError = {
+  success: false;
+  ack?: AckPacketType;
+  error: {
+    code: string;
+    message: string;
+  };
+  topic: string;
+  path: "subscribe" | "unsubscribe";
+};
+```
+
+**Usage Example:**
+```ts
+const subscriptionHandler: SubscriptionCallback = (response) => {
+  if (response.success) {
+    console.log(`Successfully ${response.status} to ${response.topic}`);
+  } else {
+    console.error(`Subscription failed: ${response.error.message}`);
+  }
+};
+
+client.subscribeWithCallback("topic", messageHandler, subscriptionHandler);
+```
+
+---
+
+## Subscription Types
+
+### `SubscribeOptions`
+
+Options for subscription behavior:
+
+```ts
+interface SubscribeOptions {
+  streamOldMessages?: boolean; // Deliver missed messages (default: false)
+}
+```
+
+**Usage Example:**
+```ts
+await client.subscribe(
+  "chat",
+  (msg) => console.log(msg),
+  { streamOldMessages: true } // Catch up on missed messages
+);
+```
+
+### Message Handler Types
+
+```ts
+// Basic message handler
+type MessageHandler = (message: MessageBody) => void;
+
+// Handler with metadata (used internally)
+type Handler = (
+  payload: MessageBody,
+  meta: { topic: string; seq: string; ts: number }
+) => void;
+```
+
+---
+
+## Presence Types
+
+### `Presence` and `PresenceHandler`
+
+Presence event structure:
+
+```ts
+interface Presence {
+  clientId: string;                 // Client that changed status
+  topic: string;                    // Topic name
+  status: "online" | "offline";     // Presence status
+  timestamp: number;                // Event timestamp
+  subscribers?: string[];           // Optional: list of current subscribers
+}
+
+type PresenceHandler = (presence: Presence) => void;
+```
+
+**Usage Example:**
+```ts
+const presenceHandler: PresenceHandler = (presence) => {
+  console.log(`${presence.clientId} is ${presence.status} on ${presence.topic}`);
+  updateUserList(presence.clientId, presence.status);
+};
+
+await client.onPresence("chat", presenceHandler);
+```
+
+---
+
+## History Types
+
+### `HistoryResponse` and Options
+
+```ts
+interface HistoryResponse {
+  items: MessageBody[];      // Array of messages
+  nextCursor: string | null; // Cursor for next page (null = no more)
+}
+
+interface HistoryOptions {
+  cursor?: string;                           // ULID cursor for pagination
+  limit?: number;                           // Messages per page (1-1000, default: 50)
+  direction?: "forward" | "backward";       // Sort order (default: "backward")
+}
+```
+
+**Usage Example:**
+```ts
+const history: HistoryResponse = await client.getHistory("chat", {
+  limit: 100,
+  direction: "backward"
+} as HistoryOptions);
+
+console.log(`Fetched ${history.items.length} messages`);
+if (history.nextCursor) {
+  console.log("More messages available");
+}
+```
+
+### History Iterator Types
+
+```ts
+type HistoryIterator = () => Promise<{
+  items: MessageBody[];
+  hasMore: boolean;
+} | null>;
+```
+
+**Usage Example:**
+```ts
+const iterator: HistoryIterator = client.createHistoryIterator("chat", {
+  limit: 50
+});
+
+const batch = await iterator();
+if (batch && batch.hasMore) {
+  console.log("More batches available");
+}
+```
+
+---
+
+## State and Connection Types
+
+### Connection States
+
+```ts
+type ConnectionState = "idle" | "connecting" | "open" | "error" | "closed";
+type SubscriptionStatus = "subscribed" | "unsubscribed" | "pending";
+```
+
+**Usage Example:**
+```ts
+function checkConnectionState(client: ErebusPubSubClient) {
+  if (client.isConnected) {
+    console.log("Client is connected and ready");
+  }
+  
+  // Monitor state changes
+  setInterval(() => {
+    console.log("Connected:", client.isConnected);
+    console.log("Readable:", client.isReadable);  
+    console.log("Writable:", client.isWritable);
+  }, 5000);
+}
+```
+
+### Pending Operation Types
+
+```ts
+type PendingPublish = {
+  requestId: string;
+  clientMsgId: string;
+  topic: string;
+  callback: AckCallback;
+  timestamp: number;
+  timeoutId?: NodeJS.Timeout;
+};
+
+type PendingSubscription = {
+  requestId: string;
+  clientMsgId?: string;
+  topic: string;
+  path: "subscribe" | "unsubscribe";
+  callback: SubscriptionCallback;
+  timestamp: number;
+  timeoutId?: NodeJS.Timeout;
+};
+```
+
+---
+
+## Enums
+
+### `ErebusClientState`
+
+```ts
+enum ErebusClientState {
+  PubSub = 0  // Select PubSub client
+}
+```
+
+**Usage Example:**
+```ts
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub, // Type-safe client selection
+  authBaseUrl: "https://auth.example.com"
+});
+```
+
+### `Access`
+
+```ts
+enum Access {
+  ReadWrite = "rw",  // Full read/write access
+  Read = "r",        // Read-only access
+  Write = "w"        // Write-only access
+}
+```
+
+**Usage Example:**
+```ts
+import { Access } from "@erebus-sh/sdk/service";
+
+session.allow("chat:*", Access.ReadWrite);  // Full access to chat topics
+session.allow("announcements", Access.Read); // Read-only access to announcements
+```
+
+---
+
+## Generic Types
+
+### Schema Types (for Typed Facade)
+
+```ts
+type SchemaMap = Record<string, z.ZodType>;
+
+type Topic<S extends SchemaMap> = Extract<keyof S, string>;
+
+type Payload<S extends SchemaMap, K extends Topic<S>> = z.infer<S[K]>;
+
+type TypedMessage<P> = Omit<MessageBody, "payload"> & { payload: P };
+
+type MessageFor<S extends SchemaMap, K extends Topic<S>> = TypedMessage<
+  Payload<S, K>
+>;
+```
+
+**Usage Example:**
+```ts
+import { z } from "zod";
+
+const schemas = {
+  chat: z.object({
+    text: z.string(),
+    username: z.string(),
+  }),
+  notification: z.object({
+    title: z.string(),
+    urgent: z.boolean(),
+  }),
+} as const;
+
+type ChatSchema = typeof schemas;
+type ChatTopic = Topic<ChatSchema>; // "chat" | "notification"
+type ChatMessage = MessageFor<ChatSchema, "chat">; // Typed message with chat payload
+```
+
+---
+
+## Utility Types
+
+### Client Interface
+
+```ts
+interface IPubSubClient<TTopic, TPayload, TMessage> {
+  connect(timeout?: number): Promise<void>;
+  joinChannel(channel: string): void;
+  close(): void;
+  
+  publish<K extends TTopic>(topic: K, payload: TPayload): Promise<string>;
+  publishWithAck<K extends TTopic>(
+    topic: K,
+    payload: TPayload,
+    onAck: AckCallback,
+    timeoutMs?: number,
+  ): Promise<string>;
+  
+  subscribe<K extends TTopic>(
+    topic: K,
+    handler: (message: TMessage) => void,
+    options?: SubscribeOptions,
+  ): Promise<void>;
+  
+  unsubscribe<K extends TTopic>(topic: K): void;
+  
+  onPresence<K extends TTopic>(
+    topic: K,
+    handler: PresenceHandler,
+  ): Promise<void>;
+  
+  get isConnected(): boolean;
+  get isReadable(): boolean;
+  get isWritable(): boolean;
+}
+```
+
+### Error Types
+
+```ts
+interface ErebusError extends Error {
+  code?: string;
+  context?: Record<string, unknown>;
+}
+
+type ErrorCode = 
+  | "CONNECTION_ERROR"
+  | "TIMEOUT"
+  | "INVALID_TOPIC"
+  | "NOT_CONNECTED"
+  | "MALFORMED_ACK"
+  | "SUBSCRIPTION_ERROR";
+```
+
+---
+
+## Type Guards
+
+Utility functions for type checking:
+
+```ts
+// Check if response is successful
+function isAckSuccess(response: AckResponse): response is AckSuccess {
+  return response.success;
+}
+
+function isSubscriptionSuccess(
+  response: SubscriptionResponse
+): response is SubscriptionSuccess {
+  return response.success;
+}
+
+// Check connection state
+function isConnected(client: ErebusPubSubClient): boolean {
+  return client.isConnected && client.isReadable && client.isWritable;
+}
+```
+
+**Usage Example:**
+```ts
+client.publishWithAck("topic", "message", (ack) => {
+  if (isAckSuccess(ack)) {
+    // TypeScript knows ack has seq, serverMsgId properties
+    console.log("Success! Seq:", ack.seq);
+  } else {
+    // TypeScript knows ack has error property
+    console.error("Failed:", ack.error.message);
+  }
+});
+```
+
+---
+
+## Advanced Type Patterns
+
+### Typed Message Handlers
+
+```ts
+// Create typed message handler
+function createTypedHandler<T>(
+  validator: (data: unknown) => data is T,
+  handler: (payload: T, msg: MessageBody) => void
+): (msg: MessageBody) => void {
+  return (msg) => {
+    try {
+      const parsed = JSON.parse(msg.payload);
+      if (validator(parsed)) {
+        handler(parsed, msg);
+      } else {
+        console.warn("Invalid message format:", parsed);
+      }
+    } catch (error) {
+      console.error("Failed to parse message:", error);
+    }
+  };
+}
+
+// Usage
+interface ChatMessage {
+  text: string;
+  username: string;
+}
+
+const isChatMessage = (data: unknown): data is ChatMessage => {
+  return typeof data === 'object' && 
+         data !== null &&
+         'text' in data && 
+         'username' in data;
+};
+
+const chatHandler = createTypedHandler(isChatMessage, (payload, msg) => {
+  console.log(`${payload.username}: ${payload.text}`);
+  console.log(`Sent at: ${msg.sentAt}`);
+});
+
+await client.subscribe("chat", chatHandler);
+```
+
+---
+
+## Next Steps
+
+- **[Getting Started](/docs/sdk/core/getting-started-api)** - Basic API walkthrough
+- **[Messaging APIs](/docs/sdk/core/messaging)** - Publish and subscribe patterns  
+- **[Connection Management](/docs/sdk/core/connection-management)** - Connection lifecycle
+- **[Schema Facade](/docs/sdk/core/schema-facade)** - Type-safe messaging with validation

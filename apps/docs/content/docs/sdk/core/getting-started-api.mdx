@@ -1,0 +1,276 @@
+---
+title: Getting Started with Core APIs
+description: Basic walkthrough of Erebus Core SDK APIs with practical examples
+---
+
+# Getting Started with Core APIs
+
+A practical guide to getting up and running with the Erebus Core SDK. This walkthrough covers the essential APIs you need to build real-time applications.
+
+## Installation
+
+First, install the Erebus SDK:
+
+```package-install
+@erebus-sh/sdk
+```
+
+## Complete Working Example
+
+Here's a complete example that demonstrates the core functionality:
+
+```ts
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+import { createGenericAdapter } from "@erebus-sh/sdk/server";
+import { Access, ErebusService } from "@erebus-sh/sdk/service";
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:4919",
+  wsBaseUrl: "ws://localhost:8787", // optional for self-hosted
+});
+
+const SECRET_API_KEY = process.env.SECRET_API_KEY!;
+
+const app = createGenericAdapter({
+  authorize: async (channel) => {
+    const userId = Math.random().toString(36).substring(2, 15);
+    const service = new ErebusService({
+      secret_api_key: SECRET_API_KEY,
+      base_url: "http://localhost:3000",
+    });
+
+    const session = await service.prepareSession({ userId });
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+    return session;
+  },
+});
+
+Bun.serve({ port: 4919, fetch: app.fetch });
+
+async function main() {
+  const topic = "chat:lobby";
+  
+  client.joinChannel("chats");
+  await client.connect();
+
+  // Subscribe to messages
+  await client.subscribe(topic, (msg) => {
+    console.log("📩", msg.payload, "from", msg.senderId);
+  });
+
+  // Track presence
+  await client.onPresence(topic, (presence) => {
+    console.log("👤", presence.status, presence.clientId);
+  });
+
+  // Publish with acknowledgement
+  await client.publishWithAck(
+    topic,
+    "Hello Erebus 👋",
+    (ack) => console.log("✅ Ack:", ack.success ? "Success" : `Failed: ${ack.error?.message}`),
+    3000
+  );
+  
+  // Fetch message history
+  const history = await client.getHistory(topic, {
+    limit: 50,
+    direction: "backward"
+  });
+  console.log("📜 History:", history.items.length, "messages");
+}
+
+main().catch(console.error);
+```
+
+Check the full example: [Chat TypeScript](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts)
+
+---
+
+## Client Creation
+
+### `ErebusClient.createClient(options)`
+
+Creates and configures a PubSub client instance.
+
+**Parameters:**
+- `client: ErebusClientState.PubSub` - Client type selector
+- `authBaseUrl: string` - URL of your authentication server
+- `wsBaseUrl?: string` - WebSocket URL (defaults to `wss://gateway.erebus.sh`)
+
+**Returns:** `ErebusPubSubClient`
+
+```ts
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "https://your-auth-server.com",
+  wsBaseUrl: "wss://gateway.erebus.sh", // optional
+});
+```
+
+---
+
+## Basic Usage Pattern
+
+Every Erebus application follows this pattern:
+
+### 1. Create Client
+```ts
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "https://your-auth.com"
+});
+```
+
+### 2. Join Channel
+```ts
+client.joinChannel("my-app-channel");
+```
+
+### 3. Connect
+```ts
+await client.connect();
+```
+
+### 4. Subscribe to Topics
+```ts
+await client.subscribe("notifications", (msg) => {
+  console.log("New notification:", msg.payload);
+});
+```
+
+### 5. Publish Messages
+```ts
+await client.publish("notifications", "Hello World!");
+```
+
+### 6. Handle Presence (Optional)
+```ts
+await client.onPresence("notifications", (presence) => {
+  console.log(`${presence.clientId} is ${presence.status}`);
+});
+```
+
+---
+
+## Key Concepts
+
+### Channels vs Topics
+
+- **Channel**: A namespace that groups related topics (e.g., "chat-app")
+- **Topic**: A specific message stream within a channel (e.g., "room-123", "notifications")
+
+```ts
+// One channel can have multiple topics
+client.joinChannel("chat-app");
+await client.subscribe("room-123", handler);
+await client.subscribe("room-456", handler);
+await client.subscribe("notifications", handler);
+```
+
+### Message Structure
+
+All messages follow the `MessageBody` format:
+
+```ts
+interface MessageBody {
+  id: string;              // Unique message ID (ULID)
+  topic: string;           // Topic name
+  senderId: string;        // Sender's client ID
+  seq: string;             // Sequence number (ULID)
+  sentAt: Date;            // Server timestamp
+  payload: string;         // Your message content
+  clientMsgId?: string;    // Optional correlation ID
+}
+```
+
+### Connection States
+
+Monitor your connection status:
+
+```ts
+console.log(client.isConnected); // boolean
+console.log(client.isReadable);  // boolean
+console.log(client.isWritable);  // boolean
+```
+
+---
+
+## Common Use Cases
+
+### Chat Application
+```ts
+// Subscribe to room messages
+await client.subscribe("room-123", (msg) => {
+  displayMessage(msg.senderId, msg.payload);
+});
+
+// Send a message
+await client.publish("room-123", "Hello everyone!");
+
+// Track who's online
+await client.onPresence("room-123", (presence) => {
+  updateUserList(presence.clientId, presence.status);
+});
+```
+
+### Real-time Notifications
+```ts
+// Subscribe to user-specific notifications
+await client.subscribe(`user-${userId}`, (msg) => {
+  showNotification(JSON.parse(msg.payload));
+});
+
+// Send notification
+await client.publish(`user-${targetUserId}`, JSON.stringify({
+  title: "New Message",
+  body: "You have a new message from Alice"
+}));
+```
+
+### Collaborative Editing
+```ts
+// Subscribe to document changes
+await client.subscribe(`doc-${documentId}`, (msg) => {
+  const change = JSON.parse(msg.payload);
+  applyChange(change);
+});
+
+// Broadcast a change
+const change = { type: "insert", position: 10, text: "Hello" };
+await client.publish(`doc-${documentId}`, JSON.stringify(change));
+```
+
+---
+
+## Error Handling
+
+Always wrap async operations in try-catch:
+
+```ts
+try {
+  await client.connect();
+  await client.subscribe("topic", handler);
+} catch (error) {
+  console.error("Failed to setup client:", error);
+}
+```
+
+---
+
+## Next Steps
+
+Now that you understand the basics, explore advanced features:
+
+- **[Connection Management](/docs/sdk/core/connection-management)** - Lifecycle, states, and error handling
+- **[Messaging APIs](/docs/sdk/core/messaging)** - Advanced publish/subscribe patterns
+- **[Presence Tracking](/docs/sdk/core/presence)** - Real-time user awareness
+- **[Message History](/docs/sdk/core/history)** - Fetch past messages with pagination
+- **[Type Safety](/docs/sdk/core/schema-facade)** - Schema validation with TypeScript
+
+### Examples
+
+- [Basic Chat (TypeScript)](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts)
+- [Typed Client](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts-typed)
+- [Next.js Chat App](https://github.com/erebus-sh/erebus/tree/master/examples/chat-app)

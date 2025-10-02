@@ -150,3 +150,256 @@ export default function ChatPage() {
 </Steps>
 
 Full code example: [examples/chat-app/](https://github.com/erebus-sh/erebus/blob/master/examples/chat-app/)
+
+---
+
+## Deployment
+
+### Vercel Deployment
+
+1. **Configure environment variables**
+   ```bash
+   vercel env add SECRET_API_KEY
+   vercel env add EREBUS_AUTH_URL
+   ```
+
+2. **Update vercel.json**
+   ```json title="vercel.json"
+   {
+     "functions": {
+       "app/api/erebus/[...all]/route.ts": {
+         "maxDuration": 30
+       }
+     }
+   }
+   ```
+
+3. **Deploy**
+   ```bash
+   vercel deploy --prod
+   ```
+
+### Environment Variables for Production
+
+| Variable | Value | Notes |
+|----------|-------|-------|
+| `SECRET_API_KEY` | Your production API key | Get from Erebus dashboard |
+| `EREBUS_AUTH_URL` | `https://your-app.vercel.app` | Your deployed URL |
+| `EREBUS_WS_URL` | Leave empty | Uses default `wss://gateway.erebus.sh` |
+
+---
+
+## Troubleshooting
+
+### Common Next.js Issues
+
+#### 1. Server Action Errors
+
+**Error:**
+```
+Server Actions must be async functions
+```
+
+**Solution:**
+Ensure your API route handlers are async:
+```ts
+export const { POST } = createRouteHandler({
+  authorize: async (channel, ctx) => { // Must be async
+    // Your logic
+  }
+});
+```
+
+#### 2. Client-Side Hydration Issues
+
+**Error:**
+```
+Hydration failed because the initial UI does not match
+```
+
+**Solution:**
+Use proper React patterns for real-time data:
+```tsx
+import { useEffect, useState } from 'react';
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState<MessageBody[]>([]);
+  const [mounted, setMounted] = useState(false);
+  
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+  
+  if (!mounted) return <div>Loading...</div>;
+  
+  // Your Erebus hooks here
+}
+```
+
+#### 3. API Route Connection Issues
+
+**Error:**
+```
+Failed to fetch grant token
+```
+
+**Solution:**
+Check your API route configuration:
+```ts
+// Verify the route is exported correctly
+export const { POST } = createRouteHandler({
+  authorize: async (channel, ctx) => {
+    console.log("Auth request for channel:", channel);
+    // Your authorization logic
+  }
+});
+```
+
+#### 4. CORS Issues in Development
+
+**Error:**
+```
+Access to fetch blocked by CORS policy
+```
+
+**Solution:**
+Update your Next.js configuration:
+```ts title="next.config.js"
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/api/erebus/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          { key: 'Access-Control-Allow-Methods', value: 'POST' },
+          { key: 'Access-Control-Allow-Headers', value: 'Content-Type' },
+        ],
+      },
+    ];
+  },
+};
+
+module.exports = nextConfig;
+```
+
+### Performance Optimization
+
+#### App Router vs Pages Router
+
+**App Router (Recommended):**
+- Server components for auth logic
+- Streaming for real-time updates
+- Better performance with React 18
+
+**Pages Router (Legacy):**
+- API routes for auth endpoints
+- Client-side rendering for real-time features
+- Simpler setup for existing apps
+
+#### Production Optimizations
+
+1. **Enable compression**
+   ```ts title="next.config.js"
+   const nextConfig = {
+     compress: true,
+     poweredByHeader: false,
+   };
+   ```
+
+2. **Optimize bundle splitting**
+   ```ts
+   // Lazy load Erebus client
+   const ErebusClient = dynamic(() => import('@erebus-sh/sdk/client'), {
+     ssr: false
+   });
+   ```
+
+3. **Implement connection pooling**
+   ```ts
+   // Singleton client instance
+   let globalClient: ErebusPubSubClient | null = null;
+   
+   export function getErebusClient() {
+     if (!globalClient) {
+       globalClient = ErebusClient.createClient({
+         client: ErebusClientState.PubSub,
+         authBaseUrl: process.env.EREBUS_AUTH_URL!
+       });
+     }
+     return globalClient;
+   }
+   ```
+
+---
+
+## Advanced Patterns
+
+### Server-Side Events with React
+
+```tsx
+// Server component for initial data
+async function ChatRoom({ roomId }: { roomId: string }) {
+  const initialMessages = await getMessagesFromDB(roomId);
+  
+  return (
+    <div>
+      <MessageList initialMessages={initialMessages} roomId={roomId} />
+      <MessageInput roomId={roomId} />
+    </div>
+  );
+}
+
+// Client component for real-time updates
+'use client';
+function MessageList({ initialMessages, roomId }) {
+  const { messages, publish } = useChannel("chat");
+  
+  useEffect(() => {
+    // Subscribe when component mounts
+    client.subscribe(roomId, (msg) => {
+      setMessages(prev => [...prev, msg]);
+    });
+  }, [roomId]);
+  
+  return (
+    <div>
+      {messages.map(msg => (
+        <div key={msg.id}>{msg.payload}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### React Suspense Integration
+
+```tsx
+import { Suspense } from 'react';
+
+function RealtimeData({ topic }: { topic: string }) {
+  const { messages, isConnected } = useChannel("data");
+  
+  if (!isConnected) {
+    throw new Promise(resolve => {
+      // Wait for connection
+      const checkConnection = () => {
+        if (client.isConnected) resolve(void 0);
+        else setTimeout(checkConnection, 100);
+      };
+      checkConnection();
+    });
+  }
+  
+  return <div>{/* Your component */}</div>;
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={<div>Connecting...</div>}>
+      <RealtimeData topic="live-data" />
+    </Suspense>
+  );
+}
+```
