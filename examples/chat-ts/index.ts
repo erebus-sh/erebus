@@ -72,12 +72,8 @@ async function main() {
   console.log("✅ Presence handler registered!");
 
   // Publish a message
-  await client.publishWithAck({
-    topic: topic,
-    messageBody: "Hello Erebus 👋",
-    onAck: (ack) => {
-      console.log("✅ Message acknowledged:", ack.ack);
-    },
+  await client.publishWithAck(topic, "Hello Erebus 👋", (ack) => {
+    console.log("✅ Message acknowledged:", ack.ack);
   });
 }
 main().catch(console.error);
