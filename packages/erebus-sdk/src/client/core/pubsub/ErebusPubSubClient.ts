@@ -7,7 +7,6 @@ import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import type { ConnectionState, IPubSubClient } from "./interfaces";
 import type { SubscribeOptions } from "./types";
-import { createRpcClient } from "@repo/service/src/rpc";
 
 type ErebusOptions = {
   wsUrl: string;
@@ -34,7 +33,6 @@ export class ErebusPubSubClient
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
-  #rpcClient: ReturnType<typeof createRpcClient> | null = null;
   #httpBaseUrl: string | null = null;
   #tokenProvider: (channel: string) => Promise<string>;
 
@@ -43,10 +41,9 @@ export class ErebusPubSubClient
     this.#tokenProvider = opts.tokenProvider;
     const instanceId = Math.random().toString(36).substring(2, 8);
 
-    // Initialize RPC client if httpBaseUrl provided
+    // Store HTTP base URL for history API
     if (opts.httpBaseUrl) {
       this.#httpBaseUrl = opts.httpBaseUrl;
-      this.#rpcClient = createRpcClient(opts.httpBaseUrl);
     }
 
     console.log(`[Erebus:${instanceId}] Constructor called`, {
@@ -690,7 +687,7 @@ export class ErebusPubSubClient
       direction?: "forward" | "backward";
     },
   ): Promise<{ items: MessageBody[]; nextCursor: string | null }> {
-    if (!this.#rpcClient || !this.#httpBaseUrl) {
+    if (!this.#httpBaseUrl) {
       throw new Error("HTTP base URL required for history API");
     }
 
@@ -701,20 +698,21 @@ export class ErebusPubSubClient
     // Get current grant token
     const grant = await this.#tokenProvider(this.#stateManager.channel);
 
-    // Build query params with proper typing (all params can be string or string[])
-    const query = {
-      grant,
-      cursor: options?.cursor || "",
-      limit: options?.limit?.toString() || "",
-      direction: options?.direction || "",
-    };
+    // Build query params
+    const queryParams = new URLSearchParams({ grant });
+    if (options?.cursor) queryParams.set("cursor", options.cursor);
+    if (options?.limit) queryParams.set("limit", options.limit.toString());
+    if (options?.direction) queryParams.set("direction", options.direction);
 
-    // Call RPC client with properly typed query params
-    const response = await this.#rpcClient.v1.pubsub.topics[
-      ":topicName"
-    ].history.$get({
-      param: { topicName: topic },
-      query,
+    // Construct full URL
+    const url = `${this.#httpBaseUrl}/v1/pubsub/topics/${encodeURIComponent(topic)}/history?${queryParams.toString()}`;
+
+    // Call using fetch
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
     });
 
     if (!response.ok) {

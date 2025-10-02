@@ -1,11 +1,42 @@
-import { describe, test, expect } from "vitest";
+import { describe, test, expect, beforeAll } from "vitest";
 import {
   ErebusClient,
   ErebusClientState,
 } from "../../../src/client/core/Erebus";
 import { z } from "zod";
 import { ErebusPubSubSchemas } from "../../../src/client/core/pubsub/PubSubFacade";
-import type { MessageFor } from "../../../src/client/core/types";
+import { createGenericAdapter } from "../../../src/server";
+import { ErebusService } from "../../../src/service/Service";
+import { Access } from "@repo/schemas/grant";
+import { serve } from "@hono/node-server";
+
+let authServer: any;
+
+beforeAll(() => {
+  authServer = createGenericAdapter({
+    authorize: async (channel, ctx) => {
+      const randomUserId = crypto.randomUUID();
+      console.log("generated randomUserId", randomUserId);
+      const service = new ErebusService({
+        secret_api_key:
+          "dv-er-a9ti6g5fnybi2mug3t5mi5o7w27121ehxsy8l6nf5xijxzu4",
+        base_url: "http://localhost:3000", // Erebus service local server
+      });
+      const session = await service.prepareSession({ userId: randomUserId });
+      session.join(channel);
+      session.allow("*", Access.ReadWrite);
+      return session;
+    },
+    fireWebhook: async (message) => {
+      // noop
+    },
+  });
+
+  serve({
+    fetch: authServer.fetch,
+    port: 6969,
+  });
+});
 
 describe("PubSub History API", () => {
   const MessageSchema = z.object({
@@ -20,8 +51,8 @@ describe("PubSub History API", () => {
   test("getHistory returns properly typed messages", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
-      wsBaseUrl: "wss://gateway.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
@@ -53,7 +84,8 @@ describe("PubSub History API", () => {
   test("getHistory with cursor pagination", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
@@ -79,7 +111,8 @@ describe("PubSub History API", () => {
   test("getHistory forward direction", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
@@ -105,7 +138,8 @@ describe("PubSub History API", () => {
   test("createHistoryIterator fetches batches sequentially", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
@@ -148,7 +182,8 @@ describe("PubSub History API", () => {
   test("createHistoryIterator returns null when exhausted", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
@@ -176,7 +211,8 @@ describe("PubSub History API", () => {
   test("typed messages maintain proper structure", async () => {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "https://api.erebus.sh",
+      authBaseUrl: "http://localhost:6969",
+      wsBaseUrl: "ws://localhost:8787",
     });
 
     const typed = new ErebusPubSubSchemas(client, schemas);
