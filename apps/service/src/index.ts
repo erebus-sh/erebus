@@ -207,18 +207,41 @@ const apiRouter = new Hono<{
     console.log(`[${requestId}] Routing to pubsub handler`);
     return await pubsub(handlerProps);
   })
-  .get("/pubsub/topics/:topicName/history", async (c) => {
-    const requestId = c.get("requestId");
+  .get(
+    "/pubsub/topics/:topicName/history",
+    validator("query", (value, c) => {
+      const grant = value["grant"];
+      if (!grant || typeof grant !== "string") {
+        return c.json({ error: "grant query parameter is required" }, 400);
+      }
 
-    const handlerProps: HandlerProps = {
-      request: c.req.raw,
-      env: c.env,
-      locationHint: c.get("locationHint"),
-    };
+      const cursor = value["cursor"];
+      const limit = value["limit"];
+      const direction = value["direction"];
 
-    console.log(`[${requestId}] Routing to topic history handler`);
-    return await getTopicHistory(handlerProps);
-  })
+      return {
+        grant: String(grant),
+        cursor: cursor ? String(cursor) : undefined,
+        limit: limit ? String(limit) : undefined,
+        direction:
+          direction === "forward" || direction === "backward"
+            ? direction
+            : undefined,
+      };
+    }),
+    async (c) => {
+      const requestId = c.get("requestId");
+
+      const handlerProps: HandlerProps = {
+        request: c.req.raw,
+        env: c.env,
+        locationHint: c.get("locationHint"),
+      };
+
+      console.log(`[${requestId}] Routing to topic history handler`);
+      return await getTopicHistory(handlerProps);
+    },
+  )
   .get("/state/*", async (c) => {
     const request = c.req.raw;
     const upgrade = request.headers.get("upgrade");

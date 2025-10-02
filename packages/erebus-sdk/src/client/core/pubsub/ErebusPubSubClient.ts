@@ -7,9 +7,11 @@ import { PubSubConnection } from "./PubSubConnection";
 import { StateManager } from "./StateManager";
 import type { ConnectionState, IPubSubClient } from "./interfaces";
 import type { SubscribeOptions } from "./types";
+import { createRpcClient } from "@repo/service/src/rpc";
 
 type ErebusOptions = {
   wsUrl: string;
+  httpBaseUrl?: string;
   tokenProvider: (channel: string) => Promise<string>;
   heartbeatMs?: number;
   log?: (l: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
@@ -32,10 +34,20 @@ export class ErebusPubSubClient
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
+  #rpcClient: ReturnType<typeof createRpcClient> | null = null;
+  #httpBaseUrl: string | null = null;
+  #tokenProvider: (channel: string) => Promise<string>;
 
   constructor(opts: ErebusOptions) {
     this.#debug = opts.debug ?? false;
+    this.#tokenProvider = opts.tokenProvider;
     const instanceId = Math.random().toString(36).substring(2, 8);
+
+    // Initialize RPC client if httpBaseUrl provided
+    if (opts.httpBaseUrl) {
+      this.#httpBaseUrl = opts.httpBaseUrl;
+      this.#rpcClient = createRpcClient(opts.httpBaseUrl);
+    }
 
     console.log(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
@@ -661,5 +673,106 @@ export class ErebusPubSubClient
 
   get isConnected(): boolean {
     return this.#stateManager.isConnected;
+  }
+
+  /**
+   * Fetch message history for a topic with cursor-based pagination
+   *
+   * @param topic - Topic name to fetch history for
+   * @param options - Pagination options (cursor, limit, direction)
+   * @returns Promise resolving to paginated message history
+   */
+  async getHistory(
+    topic: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): Promise<{ items: MessageBody[]; nextCursor: string | null }> {
+    if (!this.#rpcClient || !this.#httpBaseUrl) {
+      throw new Error("HTTP base URL required for history API");
+    }
+
+    if (!this.#stateManager.channel) {
+      throw new Error("Channel must be set before fetching history");
+    }
+
+    // Get current grant token
+    const grant = await this.#tokenProvider(this.#stateManager.channel);
+
+    // Build query params with proper typing (all params can be string or string[])
+    const query = {
+      grant,
+      cursor: options?.cursor || "",
+      limit: options?.limit?.toString() || "",
+      direction: options?.direction || "",
+    };
+
+    // Call RPC client with properly typed query params
+    const response = await this.#rpcClient.v1.pubsub.topics[
+      ":topicName"
+    ].history.$get({
+      param: { topicName: topic },
+      query,
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `History API failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      items: MessageBody[];
+      nextCursor: string | null;
+    };
+    return data;
+  }
+
+  /**
+   * Create a paginated history iterator
+   * Returns a function that fetches the next batch of messages
+   *
+   * @param topic - Topic name to fetch history for
+   * @param options - Pagination options (limit, direction)
+   * @returns Iterator function that returns next batch or null when exhausted
+   *
+   * @example
+   * ```typescript
+   * const getNext = client.createHistoryIterator("room-1", { limit: 50 });
+   * const firstBatch = await getNext(); // { items: [...], hasMore: true }
+   * const secondBatch = await getNext(); // { items: [...], hasMore: false }
+   * const done = await getNext(); // null
+   * ```
+   */
+  createHistoryIterator(
+    topic: string,
+    options?: {
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): () => Promise<{ items: MessageBody[]; hasMore: boolean } | null> {
+    let cursor: string | null = null;
+    let exhausted = false;
+
+    return async () => {
+      if (exhausted) {
+        return null;
+      }
+
+      const result = await this.getHistory(topic, {
+        ...options,
+        cursor: cursor || undefined,
+      });
+
+      cursor = result.nextCursor;
+      exhausted = result.nextCursor === null;
+
+      return {
+        items: result.items,
+        hasMore: !exhausted,
+      };
+    };
   }
 }

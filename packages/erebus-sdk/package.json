@@ -47,7 +47,8 @@
     "eslint": "^9.36.0",
     "eslint-plugin-import": "^2.32.0",
     "typescript-eslint": "^8.44.1",
-    "@typescript-eslint/parser": "^8.44.0"
+    "@typescript-eslint/parser": "^8.44.0",
+    "@repo/service": "workspace:*"
   },
   "peerDependencies": {
     "typescript": "^5.9.2",
