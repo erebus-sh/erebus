@@ -10,6 +10,6 @@
     "typescript": "^5"
   },
   "dependencies": {
-    "@erebus-sh/sdk": "^0.0.176"
+    "@erebus-sh/sdk": "^0.0.178"
   }
 }
