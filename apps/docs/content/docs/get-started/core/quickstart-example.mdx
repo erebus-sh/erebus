@@ -27,7 +27,7 @@ import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:3000",  // your auth domain
+  authBaseUrl: "http://localhost:4919",  // your auth domain
   wsBaseUrl: "ws://localhost:8787",  // your ws domain (optional if you self-host locally)
 });
 ...
@@ -58,7 +58,7 @@ const app = createGenericAdapter({
 
     const service = new ErebusService({
       secret_api_key: SECRET_API_KEY,
-      base_url: "http://localhost:3000", // (optional if you self-host locally) where your Erebus service is running, default is https://api.erebus.sh
+      base_url: "http://localhost:3000", // (optional if you self-host locally) where your Erebus service is running
     });
 
     // Create a session for this user
@@ -82,7 +82,7 @@ Bun.serve({
   fetch: app.fetch,
 });
 
-console.log("✅ Auth server running at http://localhost:3000");
+console.log("✅ Auth server running at http://localhost:4919");
 
 ```
 </Step>
@@ -113,13 +113,9 @@ async function main() {
   });
 
   // Publish a message
-  await client.publishWithAck({
-    topic: topic,
-    messageBody: "Hello Erebus 👋",
-    onAck: (ack) => {
-      console.log("✅ Message acknowledged:", ack.ack);
-    },
-  });
+  await client.publishWithAck(topic, "Hello Erebus 👋", (ack) => {
+    console.log("✅ Message acknowledged:", ack.success ? "Success" : "Failed");
+  }, 3000);
 }
 
 main().catch(console.error);

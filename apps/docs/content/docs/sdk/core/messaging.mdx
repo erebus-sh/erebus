@@ -1,0 +1,555 @@
+---
+title: Messaging APIs
+description: Publish, subscribe, and message history APIs for real-time communication
+---
+
+# Messaging APIs
+
+Complete guide to real-time messaging with publish/subscribe patterns, advanced subscription options, and message history retrieval.
+
+## Real-Time Messaging
+
+### `subscribe(topic, handler, options?): Promise<void>`
+
+Subscribe to messages on a topic.
+
+**Parameters:**
+- `topic: string` - Topic name to subscribe to
+- `handler: (message: MessageBody) => void` - Message callback
+- `options?: SubscribeOptions` - Optional configuration
+
+**Message Format:**
+```ts
+interface MessageBody {
+  id: string;           // Unique message ID
+  topic: string;        // Topic name
+  senderId: string;     // Sender's client ID
+  seq: string;          // Sequence number (ULID)
+  sentAt: Date;         // Server timestamp
+  payload: string;      // Message content
+  clientMsgId?: string; // Optional client correlation ID
+}
+```
+
+**Example:**
+```ts
+await client.subscribe("chat:lobby", (msg) => {
+  console.log(`${msg.senderId}: ${msg.payload}`);
+});
+
+// With options
+await client.subscribe(
+  "chat:lobby", 
+  (msg) => console.log(msg),
+  { streamOldMessages: true }
+);
+```
+
+### `unsubscribe(topic: string): void`
+
+Unsubscribe from a topic.
+
+```ts
+client.unsubscribe("chat:lobby");
+```
+
+### `subscribeWithCallback(topic, handler, onAck?, timeoutMs?, options?): void`
+
+Advanced subscribe method with ACK callback and custom options.
+
+**Parameters:**
+- `topic: string` - Topic to subscribe to
+- `handler: (message: MessageBody) => void` - Message callback
+- `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
+- `timeoutMs?: number` - Subscription timeout in milliseconds
+- `options?: SubscribeOptions` - Optional subscription configuration
+
+**SubscribeOptions:**
+```ts
+interface SubscribeOptions {
+  streamOldMessages?: boolean; // Deliver missed messages (default: false)
+}
+```
+
+**Example:**
+```ts
+client.subscribeWithCallback(
+  "chat:lobby",
+  (msg) => console.log("Message:", msg.payload),
+  (response) => {
+    if (response.success) {
+      console.log("Subscribed successfully");
+    } else {
+      console.error("Subscription failed:", response.error?.message);
+    }
+  },
+  10000,
+  { streamOldMessages: true }
+);
+```
+
+### `unsubscribeWithCallback(topic, onAck?, timeoutMs?): void`
+
+Advanced unsubscribe method with ACK callback.
+
+**Parameters:**
+- `topic: string` - Topic to unsubscribe from
+- `onAck?: SubscriptionCallback` - Optional unsubscription acknowledgement callback
+- `timeoutMs?: number` - Unsubscription timeout in milliseconds
+
+**Example:**
+```ts
+client.unsubscribeWithCallback(
+  "chat:lobby",
+  (response) => {
+    if (response.success) {
+      console.log("Unsubscribed successfully");
+    }
+  },
+  5000
+);
+```
+
+### `publish(topic, payload): Promise<string>`
+
+Publish a message without acknowledgement.
+
+**Parameters:**
+- `topic: string` - Topic to publish to
+- `payload: string` - Message content
+
+**Returns:** `Promise<string>` - Client message ID
+
+```ts
+const msgId = await client.publish("chat:lobby", "Hello!");
+```
+
+### `publishWithAck(topic, payload, onAck, timeout?): Promise<string>`
+
+Publish with server acknowledgement.
+
+**Parameters:**
+- `topic: string` - Topic to publish to
+- `payload: string` - Message content  
+- `onAck: AckCallback` - Acknowledgement callback
+- `timeout?: number` - Timeout in milliseconds (default: 3000)
+
+**AckCallback Type:**
+```ts
+type AckCallback = (response: AckResponse) => void;
+
+type AckResponse = {
+  success: boolean;
+  ack?: AckPacketType;
+  seq?: string;
+  serverMsgId?: string;
+  topic: string;
+  error?: {
+    code: string;
+    message: string;
+  };
+};
+```
+
+**Example:**
+```ts
+await client.publishWithAck(
+  "chat:lobby",
+  "Hello!",
+  (ack) => {
+    if (ack.success) {
+      console.log("Message delivered! Seq:", ack.seq);
+    } else {
+      console.error("Failed:", ack.error?.message);
+    }
+  },
+  5000
+);
+```
+
+---
+
+## Message History
+
+### `getHistory(topic, options?): Promise<HistoryResponse>`
+
+Fetch historical messages with cursor-based pagination.
+
+**Parameters:**
+- `topic: string` - Topic to fetch history for
+- `options?: HistoryOptions`
+  - `cursor?: string` - ULID cursor for pagination
+  - `limit?: number` - Messages per page (1-1000, default: 50)
+  - `direction?: "forward" | "backward"` - Sort order (default: "backward")
+
+**Returns:**
+```ts
+interface HistoryResponse {
+  items: MessageBody[];      // Array of messages
+  nextCursor: string | null; // Cursor for next page
+}
+```
+
+**Examples:**
+
+```ts
+// Get latest 50 messages (newest first)
+const history = await client.getHistory("chat:lobby");
+console.log(history.items); // Array of 50 messages
+console.log(history.nextCursor); // Use for next page
+
+// Paginate through history
+let cursor: string | null = null;
+do {
+  const page = await client.getHistory("chat:lobby", {
+    cursor: cursor || undefined,
+    limit: 100,
+    direction: "backward"
+  });
+  
+  console.log(`Fetched ${page.items.length} messages`);
+  cursor = page.nextCursor;
+} while (cursor);
+
+// Get oldest messages first
+const oldMessages = await client.getHistory("chat:lobby", {
+  direction: "forward",
+  limit: 20
+});
+```
+
+### `createHistoryIterator(topic, options?): () => Promise<IteratorResult | null>`
+
+Create a paginator function for convenient history iteration.
+
+**Parameters:**
+- `topic: string` - Topic to fetch history for
+- `options?: { limit?: number; direction?: "forward" | "backward" }`
+
+**Returns:** Iterator function that returns `{ items: MessageBody[]; hasMore: boolean } | null`
+
+**Example:**
+```ts
+const getNext = client.createHistoryIterator("chat:lobby", {
+  limit: 50,
+  direction: "backward"
+});
+
+// Fetch first batch
+const first = await getNext();
+if (first) {
+  console.log(`Got ${first.items.length} messages`);
+  console.log(`Has more: ${first.hasMore}`);
+}
+
+// Fetch second batch
+const second = await getNext();
+if (second) {
+  console.log(`Got ${second.items.length} more`);
+}
+
+// When exhausted, returns null
+const done = await getNext(); // null
+```
+
+---
+
+## Advanced Messaging Patterns
+
+### Message Acknowledgment Patterns
+
+#### Fire-and-Forget
+```ts
+// Simple publish without confirmation
+await client.publish("notifications", "System update complete");
+```
+
+#### Reliable Delivery
+```ts
+// Publish with acknowledgment
+await client.publishWithAck(
+  "critical-alerts",
+  "Server maintenance starting",
+  (ack) => {
+    if (ack.success) {
+      console.log("Alert delivered successfully");
+    } else {
+      // Retry logic or fallback notification
+      console.error("Alert delivery failed:", ack.error?.message);
+    }
+  },
+  5000
+);
+```
+
+#### Batch Publishing
+```ts
+async function publishBatch(topic: string, messages: string[]) {
+  const promises = messages.map(msg => 
+    client.publishWithAck(topic, msg, (ack) => {
+      console.log(`Message ${msg}: ${ack.success ? "✅" : "❌"}`);
+    })
+  );
+  
+  await Promise.all(promises);
+  console.log("All messages sent");
+}
+```
+
+### Subscription Patterns
+
+#### Topic Subscription with Cleanup
+```ts
+const subscriptions = new Set<string>();
+
+async function subscribeWithCleanup(topic: string, handler: (msg: MessageBody) => void) {
+  await client.subscribe(topic, handler);
+  subscriptions.add(topic);
+  
+  // Return unsubscribe function
+  return () => {
+    client.unsubscribe(topic);
+    subscriptions.delete(topic);
+  };
+}
+
+// Cleanup all subscriptions
+function unsubscribeAll() {
+  for (const topic of subscriptions) {
+    client.unsubscribe(topic);
+  }
+  subscriptions.clear();
+}
+```
+
+#### Pattern-Based Subscriptions
+```ts
+// Subscribe to multiple related topics
+const roomTopics = ["room-123", "room-456", "room-789"];
+
+for (const topic of roomTopics) {
+  await client.subscribe(topic, (msg) => {
+    handleRoomMessage(msg.topic, msg.payload);
+  });
+}
+```
+
+#### Subscription with Buffering
+```ts
+class MessageBuffer {
+  private buffer: MessageBody[] = [];
+  private batchSize = 10;
+  private flushInterval = 1000; // 1 second
+  
+  constructor(topic: string, private processBatch: (messages: MessageBody[]) => void) {
+    client.subscribe(topic, (msg) => this.addMessage(msg));
+    setInterval(() => this.flush(), this.flushInterval);
+  }
+  
+  private addMessage(msg: MessageBody) {
+    this.buffer.push(msg);
+    if (this.buffer.length >= this.batchSize) {
+      this.flush();
+    }
+  }
+  
+  private flush() {
+    if (this.buffer.length > 0) {
+      this.processBatch([...this.buffer]);
+      this.buffer.length = 0;
+    }
+  }
+}
+```
+
+### Message History Patterns
+
+#### Catch-up Pattern
+```ts
+async function catchUpAndSubscribe(topic: string, lastSeq?: string) {
+  // Get missed messages
+  if (lastSeq) {
+    const missedMessages = await client.getHistory(topic, {
+      cursor: lastSeq,
+      direction: "forward"
+    });
+    
+    // Process missed messages
+    for (const msg of missedMessages.items) {
+      processMessage(msg);
+    }
+  }
+  
+  // Subscribe for real-time messages
+  await client.subscribe(topic, processMessage);
+}
+```
+
+#### Infinite Scroll Pattern
+```ts
+class MessageHistory {
+  private messages: MessageBody[] = [];
+  private nextCursor: string | null = null;
+  private loading = false;
+  
+  async loadMore(topic: string): Promise<boolean> {
+    if (this.loading || this.nextCursor === null) return false;
+    
+    this.loading = true;
+    try {
+      const history = await client.getHistory(topic, {
+        cursor: this.nextCursor || undefined,
+        limit: 20,
+        direction: "backward"
+      });
+      
+      this.messages.push(...history.items);
+      this.nextCursor = history.nextCursor;
+      return history.items.length > 0;
+    } finally {
+      this.loading = false;
+    }
+  }
+  
+  get hasMore(): boolean {
+    return this.nextCursor !== null;
+  }
+}
+```
+
+#### Search in History
+```ts
+async function searchInHistory(topic: string, searchTerm: string) {
+  const results: MessageBody[] = [];
+  const iterator = client.createHistoryIterator(topic, { limit: 100 });
+  
+  let batch;
+  while ((batch = await iterator()) !== null) {
+    const matches = batch.items.filter(msg =>
+      msg.payload.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    results.push(...matches);
+    
+    // Stop if we found enough results
+    if (results.length >= 50) break;
+  }
+  
+  return results;
+}
+```
+
+---
+
+## Error Handling
+
+### Publishing Errors
+```ts
+try {
+  await client.publish("topic", "message");
+} catch (error) {
+  if (error.message.includes("Not connected")) {
+    console.error("Connection lost - will reconnect automatically");
+  } else if (error.message.includes("Invalid topic")) {
+    console.error("Topic name must be non-empty string");
+  }
+}
+```
+
+### Subscription Errors
+```ts
+// With callback for error handling
+client.subscribeWithCallback(
+  "topic",
+  (msg) => console.log(msg),
+  (response) => {
+    if (!response.success) {
+      console.error("Subscription failed:", response.error?.message);
+      // Implement retry logic
+    }
+  }
+);
+```
+
+### History API Errors
+```ts
+try {
+  const history = await client.getHistory("topic");
+} catch (error) {
+  if (error.message.includes("HTTP base URL required")) {
+    console.error("Configure httpBaseUrl in client options");
+  } else if (error.message.includes("History API failed")) {
+    console.error("Server error - check API status");
+  }
+}
+```
+
+---
+
+## Performance Optimization
+
+### Message Batching
+```ts
+class MessageBatcher {
+  private queue: Array<{ topic: string; payload: string }> = [];
+  private batchTimeout?: NodeJS.Timeout;
+  
+  publish(topic: string, payload: string) {
+    this.queue.push({ topic, payload });
+    
+    if (this.queue.length >= 10) {
+      this.flush();
+    } else if (!this.batchTimeout) {
+      this.batchTimeout = setTimeout(() => this.flush(), 100);
+    }
+  }
+  
+  private async flush() {
+    if (this.batchTimeout) {
+      clearTimeout(this.batchTimeout);
+      this.batchTimeout = undefined;
+    }
+    
+    const batch = [...this.queue];
+    this.queue.length = 0;
+    
+    // Send all messages in parallel
+    await Promise.all(
+      batch.map(({ topic, payload }) => 
+        client.publish(topic, payload)
+      )
+    );
+  }
+}
+```
+
+### Smart History Loading
+```ts
+class SmartHistoryLoader {
+  private cache = new Map<string, MessageBody[]>();
+  
+  async loadHistory(topic: string, limit: number = 50) {
+    const cacheKey = `${topic}:${limit}`;
+    
+    if (this.cache.has(cacheKey)) {
+      return this.cache.get(cacheKey)!;
+    }
+    
+    const history = await client.getHistory(topic, { limit });
+    this.cache.set(cacheKey, history.items);
+    
+    // Cache for 5 minutes
+    setTimeout(() => this.cache.delete(cacheKey), 5 * 60 * 1000);
+    
+    return history.items;
+  }
+}
+```
+
+---
+
+## Next Steps
+
+- **[Presence Tracking](/docs/sdk/core/presence)** - Monitor user activity and awareness
+- **[Connection Management](/docs/sdk/core/connection-management)** - Connection lifecycle and error handling
+- **[Types Reference](/docs/sdk/core/types-reference)** - Complete TypeScript definitions
+- **[Message History Guide](/docs/sdk/core/history)** - Advanced history patterns and examples

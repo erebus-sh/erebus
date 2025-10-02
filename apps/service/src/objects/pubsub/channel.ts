@@ -267,9 +267,13 @@ export class ChannelV1
       // Create presence update packet
       const presencePacket = PresencePacket.parse({
         packetType: "presence",
-        clientId: clientId,
-        topic: topic,
-        status: action === "subscribe" ? "online" : "offline",
+        clients: [
+          {
+            clientId: clientId,
+            topic: topic,
+            status: action === "subscribe" ? "online" : "offline",
+          },
+        ],
       });
 
       // Use MessageBroadcaster's optimized presence broadcasting

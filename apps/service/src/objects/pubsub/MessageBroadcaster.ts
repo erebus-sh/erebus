@@ -1,6 +1,9 @@
 import { MessageBody } from "@repo/schemas/messageBody";
 import { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
-import { PacketEnvelope } from "@repo/schemas/packetEnvelope";
+import {
+  PacketEnvelope,
+  PresencePacketType,
+} from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
   SocketSendResult,
@@ -482,12 +485,13 @@ export class MessageBroadcaster extends BaseService {
    * @param subscribers - Optional list of subscribers to restrict broadcast to
    */
   async broadcastPresence(
-    presencePacket: Extract<PacketEnvelope, { packetType: "presence" }>,
+    presencePacket: PresencePacketType,
     selfClient?: ErebusClient,
     subscribers?: string[],
   ): Promise<void> {
     this.logDebug(
-      `[PRESENCE_BROADCAST] Broadcasting presence packet for client: ${presencePacket.clientId}, topic: ${presencePacket.topic}, status: ${presencePacket.status}`,
+      `[PRESENCE_BROADCAST] Broadcasting presence packet for ${presencePacket.clients.length} client(s), ` +
+        `topic: ${presencePacket.clients[0]?.topic}, status: ${presencePacket.clients[0]?.status}`,
     );
 
     // Get all active ErebusClient connections
@@ -497,18 +501,22 @@ export class MessageBroadcaster extends BaseService {
     );
 
     // Prepare two variants:
-    // - generic packet for other subscribers (only clientId/topic/status)
+    // - generic packet for other subscribers (only the new client info)
     // - enriched packet for the sender/self including the full subscribers list
     const genericPacketSerialized = JSON.stringify(presencePacket);
 
-    const selfPacketSerialized = subscribers?.map((subscriber) => {
-      return {
-        packetType: "presence",
-        clientId: subscriber,
-        topic: presencePacket.topic,
-        status: presencePacket.status,
-      };
-    });
+    // For the self-client, we want to send the full list of all subscribers
+    const selfPacketSerialized: PresencePacketType | null =
+      subscribers && subscribers.length > 0
+        ? {
+            packetType: "presence",
+            clients: subscribers.map((subscriber) => ({
+              clientId: subscriber,
+              topic: presencePacket.clients[0].topic,
+              status: presencePacket.clients[0].status,
+            })),
+          }
+        : null;
 
     // Track broadcast metrics
     let sentCount = 0;
@@ -544,18 +552,15 @@ export class MessageBroadcaster extends BaseService {
           );
 
           // Send the appropriate presence packet
-          if (selfClient && selfClient.clientId === client.clientId) {
-            /**
-             * TODO: This approach is suboptimal, but leaving as-is for now >:(
-             *       Currently, we send the presence packet in multiple pieces,
-             *       which is unnecessary. Ideally, we should batch all packets
-             *       into a single array and send them together, but that's a
-             *       refactor for another time.
-             */
-            for (const packet of selfPacketSerialized ?? []) {
-              selfClient.sendJSON(packet);
-            }
+          if (
+            selfClient &&
+            selfClient.clientId === client.clientId &&
+            selfPacketSerialized
+          ) {
+            // Send batched packet with all subscribers to self-client
+            selfClient.sendJSON(selfPacketSerialized);
           } else {
+            // Send the original packet (new subscriber only) to other clients
             client.send(genericPacketSerialized);
           }
           return true;

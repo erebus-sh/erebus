@@ -28,16 +28,31 @@ But it's also available on:
 
 # Core APIs
 
-The Core Client provides stable, type-safe and raw APIs for interacting with Erebus pub/sub and messaging infrastructure. The main APIs and features include:
+The Core Client provides stable, type-safe APIs for interacting with Erebus pub/sub and messaging infrastructure. Key features include:
 
-- **connect**: Establishes a connection to the Erebus backend. Handles authentication and connection lifecycle.
-- **publish**: Sends messages to a specified channel, namespace, or region.
-- **subscribe**: Listens for messages on a channel (or channels), receiving real-time updates.
-- **ack**: Acknowledges receipt of a message (if required by your backend or QoS settings).
-- **sequences**: Provides access to message sequences and ordering using ULID (Universally Unique Lexicographically Sortable Identifier) , useful for replay or catch-up, sorting and uniqueness.
-- **namespaces/regions**: Scoping of channels and messages to logical or geographic partitions. Reference [Pub/Sub Channels](/docs/concepts/channels) for more information.
+## Core Features
 
-The core APIs are designed for flexibility and reliability, making it easy to build real-time features such as chat, notifications, presence, and collaborative editing.
+- **Real-time messaging**: Publish and subscribe to topics with guaranteed message ordering
+- **Presence tracking**: Automatic presence events when clients join/leave topics  
+- **Message history**: Fetch historical messages with cursor-based pagination
+- **Type safety**: Full TypeScript support with schema validation facade
+- **Connection management**: Automatic reconnection with exponential backoff
+- **Acknowledgments**: MQTT-style ACK system with QoS 1 support
+
+## Advanced Capabilities
+
+- **ULID sequences**: Lexicographically sortable message ordering for replay and catch-up
+- **Schema facade**: Runtime validation with Zod schemas for type-safe messaging
+- **Error handling**: Comprehensive error types and recovery patterns
+- **State management**: Connection state monitoring and lifecycle events
+- **Flexible subscriptions**: Multiple subscription patterns with options and callbacks
+
+## Documentation Sections
+
+- **[Complete API Reference](/docs/sdk/core/apis)** - All methods, types, and examples
+- **[Message History](/docs/sdk/core/history)** - Pagination, cursors, and advanced patterns  
+- **[Schema Facade](/docs/sdk/core/schema-facade)** - Type-safe messaging with validation
+- **[Quick Reference](/docs/sdk/core/quick-reference)** - Common patterns and cheat sheet
 
 ## Quickstart: Connect, Subscribe, Publish
 
@@ -61,13 +76,14 @@ await client.onPresence('test_123', (presence) => {
   console.log('Presence:', presence)
 })
 
-await client.publishWithAck({
-  topic: 'test_123',
-  messageBody: 'Hello Erebus 👋',
-  onAck: (ack) => {
-    console.log('Message acknowledged:', ack.ack)
+await client.publishWithAck(
+  'test_123',
+  'Hello Erebus 👋',
+  (ack) => {
+    console.log('Message acknowledged:', ack.success ? 'Success' : `Failed: ${ack.error?.message}`)
   },
-})
+  3000
+)
 ```
 
 > For a full end-to-end example (including a Bun-based auth server using `createGenericAdapter` and webhooks), see the [Core Client APIs](/docs/sdk/core/apis) page.
