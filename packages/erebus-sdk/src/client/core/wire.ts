@@ -65,8 +65,8 @@ export function parseServerFrame(raw: string): PacketEnvelope | null {
       console.log("[parseServerFrame] validating presence packet schema");
       const presence = PresencePacket.parse(data);
       console.log("[parseServerFrame] presence packet validated", {
-        topic: presence.topic,
-        clientId: presence.clientId,
+        clientCount: presence.clients.length,
+        firstClient: presence.clients[0],
       });
       return presence as PacketEnvelope;
     } else {

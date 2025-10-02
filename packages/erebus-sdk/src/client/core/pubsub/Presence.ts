@@ -130,56 +130,59 @@ export class PresenceManager {
    */
   handlePresencePacket(presencePacket: PresencePacketType): void {
     console.log(`[${this.#connectionId}] Handling presence packet`, {
-      clientId: presencePacket.clientId,
-      topic: presencePacket.topic,
-      status: presencePacket.status,
+      clientCount: presencePacket.clients.length,
+      clients: presencePacket.clients,
     });
 
-    const handlers = this.#presenceHandlers.get(presencePacket.topic);
-    if (!handlers || handlers.size === 0) {
+    // Process each client in the batched presence packet
+    for (const client of presencePacket.clients) {
+      const handlers = this.#presenceHandlers.get(client.topic);
+      if (!handlers || handlers.size === 0) {
+        console.log(
+          `[${this.#connectionId}] No presence handlers found for topic`,
+          {
+            topic: client.topic,
+          },
+        );
+        continue;
+      }
+
+      // Create presence event data
+      const presenceEvent: Presence = {
+        clientId: client.clientId,
+        topic: client.topic,
+        status: client.status,
+        timestamp: Date.now(),
+        // Include subscribers array if present (for enriched self presence updates)
+        // Check if the packet has subscribers property and it's an array
+        ...(this.#hasSubscribers(presencePacket) && {
+          subscribers: presencePacket.subscribers,
+        }),
+      };
+
+      // Call all handlers for this topic
+      for (const handler of handlers) {
+        try {
+          handler(presenceEvent);
+        } catch (error) {
+          console.error(`[${this.#connectionId}] Error in presence handler`, {
+            error,
+            topic: client.topic,
+            clientId: client.clientId,
+          });
+          // Continue with other handlers even if one fails
+        }
+      }
+
       console.log(
-        `[${this.#connectionId}] No presence handlers found for topic`,
+        `[${this.#connectionId}] Presence event handled successfully`,
         {
-          topic: presencePacket.topic,
+          topic: client.topic,
+          clientId: client.clientId,
+          handlersCount: handlers.size,
         },
       );
-      return;
     }
-
-    // Create presence event data
-    const presenceEvent: Presence = {
-      clientId: presencePacket.clientId,
-      topic: presencePacket.topic,
-      status: presencePacket.status,
-      timestamp: Date.now(),
-      // Include subscribers array if present (for enriched self presence updates)
-      // Check if the packet has subscribers property and it's an array
-      ...(this.#hasSubscribers(presencePacket) && {
-        subscribers: presencePacket.subscribers,
-      }),
-    };
-
-    // Call all handlers for this topic
-    for (const handler of handlers) {
-      try {
-        handler(presenceEvent);
-      } catch (error) {
-        console.error(`[${this.#connectionId}] Error in presence handler`, {
-          error,
-          topic: presencePacket.topic,
-          clientId: presencePacket.clientId,
-        });
-        // Continue with other handlers even if one fails
-      }
-    }
-
-    console.log(
-      `[${this.#connectionId}] Presence packet handled successfully`,
-      {
-        topic: presencePacket.topic,
-        handlersCount: handlers.size,
-      },
-    );
   }
 
   /**

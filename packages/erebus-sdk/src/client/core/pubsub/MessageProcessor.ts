@@ -79,9 +79,8 @@ export class MessageProcessor implements IMessageProcessor {
       } else if (packet.packetType === "presence") {
         // Handle presence packets
         console.log(`[${this.#connectionId}] Handling presence packet`, {
-          topic: packet.topic,
-          clientId: packet.clientId,
-          status: packet.status,
+          clientCount: packet.clients.length,
+          firstClient: packet.clients[0],
         });
         this.#presenceManager.handlePresencePacket(packet);
       } else {

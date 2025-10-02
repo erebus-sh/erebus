@@ -26,9 +26,15 @@ const UnsubscribePacket = z.object({
 
 const PresencePacket = z.object({
   packetType: z.literal("presence"),
-  clientId: z.string().min(1),
-  topic: z.string().min(1),
-  status: z.enum(["online", "offline"]),
+  clients: z
+    .array(
+      z.object({
+        clientId: z.string().min(1),
+        topic: z.string().min(1),
+        status: z.enum(["online", "offline"]),
+      }),
+    )
+    .min(1),
 });
 
 const PublishPacket = z.object({
