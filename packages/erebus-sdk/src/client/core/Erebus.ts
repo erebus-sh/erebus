@@ -20,10 +20,15 @@ export class ErebusClient {
   static createClient(opts: ErebusClientOptions): ErebusPubSubClient {
     switch (opts.client) {
       case ErebusClientState.PubSub: {
+        const wsBaseUrl = opts.wsBaseUrl || "wss://gateway.erebus.sh";
+        // Derive HTTP URL from WebSocket URL
+        const httpBaseUrl = wsBaseUrl.replace(/^wss?:\/\//, (match) =>
+          match === "wss://" ? "https://" : "http://",
+        );
+
         const pubSubClient = new ErebusPubSubClient({
-          wsUrl: opts.wsBaseUrl
-            ? `${opts.wsBaseUrl}/v1/pubsub`
-            : "wss://gateway.erebus.sh/v1/pubsub",
+          wsUrl: `${wsBaseUrl}/v1/pubsub`,
+          httpBaseUrl: httpBaseUrl,
           tokenProvider: async (channel: string): Promise<string> => {
             const authorize = new Authorize(opts.authBaseUrl);
             return await authorize.generateToken(channel);

@@ -10,6 +10,7 @@ import type { SubscribeOptions } from "./types";
 
 type ErebusOptions = {
   wsUrl: string;
+  httpBaseUrl?: string;
   tokenProvider: (channel: string) => Promise<string>;
   heartbeatMs?: number;
   log?: (l: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
@@ -32,10 +33,18 @@ export class ErebusPubSubClient
   #conn: PubSubConnection;
   #stateManager: StateManager;
   #debug: boolean;
+  #httpBaseUrl: string | null = null;
+  #tokenProvider: (channel: string) => Promise<string>;
 
   constructor(opts: ErebusOptions) {
     this.#debug = opts.debug ?? false;
+    this.#tokenProvider = opts.tokenProvider;
     const instanceId = Math.random().toString(36).substring(2, 8);
+
+    // Store HTTP base URL for history API
+    if (opts.httpBaseUrl) {
+      this.#httpBaseUrl = opts.httpBaseUrl;
+    }
 
     console.log(`[Erebus:${instanceId}] Constructor called`, {
       wsUrl: opts.wsUrl,
@@ -661,5 +670,107 @@ export class ErebusPubSubClient
 
   get isConnected(): boolean {
     return this.#stateManager.isConnected;
+  }
+
+  /**
+   * Fetch message history for a topic with cursor-based pagination
+   *
+   * @param topic - Topic name to fetch history for
+   * @param options - Pagination options (cursor, limit, direction)
+   * @returns Promise resolving to paginated message history
+   */
+  async getHistory(
+    topic: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): Promise<{ items: MessageBody[]; nextCursor: string | null }> {
+    if (!this.#httpBaseUrl) {
+      throw new Error("HTTP base URL required for history API");
+    }
+
+    if (!this.#stateManager.channel) {
+      throw new Error("Channel must be set before fetching history");
+    }
+
+    // Get current grant token
+    const grant = await this.#tokenProvider(this.#stateManager.channel);
+
+    // Build query params
+    const queryParams = new URLSearchParams({ grant });
+    if (options?.cursor) queryParams.set("cursor", options.cursor);
+    if (options?.limit) queryParams.set("limit", options.limit.toString());
+    if (options?.direction) queryParams.set("direction", options.direction);
+
+    // Construct full URL
+    const url = `${this.#httpBaseUrl}/v1/pubsub/topics/${encodeURIComponent(topic)}/history?${queryParams.toString()}`;
+
+    // Call using fetch
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(
+        `History API failed: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    const data = (await response.json()) as {
+      items: MessageBody[];
+      nextCursor: string | null;
+    };
+    return data;
+  }
+
+  /**
+   * Create a paginated history iterator
+   * Returns a function that fetches the next batch of messages
+   *
+   * @param topic - Topic name to fetch history for
+   * @param options - Pagination options (limit, direction)
+   * @returns Iterator function that returns next batch or null when exhausted
+   *
+   * @example
+   * ```typescript
+   * const getNext = client.createHistoryIterator("room-1", { limit: 50 });
+   * const firstBatch = await getNext(); // { items: [...], hasMore: true }
+   * const secondBatch = await getNext(); // { items: [...], hasMore: false }
+   * const done = await getNext(); // null
+   * ```
+   */
+  createHistoryIterator(
+    topic: string,
+    options?: {
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): () => Promise<{ items: MessageBody[]; hasMore: boolean } | null> {
+    let cursor: string | null = null;
+    let exhausted = false;
+
+    return async () => {
+      if (exhausted) {
+        return null;
+      }
+
+      const result = await this.getHistory(topic, {
+        ...options,
+        cursor: cursor || undefined,
+      });
+
+      cursor = result.nextCursor;
+      exhausted = result.nextCursor === null;
+
+      return {
+        items: result.items,
+        hasMore: !exhausted,
+      };
+    };
   }
 }

@@ -353,3 +353,6 @@ export async function pubsub(props: HandlerProps): Promise<Response> {
     );
   }
 }
+
+// Export history handler for organizational purposes
+export { getTopicHistory } from "./history";

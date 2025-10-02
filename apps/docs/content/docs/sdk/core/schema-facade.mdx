@@ -84,6 +84,214 @@ With the facade, you get:
 * Safer publishes (payload checked at compile time + runtime)
 * Safer subscriptions (payload automatically validated and typed)
 * Cleaner, self-documenting API
+* **Typed history API** (payloads validated when fetching history)
+
+---
+
+## Typed History API
+
+The Schema Facade also provides typed history methods:
+
+### `getHistory()`
+
+Fetch historical messages with automatic type validation:
+
+```ts
+// Define schema
+const schemas = {
+  news: z.object({
+    title: z.string(),
+    body: z.string(),
+    timestamp: z.number(),
+  }),
+};
+
+const client = new ErebusPubSubSchemas(baseClient, schemas);
+
+// Fetch history with typing
+const history = await client.getHistory("news", "sports", {
+  limit: 50,
+  direction: "backward"
+});
+
+// TypeScript knows the payload type!
+history.items.forEach(msg => {
+  console.log(msg.payload.title);     // ✅ string
+  console.log(msg.payload.body);      // ✅ string
+  console.log(msg.payload.timestamp); // ✅ number
+});
+```
+
+### `createHistoryIterator()`
+
+Create a typed paginator:
+
+```ts
+const getNext = client.createHistoryIterator("news", "finance", {
+  limit: 20,
+  direction: "backward"
+});
+
+const batch = await getNext();
+if (batch) {
+  batch.items.forEach(msg => {
+    // Fully typed payload
+    console.log(`${msg.payload.title}: ${msg.payload.body}`);
+  });
+}
+```
+
+### Full Example with History
+
+```ts
+import { ErebusPubSubSchemas, ErebusClient, ErebusClientState } from "@erebus-sh/sdk";
+import { z } from "zod";
+
+// 1. Define schemas
+const schemas = {
+  chat: z.object({
+    text: z.string(),
+    username: z.string(),
+    timestamp: z.number(),
+  }),
+};
+
+// 2. Create typed client
+const baseClient = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:4919",
+});
+
+const client = new ErebusPubSubSchemas(baseClient, schemas);
+
+// 3. Join and connect
+client.joinChannel("my-channel");
+await client.connect();
+
+// 4. Subscribe with typing
+await client.subscribe("chat", "lobby", (msg) => {
+  // TypeScript infers the payload type
+  console.log(`${msg.payload.username}: ${msg.payload.text}`);
+});
+
+// 5. Publish with typing
+client.publish("chat", "lobby", {
+  text: "Hello!",
+  username: "Alice",
+  timestamp: Date.now(),
+});
+
+// 6. Fetch history with typing
+const history = await client.getHistory("chat", "lobby", {
+  limit: 50
+});
+
+console.log(`Loaded ${history.items.length} messages`);
+history.items.forEach(msg => {
+  // Payload is automatically validated and typed
+  console.log(`[${msg.payload.username}] ${msg.payload.text}`);
+});
+```
+
+---
+
+## Schema Validation
+
+The facade validates payloads at **two points**:
+
+### 1. On Publish (Before Sending)
+```ts
+// ✅ Valid - passes type check and runtime validation
+client.publish("news", "sports", {
+  title: "Team Wins",
+  body: "Great game!",
+  timestamp: Date.now()
+});
+
+// ❌ Compile error - missing required field
+client.publish("news", "sports", {
+  title: "Team Wins",
+  // body is missing
+  timestamp: Date.now()
+});
+
+// ❌ Runtime error - wrong type
+client.publish("news", "sports", {
+  title: 123,  // should be string
+  body: "Great game!",
+  timestamp: Date.now()
+});
+```
+
+### 2. On Receive (Subscribe & History)
+```ts
+await client.subscribe("news", "sports", (msg) => {
+  // If validation fails, message is rejected
+  // Only valid messages reach this callback
+  console.log(msg.payload.title); // Guaranteed to be string
+});
+
+const history = await client.getHistory("news", "sports");
+// All items have validated payloads
+history.items.forEach(msg => {
+  console.log(msg.payload.title); // Guaranteed to be string
+});
+```
+
+---
+
+## Advanced Patterns
+
+### Multiple Schemas
+
+```ts
+const schemas = {
+  chat: z.object({
+    text: z.string(),
+    username: z.string(),
+  }),
+  presence: z.object({
+    userId: z.string(),
+    status: z.enum(["online", "offline", "away"]),
+  }),
+  notification: z.object({
+    title: z.string(),
+    message: z.string(),
+    priority: z.enum(["low", "medium", "high"]),
+  }),
+};
+
+const client = new ErebusPubSubSchemas(baseClient, schemas);
+
+// Each schema has its own type
+client.publish("chat", "room-1", { text: "Hi", username: "Alice" });
+client.publish("presence", "room-1", { userId: "123", status: "online" });
+client.publish("notification", "alerts", { 
+  title: "New Message", 
+  message: "Alice says hi", 
+  priority: "high" 
+});
+```
+
+### Schema Evolution
+
+```ts
+// Version 1
+const schemasV1 = {
+  message: z.object({
+    text: z.string(),
+  }),
+};
+
+// Version 2 - add optional fields for backwards compatibility
+const schemasV2 = {
+  message: z.object({
+    text: z.string(),
+    username: z.string().optional(),  // New field
+    timestamp: z.number().optional(), // New field
+  }),
+};
+```
 
 # Full example
-[Full example code] (https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts-typed)
+[Full example code](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts-typed)

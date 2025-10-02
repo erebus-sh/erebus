@@ -1,0 +1,509 @@
+---
+title: Message History API
+description: Fetch and paginate through historical messages
+---
+
+# Message History API
+
+The Message History API allows you to fetch past messages from any topic with cursor-based pagination. Perfect for chat applications, message recovery, and catch-up scenarios.
+
+## Overview
+
+Messages are stored for **3 days** and can be retrieved using:
+- **Cursor-based pagination** - Efficient pagination without offset counting
+- **Bidirectional navigation** - Forward (oldest→newest) or backward (newest→oldest)
+- **ULID sequences** - Lexicographically sortable timestamps
+
+---
+
+## Basic Usage
+
+### Fetch Latest Messages
+
+```ts
+const history = await client.getHistory("chat:lobby");
+
+console.log(`Fetched ${history.items.length} messages`);
+console.log(`Next cursor: ${history.nextCursor}`);
+
+history.items.forEach(msg => {
+  console.log(`[${msg.seq}] ${msg.senderId}: ${msg.payload}`);
+});
+```
+
+### Pagination
+
+```ts
+// First page
+const page1 = await client.getHistory("chat:lobby", {
+  limit: 50,
+  direction: "backward"
+});
+
+// Second page using cursor
+if (page1.nextCursor) {
+  const page2 = await client.getHistory("chat:lobby", {
+    cursor: page1.nextCursor,
+    limit: 50,
+    direction: "backward"
+  });
+}
+```
+
+---
+
+## API Reference
+
+### `getHistory(topic, options?)`
+
+Fetch historical messages for a topic.
+
+**Parameters:**
+- `topic: string` - Topic to fetch history for
+- `options?: HistoryOptions`
+  - `cursor?: string` - ULID cursor for pagination (omit for first page)
+  - `limit?: number` - Messages per page (1-1000, default: 50)
+  - `direction?: "forward" | "backward"` - Sort order (default: "backward")
+
+**Returns:** `Promise<HistoryResponse>`
+```ts
+interface HistoryResponse {
+  items: MessageBody[];      // Array of messages
+  nextCursor: string | null; // Cursor for next page (null = no more)
+}
+```
+
+---
+
+## Direction Modes
+
+### Backward (Newest → Oldest)
+
+Default mode. Returns newest messages first.
+
+```ts
+const history = await client.getHistory("chat:lobby", {
+  direction: "backward",
+  limit: 50
+});
+
+// Most recent message
+const latest = history.items[0];
+console.log("Latest:", latest.payload);
+```
+
+**Use cases:**
+- Loading recent chat history
+- "Load more" button in chat UI
+- Displaying latest activity
+
+### Forward (Oldest → Newest)
+
+Returns oldest messages first.
+
+```ts
+const history = await client.getHistory("chat:lobby", {
+  direction: "forward",
+  limit: 50
+});
+
+// Oldest message
+const oldest = history.items[0];
+console.log("Oldest:", oldest.payload);
+```
+
+**Use cases:**
+- Catch-up after reconnection
+- Chronological message replay
+- Data export/archival
+
+---
+
+## Pagination Patterns
+
+### 1. Load More Button
+
+```ts
+let cursor: string | null = null;
+
+async function loadMore() {
+  const history = await client.getHistory("chat:lobby", {
+    cursor: cursor || undefined,
+    limit: 20,
+    direction: "backward"
+  });
+  
+  // Append to UI
+  history.items.forEach(msg => appendMessage(msg));
+  
+  // Update cursor for next load
+  cursor = history.nextCursor;
+  
+  // Hide button if no more messages
+  if (!cursor) {
+    hideLoadMoreButton();
+  }
+}
+```
+
+### 2. Infinite Scroll
+
+```ts
+let cursor: string | null = null;
+let loading = false;
+
+window.addEventListener("scroll", async () => {
+  if (loading || !cursor) return;
+  
+  const scrolledToBottom = 
+    window.scrollY + window.innerHeight >= document.body.scrollHeight - 100;
+  
+  if (scrolledToBottom) {
+    loading = true;
+    
+    const history = await client.getHistory("chat:lobby", {
+      cursor,
+      limit: 20
+    });
+    
+    history.items.forEach(msg => appendMessage(msg));
+    cursor = history.nextCursor;
+    loading = false;
+  }
+});
+```
+
+### 3. Full History Export
+
+```ts
+async function exportAllMessages(topic: string) {
+  const allMessages: MessageBody[] = [];
+  let cursor: string | null = null;
+  
+  do {
+    const history = await client.getHistory(topic, {
+      cursor: cursor || undefined,
+      limit: 1000, // Max per request
+      direction: "forward"
+    });
+    
+    allMessages.push(...history.items);
+    cursor = history.nextCursor;
+    
+    console.log(`Exported ${allMessages.length} messages...`);
+  } while (cursor);
+  
+  return allMessages;
+}
+
+// Usage
+const messages = await exportAllMessages("chat:lobby");
+console.log(`Total: ${messages.length} messages`);
+```
+
+---
+
+## Iterator Helper
+
+Use `createHistoryIterator()` for cleaner pagination code:
+
+### Basic Iterator
+
+```ts
+const getNext = client.createHistoryIterator("chat:lobby", {
+  limit: 50,
+  direction: "backward"
+});
+
+// Fetch pages on demand
+const page1 = await getNext(); // { items: [...], hasMore: true }
+const page2 = await getNext(); // { items: [...], hasMore: false }
+const done = await getNext();  // null (exhausted)
+```
+
+### Load More with Iterator
+
+```ts
+const getNext = client.createHistoryIterator("chat:lobby", { limit: 20 });
+
+async function loadMore() {
+  const batch = await getNext();
+  
+  if (!batch) {
+    console.log("No more messages");
+    return;
+  }
+  
+  batch.items.forEach(msg => appendMessage(msg));
+  
+  if (batch.hasMore) {
+    showLoadMoreButton();
+  } else {
+    hideLoadMoreButton();
+  }
+}
+```
+
+### Stream All Messages
+
+```ts
+async function streamHistory(topic: string, onBatch: (msgs: MessageBody[]) => void) {
+  const getNext = client.createHistoryIterator(topic, {
+    limit: 100,
+    direction: "forward"
+  });
+  
+  let batch;
+  while ((batch = await getNext())) {
+    onBatch(batch.items);
+    
+    // Optional: delay between batches
+    await new Promise(r => setTimeout(r, 100));
+  }
+}
+
+// Usage
+await streamHistory("chat:lobby", (messages) => {
+  console.log(`Processing ${messages.length} messages`);
+  messages.forEach(processMessage);
+});
+```
+
+---
+
+## Advanced Patterns
+
+### Catch-Up After Disconnect
+
+```ts
+// Save last seen sequence before disconnect
+let lastSeenSeq: string | null = localStorage.getItem("lastSeq");
+
+async function catchUp(topic: string) {
+  if (!lastSeenSeq) {
+    console.log("No catch-up needed");
+    return;
+  }
+  
+  const missed = await client.getHistory(topic, {
+    cursor: lastSeenSeq,
+    direction: "forward",
+    limit: 1000
+  });
+  
+  console.log(`Caught up on ${missed.items.length} missed messages`);
+  
+  // Process missed messages
+  missed.items.forEach(msg => processMessage(msg, { isCatchUp: true }));
+  
+  // Update last seen
+  if (missed.items.length > 0) {
+    lastSeenSeq = missed.items[missed.items.length - 1].seq;
+    localStorage.setItem("lastSeq", lastSeenSeq);
+  }
+}
+
+// On reconnect
+client.on("reconnect", async () => {
+  await catchUp("chat:lobby");
+  await client.subscribe("chat:lobby", (msg) => {
+    processMessage(msg);
+    lastSeenSeq = msg.seq;
+    localStorage.setItem("lastSeq", msg.seq);
+  });
+});
+```
+
+### Search in History
+
+```ts
+async function searchMessages(topic: string, query: string): Promise<MessageBody[]> {
+  const results: MessageBody[] = [];
+  const getNext = client.createHistoryIterator(topic, { limit: 100 });
+  
+  let batch;
+  while ((batch = await getNext())) {
+    const matches = batch.items.filter(msg =>
+      msg.payload.toLowerCase().includes(query.toLowerCase())
+    );
+    results.push(...matches);
+    
+    // Stop if we found enough
+    if (results.length >= 50) {
+      break;
+    }
+  }
+  
+  return results;
+}
+
+// Usage
+const results = await searchMessages("chat:lobby", "hello");
+console.log(`Found ${results.length} messages containing "hello"`);
+```
+
+### Load Context Around Message
+
+```ts
+async function loadMessageContext(topic: string, messageSeq: string) {
+  // Get messages before
+  const before = await client.getHistory(topic, {
+    cursor: messageSeq,
+    limit: 10,
+    direction: "backward"
+  });
+  
+  // Get messages after
+  const after = await client.getHistory(topic, {
+    cursor: messageSeq,
+    limit: 10,
+    direction: "forward"
+  });
+  
+  return {
+    before: before.items,
+    after: after.items
+  };
+}
+
+// Usage - jump to specific message with context
+const context = await loadMessageContext("chat:lobby", "01JBCD1234567890ABCDEFGHIJ");
+displayMessages([...context.before, ...context.after]);
+```
+
+### Time-Based Queries (Using ULID)
+
+```ts
+import { ulid } from "ulid";
+
+// Get messages from specific time
+function getMessagesFromTime(topic: string, timestamp: Date) {
+  // Generate ULID from timestamp
+  const cursor = ulid(timestamp.getTime());
+  
+  return client.getHistory(topic, {
+    cursor,
+    direction: "forward",
+    limit: 100
+  });
+}
+
+// Get last 24 hours of messages
+const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
+const recent = await getMessagesFromTime("chat:lobby", yesterday);
+console.log(`Messages in last 24h: ${recent.items.length}`);
+```
+
+---
+
+## Performance Tips
+
+### 1. Adjust Page Size
+
+- **Smaller pages (20-50)**: Better for incremental loading, lower latency
+- **Larger pages (100-1000)**: Better for bulk operations, fewer requests
+
+```ts
+// Mobile: smaller pages for faster initial load
+const mobile = await client.getHistory(topic, { limit: 20 });
+
+// Desktop: larger pages for efficiency
+const desktop = await client.getHistory(topic, { limit: 100 });
+
+// Export: maximum pages
+const export = await client.getHistory(topic, { limit: 1000 });
+```
+
+### 2. Cache Results
+
+```ts
+const historyCache = new Map<string, HistoryResponse>();
+
+async function getCachedHistory(topic: string, cursor?: string) {
+  const cacheKey = `${topic}:${cursor || "initial"}`;
+  
+  if (historyCache.has(cacheKey)) {
+    return historyCache.get(cacheKey)!;
+  }
+  
+  const history = await client.getHistory(topic, { cursor });
+  historyCache.set(cacheKey, history);
+  
+  return history;
+}
+```
+
+### 3. Parallel Fetching
+
+```ts
+// Fetch multiple topics in parallel
+const [chat1, chat2, chat3] = await Promise.all([
+  client.getHistory("chat:lobby", { limit: 20 }),
+  client.getHistory("chat:support", { limit: 20 }),
+  client.getHistory("chat:general", { limit: 20 })
+]);
+```
+
+---
+
+## Error Handling
+
+```ts
+try {
+  const history = await client.getHistory("chat:lobby");
+} catch (error) {
+  if (error.message.includes("HTTP base URL required")) {
+    console.error("History API not configured");
+  } else if (error.message.includes("Channel must be set")) {
+    console.error("Call joinChannel() first");
+  } else if (error.message.includes("History API failed")) {
+    console.error("Server error:", error);
+  }
+}
+```
+
+---
+
+## Limitations
+
+- **Retention**: Messages are stored for **3 days**
+- **Max per topic**: Up to **100 messages** buffered per topic
+- **Rate limits**: Standard API rate limits apply
+- **No search**: Use client-side search or export to database
+
+---
+
+## TypeScript Types
+
+```ts
+interface HistoryOptions {
+  cursor?: string;
+  limit?: number;
+  direction?: "forward" | "backward";
+}
+
+interface HistoryResponse {
+  items: MessageBody[];
+  nextCursor: string | null;
+}
+
+interface MessageBody {
+  id: string;
+  topic: string;
+  senderId: string;
+  seq: string;
+  sentAt: Date;
+  payload: string;
+  clientMsgId?: string;
+  clientPublishTs?: number;
+}
+```
+
+---
+
+## Next Steps
+
+- Learn about [Typed Schema Facade](/docs/sdk/core/schema-facade)
+- See [Complete API Reference](/docs/sdk/core/apis)
+- Check out [Example Apps](https://github.com/erebus-sh/erebus/tree/master/examples)
+

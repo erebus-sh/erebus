@@ -211,6 +211,109 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   }
 
   /**
+   * Fetch message history for a topic with type safety
+   *
+   * @param topicSchema - Schema key for the topic
+   * @param topicSub - Sub-topic identifier
+   * @param options - Pagination options (cursor, limit, direction)
+   * @returns Promise resolving to typed paginated messages
+   */
+  async getHistory<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    options?: {
+      cursor?: string;
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): Promise<{
+    items: Array<MessageFor<TSchemas, K>>;
+    nextCursor: string | null;
+  }> {
+    const topic = mergeTopic(topicSchema, topicSub);
+    const result = await this.client.getHistory(topic, options);
+
+    // Validate and transform items
+    const schema = this.getSchema(topicSchema);
+    const items = result.items.map((msg) => {
+      const parsed = JSON.parse(msg.payload) as Payload<TSchemas, K>;
+      schema.parse(parsed); // Runtime validation
+      return {
+        ...msg,
+        payload: parsed,
+      } as MessageFor<TSchemas, K>;
+    });
+
+    return {
+      items,
+      nextCursor: result.nextCursor,
+    };
+  }
+
+  /**
+   * Create a typed paginated history iterator
+   * Returns a function that fetches the next batch with proper typing
+   *
+   * @param topicSchema - Schema key for the topic
+   * @param topicSub - Sub-topic identifier
+   * @param options - Pagination options (limit, direction)
+   * @returns Iterator function that returns next batch or null when exhausted
+   *
+   * @example
+   * ```typescript
+   * const getNext = typed.createHistoryIterator("chat", "room-1", { limit: 50 });
+   * const firstBatch = await getNext(); // { items: [...], hasMore: true }
+   * const secondBatch = await getNext(); // { items: [...], hasMore: false }
+   * const done = await getNext(); // null
+   * ```
+   */
+  createHistoryIterator<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+    options?: {
+      limit?: number;
+      direction?: "forward" | "backward";
+    },
+  ): () => Promise<{
+    items: Array<MessageFor<TSchemas, K>>;
+    hasMore: boolean;
+  } | null> {
+    const topic = mergeTopic(topicSchema, topicSub);
+    const schema = this.getSchema(topicSchema);
+    let cursor: string | null = null;
+    let exhausted = false;
+
+    return async () => {
+      if (exhausted) {
+        return null;
+      }
+
+      const result = await this.client.getHistory(topic, {
+        ...options,
+        cursor: cursor || undefined,
+      });
+
+      cursor = result.nextCursor;
+      exhausted = result.nextCursor === null;
+
+      // Validate and transform items
+      const items = result.items.map((msg) => {
+        const parsed = JSON.parse(msg.payload) as Payload<TSchemas, K>;
+        schema.parse(parsed); // Runtime validation
+        return {
+          ...msg,
+          payload: parsed,
+        } as MessageFor<TSchemas, K>;
+      });
+
+      return {
+        items,
+        hasMore: !exhausted,
+      };
+    };
+  }
+
+  /**
    * Internal helper to check that a schema exists and payload is valid.
    */
   private assertSchema<K extends Topic<TSchemas>>(
