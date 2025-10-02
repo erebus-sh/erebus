@@ -59,7 +59,7 @@ async function main() {
   await client.publishWithAck(
     topic,
     "Hello Erebus 👋",
-    (ack) => console.log("✅ Ack:", ack),
+    (ack) => console.log("✅ Ack:", ack.success ? "Success" : `Failed: ${ack.error?.message}`),
     3000
   );
   
@@ -170,7 +170,7 @@ await client.subscribe("chat:lobby", (msg) => {
 await client.subscribe(
   "chat:lobby", 
   (msg) => console.log(msg),
-  { deliverMissedMessages: true }
+  { streamOldMessages: true }
 );
 ```
 
@@ -180,6 +180,63 @@ Unsubscribe from a topic.
 
 ```ts
 client.unsubscribe("chat:lobby");
+```
+
+#### `subscribeWithCallback(topic, handler, onAck?, timeoutMs?, options?): void`
+
+Advanced subscribe method with ACK callback and custom options.
+
+**Parameters:**
+- `topic: string` - Topic to subscribe to
+- `handler: (message: MessageBody) => void` - Message callback
+- `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
+- `timeoutMs?: number` - Subscription timeout in milliseconds
+- `options?: SubscribeOptions` - Optional subscription configuration
+
+**SubscribeOptions:**
+```ts
+interface SubscribeOptions {
+  streamOldMessages?: boolean; // Deliver missed messages (default: false)
+}
+```
+
+**Example:**
+```ts
+client.subscribeWithCallback(
+  "chat:lobby",
+  (msg) => console.log("Message:", msg.payload),
+  (response) => {
+    if (response.success) {
+      console.log("Subscribed successfully");
+    } else {
+      console.error("Subscription failed:", response.error?.message);
+    }
+  },
+  10000,
+  { streamOldMessages: true }
+);
+```
+
+#### `unsubscribeWithCallback(topic, onAck?, timeoutMs?): void`
+
+Advanced unsubscribe method with ACK callback.
+
+**Parameters:**
+- `topic: string` - Topic to unsubscribe from
+- `onAck?: SubscriptionCallback` - Optional unsubscription acknowledgement callback
+- `timeoutMs?: number` - Unsubscription timeout in milliseconds
+
+**Example:**
+```ts
+client.unsubscribeWithCallback(
+  "chat:lobby",
+  (response) => {
+    if (response.success) {
+      console.log("Unsubscribed successfully");
+    }
+  },
+  5000
+);
 ```
 
 #### `publish(topic, payload): Promise<string>`
@@ -203,16 +260,36 @@ Publish with server acknowledgement.
 **Parameters:**
 - `topic: string` - Topic to publish to
 - `payload: string` - Message content  
-- `onAck: (ack: AckPacket) => void` - Acknowledgement callback
+- `onAck: AckCallback` - Acknowledgement callback
 - `timeout?: number` - Timeout in milliseconds (default: 3000)
 
+**AckCallback Type:**
+```ts
+type AckCallback = (response: AckResponse) => void;
+
+type AckResponse = {
+  success: boolean;
+  ack?: AckPacketType;
+  seq?: string;
+  serverMsgId?: string;
+  topic: string;
+  error?: {
+    code: string;
+    message: string;
+  };
+};
+```
+
+**Example:**
 ```ts
 await client.publishWithAck(
   "chat:lobby",
   "Hello!",
   (ack) => {
-    if (ack.ack === "ok") {
-      console.log("Message delivered!");
+    if (ack.success) {
+      console.log("Message delivered! Seq:", ack.seq);
+    } else {
+      console.error("Failed:", ack.error?.message);
     }
   },
   5000
@@ -390,7 +467,130 @@ if (client.isWritable) {
 
 ## Types Reference
 
-### `ErebusClientState`
+### Core Client Types
+
+#### `ErebusOptions`
+
+Configuration options for the PubSub client constructor:
+
+```ts
+interface ErebusOptions {
+  wsUrl: string;                    // WebSocket URL
+  httpBaseUrl?: string;             // HTTP base URL for history API
+  tokenProvider: (channel: string) => Promise<string>; // Token provider function
+  heartbeatMs?: number;             // Heartbeat interval (default: 25000)
+  log?: Logger;                     // Optional logging function
+  debug?: boolean;                  // Enable debug logging
+  connectionTimeoutMs?: number;     // Connection timeout
+  subscriptionTimeoutMs?: number;   // Subscription timeout
+}
+
+type Logger = (level: "info" | "warn" | "error", msg: string, meta?: unknown) => void;
+```
+
+#### `MessageBody`
+
+Structure of received messages:
+
+```ts
+interface MessageBody {
+  id: string;              // Unique message ID (ULID)
+  topic: string;           // Topic name
+  senderId: string;        // Sender's client ID
+  seq: string;             // Sequence number (ULID)
+  sentAt: Date;            // Server timestamp
+  payload: string;         // Message content
+  clientMsgId?: string;    // Optional client correlation ID
+  clientPublishTs?: number; // Client publish timestamp
+}
+```
+
+#### `AckResponse` and Callbacks
+
+Types for acknowledgement handling:
+
+```ts
+type AckCallback = (response: AckResponse) => void;
+
+type AckResponse = AckSuccess | AckError;
+
+type AckSuccess = {
+  success: true;
+  ack: AckPacketType;
+  seq: string;
+  serverMsgId: string;
+  topic: string;
+};
+
+type AckError = {
+  success: false;
+  ack: AckPacketType;
+  error: {
+    code: string;
+    message: string;
+  };
+  topic: string;
+};
+```
+
+#### `SubscriptionCallback`
+
+Types for subscription acknowledgements:
+
+```ts
+type SubscriptionCallback = (response: SubscriptionResponse) => void;
+
+type SubscriptionResponse = SubscriptionSuccess | SubscriptionError;
+
+type SubscriptionSuccess = {
+  success: true;
+  ack: AckPacketType;
+  topic: string;
+  status: "subscribed" | "unsubscribed";
+  path: "subscribe" | "unsubscribe";
+};
+
+type SubscriptionError = {
+  success: false;
+  ack?: AckPacketType;
+  error: {
+    code: string;
+    message: string;
+  };
+  topic: string;
+  path: "subscribe" | "unsubscribe";
+};
+```
+
+#### `SubscribeOptions`
+
+Options for subscription behavior:
+
+```ts
+interface SubscribeOptions {
+  streamOldMessages?: boolean; // Deliver missed messages (default: false)
+}
+```
+
+#### `Presence`
+
+Presence event structure:
+
+```ts
+interface Presence {
+  clientId: string;                 // Client that changed status
+  topic: string;                    // Topic name
+  status: "online" | "offline";     // Presence status
+  timestamp: number;                // Event timestamp
+  subscribers?: string[];           // Optional: list of current subscribers
+}
+
+type PresenceHandler = (presence: Presence) => void;
+```
+
+### Enums
+
+#### `ErebusClientState`
 
 ```ts
 enum ErebusClientState {
@@ -398,15 +598,7 @@ enum ErebusClientState {
 }
 ```
 
-### `SubscribeOptions`
-
-```ts
-interface SubscribeOptions {
-  deliverMissedMessages?: boolean; // Catch up on missed messages
-}
-```
-
-### `Access`
+#### `Access`
 
 ```ts
 enum Access {
@@ -416,9 +608,70 @@ enum Access {
 }
 ```
 
+### Connection States
+
+```ts
+type ConnectionState = "idle" | "connecting" | "open" | "error" | "closed";
+type SubscriptionStatus = "subscribed" | "unsubscribed" | "pending";
+```
+
+---
+
+## Connection Lifecycle Management
+
+### Connection States
+
+The client maintains connection state that you can monitor:
+
+```ts
+console.log(client.isConnected);  // boolean - WebSocket connected
+console.log(client.isReadable);   // boolean - Can receive messages
+console.log(client.isWritable);   // boolean - Can send messages
+```
+
+### Automatic Reconnection
+
+The SDK handles reconnection automatically with exponential backoff. Connection errors are thrown from async methods:
+
+```ts
+// Monitor connection state
+setInterval(() => {
+  if (!client.isConnected) {
+    console.log("Connection lost - SDK will reconnect automatically");
+  }
+}, 5000);
+
+// Errors are thrown from operations
+try {
+  await client.connect();
+} catch (error) {
+  console.log("Connection error:", error);
+  // SDK will attempt to reconnect automatically
+}
+```
+
+### Manual Connection Management
+
+```ts
+// Graceful shutdown
+process.on('SIGINT', () => {
+  client.close();
+  process.exit(0);
+});
+
+// Connection with custom timeout
+try {
+  await client.connect(10000); // 10 second timeout
+} catch (error) {
+  console.error("Connection failed:", error);
+}
+```
+
 ---
 
 ## Error Handling
+
+### Common Error Patterns
 
 All async methods can throw errors. Always use try-catch:
 
@@ -427,14 +680,120 @@ try {
   await client.connect();
   await client.subscribe("topic", handler);
 } catch (error) {
-  console.error("Failed to connect:", error);
+  console.error("Operation failed:", error);
 }
 ```
 
-Common errors:
-- `"Channel must be set before connecting"` - Call `joinChannel()` first
-- `"HTTP base URL required for history API"` - History requires `httpBaseUrl` option
-- `"Connection timeout"` - Server unreachable or slow network
+### Error Types and Handling
+
+#### Connection Errors
+```ts
+try {
+  await client.connect();
+} catch (error) {
+  if (error.message.includes("Channel must be set")) {
+    console.error("Call joinChannel() first");
+  } else if (error.message.includes("timeout")) {
+    console.error("Connection timeout - check server");
+  } else if (error.message.includes("Invalid WebSocket URL")) {
+    console.error("Check wsBaseUrl configuration");
+  }
+}
+```
+
+#### Publishing Errors
+```ts
+try {
+  await client.publish("topic", "message");
+} catch (error) {
+  if (error.message.includes("Not connected")) {
+    console.error("Connection lost - will reconnect automatically");
+  } else if (error.message.includes("Invalid topic")) {
+    console.error("Topic name must be non-empty string");
+  }
+}
+```
+
+#### History API Errors
+```ts
+try {
+  const history = await client.getHistory("topic");
+} catch (error) {
+  if (error.message.includes("HTTP base URL required")) {
+    console.error("Configure httpBaseUrl in client options");
+  } else if (error.message.includes("History API failed")) {
+    console.error("Server error - check API status");
+  }
+}
+```
+
+#### ACK and Subscription Errors
+```ts
+// Handle ACK errors
+client.publishWithAck("topic", "message", (ack) => {
+  if (!ack.success) {
+    console.error("Publish failed:", ack.error?.code, ack.error?.message);
+  }
+});
+
+// Handle subscription errors
+client.subscribeWithCallback("topic", handler, (response) => {
+  if (!response.success) {
+    console.error("Subscription failed:", response.error?.message);
+  }
+});
+```
+
+### Error Recovery Patterns
+
+#### Retry with Backoff
+```ts
+async function connectWithRetry(maxRetries = 3) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      await client.connect();
+      console.log("Connected successfully");
+      return;
+    } catch (error) {
+      console.log(`Retry ${i + 1}/${maxRetries}`);
+      if (i === maxRetries - 1) throw error;
+      
+      // Exponential backoff
+      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+    }
+  }
+}
+```
+
+#### Graceful Degradation
+```ts
+// Continue without history if HTTP API unavailable
+let historySupported = true;
+try {
+  await client.getHistory("topic", { limit: 1 });
+} catch (error) {
+  if (error.message.includes("HTTP base URL required")) {
+    historySupported = false;
+    console.warn("History API not available");
+  }
+}
+
+// Adapt UI based on capabilities
+if (!historySupported) {
+  hideHistoryButton();
+}
+```
+
+### Common Error Messages
+
+| Error Message | Cause | Solution |
+|---------------|-------|----------|
+| `"Channel must be set before connecting"` | No channel set | Call `joinChannel()` first |
+| `"HTTP base URL required for history API"` | Missing HTTP config | Add `httpBaseUrl` to client options |
+| `"Connection timeout"` | Server unreachable | Check `wsBaseUrl` and network |
+| `"Not connected"` | Publishing without connection | Wait for connection or handle gracefully |
+| `"Invalid topic"` | Empty/invalid topic name | Use non-empty string topics |
+| `"ACK callback required"` | Missing callback in `publishWithAck` | Provide ACK callback function |
 
 ---
 

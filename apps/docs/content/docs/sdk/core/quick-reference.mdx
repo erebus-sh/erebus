@@ -47,7 +47,7 @@ await client.publish("topic", "Hello!");
 await client.publishWithAck(
   "topic",
   "Hello!",
-  (ack) => console.log(ack),
+  (ack) => console.log(ack.success ? "Success" : `Failed: ${ack.error?.message}`),
   3000 // timeout
 );
 ```
@@ -55,6 +55,24 @@ await client.publishWithAck(
 ### Unsubscribe
 ```ts
 client.unsubscribe("topic");
+```
+
+### Advanced Subscribe/Unsubscribe
+```ts
+// Subscribe with ACK and options
+client.subscribeWithCallback(
+  "topic",
+  (msg) => console.log(msg.payload),
+  (response) => console.log("Subscribed:", response.success),
+  10000,
+  { streamOldMessages: true }
+);
+
+// Unsubscribe with ACK
+client.unsubscribeWithCallback(
+  "topic",
+  (response) => console.log("Unsubscribed:", response.success)
+);
 ```
 
 ---
@@ -170,9 +188,21 @@ history.items.forEach(msg => {
 ## Connection State
 
 ```ts
-client.isConnected  // boolean
-client.isReadable   // boolean
-client.isWritable   // boolean
+// Connection state checks
+client.isConnected  // boolean - WebSocket connected
+client.isReadable   // boolean - Can receive messages  
+client.isWritable   // boolean - Can send messages
+
+// Connection management
+await client.connect(10000); // with timeout
+client.close(); // graceful shutdown
+
+// Monitor connection state
+setInterval(() => {
+  if (!client.isConnected) {
+    console.log("Connection lost - SDK will reconnect automatically");
+  }
+}, 5000);
 ```
 
 ---

@@ -464,6 +464,75 @@ try {
 
 ---
 
+## Typed Schema Facade History
+
+When using the Schema Facade, history methods provide automatic type validation:
+
+### Typed getHistory
+
+```ts
+import { ErebusPubSubSchemas } from "@erebus-sh/sdk/client";
+import { z } from "zod";
+
+const schemas = {
+  chat: z.object({
+    text: z.string(),
+    username: z.string(),
+    timestamp: z.number(),
+  }),
+};
+
+const typed = new ErebusPubSubSchemas(baseClient, schemas);
+
+// Fetch typed history
+const history = await typed.getHistory("chat", "lobby", {
+  limit: 50,
+  direction: "backward"
+});
+
+// TypeScript knows the payload type!
+history.items.forEach(msg => {
+  console.log(`${msg.payload.username}: ${msg.payload.text}`); // ✅ Fully typed
+});
+```
+
+### Typed History Iterator
+
+```ts
+const getNext = typed.createHistoryIterator("chat", "lobby", {
+  limit: 20,
+  direction: "backward"
+});
+
+const batch = await getNext();
+if (batch) {
+  batch.items.forEach(msg => {
+    // Payload is validated and typed
+    console.log(`[${msg.payload.username}] ${msg.payload.text}`);
+  });
+  
+  console.log(`Has more: ${batch.hasMore}`);
+}
+```
+
+### Schema Validation Benefits
+
+- **Runtime validation**: Invalid messages are rejected automatically
+- **Type safety**: TypeScript ensures correct payload access
+- **Consistent API**: Same pagination patterns as core client
+
+```ts
+// Validation happens automatically
+try {
+  const history = await typed.getHistory("chat", "room-1");
+  // All items guaranteed to have valid chat payloads
+} catch (error) {
+  console.error("History fetch or validation failed:", error);
+}
+```
+
+---
+
 ## Limitations
 
 - **Retention**: Messages are stored for **3 days**
