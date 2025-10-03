@@ -1,4 +1,4 @@
-import type { RoadmapListResponse } from "@repo/roadmap/src/types";
+import type { RoadmapListResponse } from "@repo/schemas";
 import { RoadmapContent } from "./roadmap-content";
 
 export default async function RoadmapPage() {

@@ -1,8 +1,13 @@
 import { Bool, OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, ListForRepoResponse, Roadmap } from "../types";
+import {
+  type AppContext,
+  ListForRepoResponse,
+  RoadmapSchema,
+  type Roadmap,
+  type RoadmapListResponse,
+} from "../types";
 import { Octokit } from "octokit";
-import { RoadmapListResponse } from "../types";
 
 export class RoadmapList extends OpenAPIRoute {
   schema = {
@@ -22,7 +27,7 @@ export class RoadmapList extends OpenAPIRoute {
           "application/json": {
             schema: z.object({
               success: Bool(),
-              roadmap: Roadmap.array(),
+              roadmap: RoadmapSchema.array(),
             }),
           },
         },

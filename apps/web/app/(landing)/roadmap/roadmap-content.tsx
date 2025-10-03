@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import type { Roadmap } from "@repo/roadmap/src/types";
+import type { Roadmap } from "@repo/schemas";
 import { ExternalLink, Calendar, User, Search, Filter } from "lucide-react";
 import { useMemo, useState } from "react";
 

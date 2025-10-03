@@ -97,7 +97,6 @@
         "@radix-ui/react-select": "^2.2.5",
         "@radix-ui/react-slot": "^1.2.3",
         "@radix-ui/react-tooltip": "^1.2.7",
-        "@repo/roadmap": "workspace:*",
         "@repo/schemas": "workspace:*",
         "@repo/shared": "workspace:*",
         "@types/mdx": "^2.0.13",
@@ -233,6 +232,7 @@
       "name": "@repo/roadmap",
       "version": "0.0.1",
       "dependencies": {
+        "@repo/schemas": "workspace:*",
         "chanfana": "^2.6.3",
         "hono": "^4.9.9",
         "octokit": "^5.0.3",
