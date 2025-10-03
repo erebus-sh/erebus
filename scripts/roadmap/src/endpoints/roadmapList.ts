@@ -1,11 +1,12 @@
 import { Bool, Num, OpenAPIRoute } from "chanfana";
 import { z } from "zod";
-import { type AppContext, Task } from "../types";
+import { type AppContext, Roadmap } from "../types";
+import { Octokit } from "octokit";
 
-export class TaskList extends OpenAPIRoute {
+export class RoadmapList extends OpenAPIRoute {
   schema = {
-    tags: ["Tasks"],
-    summary: "List Tasks",
+    tags: ["Roadmap"],
+    summary: "List Roadmap",
     request: {
       query: z.object({
         page: Num({
@@ -20,14 +21,14 @@ export class TaskList extends OpenAPIRoute {
     },
     responses: {
       "200": {
-        description: "Returns a list of tasks",
+        description: "Returns a list of roadmap",
         content: {
           "application/json": {
             schema: z.object({
               series: z.object({
                 success: Bool(),
                 result: z.object({
-                  tasks: Task.array(),
+                  roadmap: Roadmap.array(),
                 }),
               }),
             }),
@@ -38,6 +39,8 @@ export class TaskList extends OpenAPIRoute {
   };
 
   async handle(c: AppContext) {
+    const octokit = new Octokit({ auth: c.env.GITHUB_TOKEN });
+
     // Get validated data
     const data = await this.getValidatedData<typeof this.schema>();
 

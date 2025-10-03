@@ -1,13 +1,15 @@
-import { DateTime, Str } from "chanfana";
+import { Arr, DateTime, Str } from "chanfana";
 import type { Context } from "hono";
 import { z } from "zod";
+import { Env } from "../env";
 
 export type AppContext = Context<{ Bindings: Env }>;
 
-export const Task = z.object({
-  name: Str({ example: "lorem" }),
-  slug: Str(),
+export const Roadmap = z.object({
+  title: Str({ example: "lorem" }),
+  id: Str(),
   description: Str({ required: false }),
-  completed: z.boolean().default(false),
-  due_date: DateTime(),
+  tags: Arr(Str({ required: false })),
+  status: Str({ required: false }),
+  date: DateTime(),
 });
