@@ -11,11 +11,13 @@ Complete guide to real-time messaging with publish/subscribe patterns, advanced 
 
 ### `subscribe(topic, handler, options?): Promise<void>`
 
-Subscribe to messages on a topic.
+Subscribe to messages on a topic with full acknowledgement support.
 
 **Parameters:**
 - `topic: string` - Topic name to subscribe to
 - `handler: (message: MessageBody) => void` - Message callback
+- `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
+- `timeoutMs?: number` - Subscription timeout in milliseconds (default: 10000)
 - `options?: SubscribeOptions` - Optional configuration
 
 **Message Format:**
@@ -31,8 +33,22 @@ interface MessageBody {
 }
 ```
 
-**Example:**
+**SubscribeOptions:**
 ```ts
+interface SubscribeOptions {
+  streamOldMessages?: boolean; // Deliver missed messages (default: false)
+}
+
+type SubscriptionCallback = (response: {
+  success: boolean;
+  error?: { code: string; message: string };
+}) => void;
+```
+
+**Examples:**
+
+```ts
+// Simple subscription
 await client.subscribe("chat:lobby", (msg) => {
   console.log(`${msg.senderId}: ${msg.payload}`);
 });
@@ -43,37 +59,9 @@ await client.subscribe(
   (msg) => console.log(msg),
   { streamOldMessages: true }
 );
-```
 
-### `unsubscribe(topic: string): void`
-
-Unsubscribe from a topic.
-
-```ts
-client.unsubscribe("chat:lobby");
-```
-
-### `subscribeWithCallback(topic, handler, onAck?, timeoutMs?, options?): void`
-
-Advanced subscribe method with ACK callback and custom options.
-
-**Parameters:**
-- `topic: string` - Topic to subscribe to
-- `handler: (message: MessageBody) => void` - Message callback
-- `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
-- `timeoutMs?: number` - Subscription timeout in milliseconds
-- `options?: SubscribeOptions` - Optional subscription configuration
-
-**SubscribeOptions:**
-```ts
-interface SubscribeOptions {
-  streamOldMessages?: boolean; // Deliver missed messages (default: false)
-}
-```
-
-**Example:**
-```ts
-client.subscribeWithCallback(
+// With acknowledgement callback
+await client.subscribe(
   "chat:lobby",
   (msg) => console.log("Message:", msg.payload),
   (response) => {
@@ -82,31 +70,43 @@ client.subscribeWithCallback(
     } else {
       console.error("Subscription failed:", response.error?.message);
     }
+  }
+);
+
+// Full control: acknowledgement, timeout, and options
+await client.subscribe(
+  "chat:lobby",
+  (msg) => console.log("Message:", msg.payload),
+  (response) => {
+    if (response.success) {
+      console.log("Subscription confirmed");
+    }
   },
-  10000,
+  5000, // 5 second timeout
   { streamOldMessages: true }
 );
 ```
 
-### `unsubscribeWithCallback(topic, onAck?, timeoutMs?): void`
+### `unsubscribe(topic: string): void`
 
-Advanced unsubscribe method with ACK callback.
+Unsubscribe from a topic.
 
 **Parameters:**
 - `topic: string` - Topic to unsubscribe from
-- `onAck?: SubscriptionCallback` - Optional unsubscription acknowledgement callback
-- `timeoutMs?: number` - Unsubscription timeout in milliseconds
 
-**Example:**
 ```ts
-client.unsubscribeWithCallback(
+// Simple unsubscribe
+client.unsubscribe("chat:lobby");
+
+// With acknowledgement callback (optional)
+client.unsubscribe(
   "chat:lobby",
   (response) => {
     if (response.success) {
       console.log("Unsubscribed successfully");
     }
   },
-  5000
+  5000 // timeout in ms
 );
 ```
 
@@ -458,7 +458,7 @@ try {
 ### Subscription Errors
 ```ts
 // With callback for error handling
-client.subscribeWithCallback(
+await client.subscribe(
   "topic",
   (msg) => console.log(msg),
   (response) => {
@@ -468,6 +468,13 @@ client.subscribeWithCallback(
     }
   }
 );
+
+// Or use try-catch
+try {
+  await client.subscribe("topic", (msg) => console.log(msg));
+} catch (error) {
+  console.error("Subscription failed:", error.message);
+}
 ```
 
 ### History API Errors
