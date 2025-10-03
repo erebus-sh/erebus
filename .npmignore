@@ -1,0 +1,10 @@
+*env*
+.next
+.turbo
+.vercel
+.vscode
+.editorconfig
+.husky
+.git
+.github
+.prettierrc
