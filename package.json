@@ -21,7 +21,8 @@
   "packageManager": "bun@1.2.19",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "workers/*"
   ],
   "dependencies": {
     "@tanstack/react-table": "^8.21.3",

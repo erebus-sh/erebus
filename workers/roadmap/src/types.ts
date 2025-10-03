@@ -6,7 +6,7 @@ import type { RestEndpointMethodTypes } from "@octokit/plugin-rest-endpoint-meth
 
 export type AppContext = Context<{ Bindings: Env }>;
 
-export const Roadmap = z.object({
+export const RoadmapSchema = z.object({
   id: Str({ description: "Issue number" }),
   title: Str({ description: "Issue title" }),
   description: Str({ required: false, description: "Issue body/description" }),
@@ -20,3 +20,6 @@ export const Roadmap = z.object({
 
 export type ListForRepoResponse =
   RestEndpointMethodTypes["issues"]["listForRepo"]["response"];
+
+// Re-export shared types from schemas package
+export type { Roadmap, RoadmapListResponse } from "@repo/schemas";

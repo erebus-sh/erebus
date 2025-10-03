@@ -3,6 +3,7 @@ export * from "./grant";
 export * from "./packetEnvelope";
 export * from "./queueEnvelope";
 export * from "./request/grantChannelRequest";
+export * from "./roadmap";
 export * from "./rootCommands";
 export * from "./webhooks/fireWebhook";
 export * from "./webhooks/usageRequest";
