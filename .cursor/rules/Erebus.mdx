@@ -1,0 +1,51 @@
+# Erebus Overview
+
+## ⚡ What is Erebus?
+Erebus is a **real-time infrastructure platform** that enables developers to build collaborative, event-driven applications with **edge-native performance**. It abstracts away the complexity of managing WebSockets, message brokers, and sequencing logic, so teams can focus on product logic rather than infra plumbing.
+
+---
+
+## 🛠 Core Architecture
+
+### Cloudflare Edge Runtime
+- Powered by **Durable Objects** and **Workers**.
+- Provides low-latency connections and fault-tolerant coordination across regions.
+
+### Convex (Primary Database)
+Convex is the **brain and storage layer** of Erebus:
+- **Projects & API keys** (authentication, provisioning, quotas).
+- **Usage analytics** (event counts, subscription metrics, billing).
+- **Persistent storage** (history, pagination, beyond ephemeral streams).
+- **Configuration state** (namespaces, presence, client access control).
+
+### Upstash Redis (Supporting Role)
+- Handles **ephemeral data**, **rate-limiting**, and **caching**.
+- Not the main database — acts as an accelerator and guardrail.
+
+### Ordering & Sequencing
+- **Region-local ULIDs** ensure **monotonic, sortable IDs**.
+- Guarantees ordering per region, and approximate ordering globally without a central bottleneck.
+
+### Developer SDK
+- **TypeScript-first** SDK.
+- HTTP endpoints for publishing, rewinding history, and querying state.
+
+---
+
+## 🎯 Why It Matters
+Modern apps need real-time features — chat, presence, multiplayer editing, live dashboards.
+Instead of stitching together Kafka, Redis, Postgres, and WebSocket servers, Erebus gives developers **one unified platform** with:
+- **Reliable real-time channels**
+- **History + rewind**
+- **Presence tracking**
+- **Built-in usage metering**
+- **API key management**
+
+---
+
+## 🌐 Positioning
+- **Indie developers**: Add presence or channels in minutes.
+
+---
+
+💡 **In short:** Convex is the control plane and data backbone, Cloudflare is the distributed runtime muscle, and Redis is the sidekick accelerator. Together, Erebus delivers **real-time infra with first-class developer experience.**
