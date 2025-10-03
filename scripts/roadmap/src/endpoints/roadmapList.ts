@@ -54,10 +54,10 @@ export class RoadmapList extends OpenAPIRoute {
       c.header("X-Cache-Age", cacheAge.toString());
       c.header("Cache-Control", `public, max-age=${CACHE_TTL}`);
 
-      return {
+      return c.json({
         success: true,
         roadmap: JSON.parse(cachedData.value as string),
-      };
+      });
     }
 
     const roadMapIssues: ListForRepoResponse =
@@ -98,9 +98,9 @@ export class RoadmapList extends OpenAPIRoute {
     c.header("X-Cache-Status", "MISS");
     c.header("Cache-Control", `public, max-age=${CACHE_TTL}`);
 
-    return {
+    return c.json({
       success: true,
       roadmap: roadmap,
-    };
+    });
   }
 }
