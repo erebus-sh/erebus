@@ -1,75 +1,18 @@
 ---
 title: Install Erebus SDK
-description: Complete installation guide with environment setup, troubleshooting, and verification steps
+description: Quick installation guide for the Erebus SDK
 ---
 
 # Install Erebus SDK
 
-Complete guide to installing and setting up the Erebus SDK in your development environment. This guide covers multiple installation methods, environment requirements, and troubleshooting.
+Quick guide to installing the Erebus SDK in your JavaScript/TypeScript project.
 
-## Prerequisites
+## Installation
 
-### Node.js Requirements
-
-Erebus SDK requires Node.js 18 or later:
-
-```bash
-node --version  # Should be 18.0.0 or higher
+```package-install
+@erebus-sh/sdk
 ```
 
-**Install Node.js:**
-- **Recommended**: [Node.js official installer](https://nodejs.org/)
-- **Alternative**: Use [nvm](https://github.com/nvm-sh/nvm) for version management
-
-```bash
-# Using nvm
-nvm install 18
-nvm use 18
-```
-
-### TypeScript Support
-
-Erebus is written in TypeScript and provides full type definitions:
-
-```bash
-npm install -g typescript
-tsc --version  # Should be 4.9.0 or higher
-```
-
----
-
-## Installation Methods
-
-### npm
-
-```bash
-npm install @erebus-sh/sdk
-```
-
-### yarn
-
-```bash
-yarn add @erebus-sh/sdk
-```
-
-### pnpm
-
-```bash
-pnpm add @erebus-sh/sdk
-```
-
-### Bun (Recommended)
-
-Erebus is optimized for [Bun](https://bun.sh/) runtime:
-
-```bash
-bun add @erebus-sh/sdk
-```
-
-**Install Bun:**
-```bash
-curl -fsSL https://bun.sh/install | bash
-```
 
 ---
 
@@ -108,88 +51,19 @@ import type { MessageBody, PresencePacket } from "@erebus-sh/sdk";
 
 ---
 
-## Verification
+## Verify Installation
 
-### Test Installation
+Quick test to ensure the SDK is installed correctly:
 
-Create a test file to verify installation:
-
-```ts title="test-installation.js"
+```ts title="test.ts"
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
-console.log("✅ Erebus SDK imported successfully");
-console.log("Client State:", ErebusClientState.PubSub);
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "https://example.com"
+});
 
-try {
-  const client = ErebusClient.createClient({
-    client: ErebusClientState.PubSub,
-    authBaseUrl: "https://example.com"
-  });
-  console.log("✅ Client creation works");
-} catch (error) {
-  console.error("❌ Client creation failed:", error);
-}
-```
-
-Run the test:
-
-```bash
-# Node.js
-node test-installation.js
-
-# Bun
-bun run test-installation.js
-
-# TypeScript
-npx tsx test-installation.ts
-```
-
-### Expected Output
-
-```
-✅ Erebus SDK imported successfully
-Client State: 0
-✅ Client creation works
-```
-
----
-
-## TypeScript Configuration
-
-### Basic tsconfig.json
-
-```json title="tsconfig.json"
-{
-  "compilerOptions": {
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
-    "types": ["node"]
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
-}
-```
-
-### Recommended Compiler Options
-
-```json
-{
-  "compilerOptions": {
-    "lib": ["ES2022", "DOM"],
-    "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "allowSyntheticDefaultImports": true,
-    "esModuleInterop": true,
-    "resolveJsonModule": true,
-    "strict": true
-  }
-}
+console.log("✅ Erebus SDK installed successfully");
 ```
 
 ---
@@ -235,257 +109,25 @@ DEBUG=false
 
 ---
 
-## Troubleshooting
-
-### Common Installation Issues
-
-#### 1. Package Not Found
-
-**Error:**
-```
-npm ERR! 404 Not Found - GET https://registry.npmjs.org/@erebus-sh%2fsdk
-```
-
-**Solution:**
-Ensure you're using the correct package name:
-```bash
-npm install @erebus-sh/sdk  # Correct
-npm install @erebus/sdk     # Incorrect
-```
-
-#### 2. TypeScript Compilation Errors
-
-**Error:**
-```
-Cannot find module '@erebus-sh/sdk/client' or its corresponding type declarations
-```
-
-**Solution:**
-Ensure TypeScript configuration is correct:
-```json
-{
-  "compilerOptions": {
-    "moduleResolution": "bundler",  // or "node"
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
-  }
-}
-```
-
-#### 3. WebSocket Connection Issues
-
-**Error:**
-```
-WebSocket connection failed: Error during WebSocket handshake
-```
-
-**Solutions:**
-- Check firewall settings
-- Verify WebSocket URL format
-- Test with a simple WebSocket connection
-
-```ts
-// Test WebSocket connectivity
-const testWs = new WebSocket("wss://gateway.erebus.sh/v1/pubsub?grant=test");
-testWs.onopen = () => console.log("✅ WebSocket connectivity OK");
-testWs.onerror = (err) => console.error("❌ WebSocket failed:", err);
-```
-
-#### 4. Import/Export Issues
-
-**Error:**
-```
-SyntaxError: Named export 'ErebusClient' not found
-```
-
-**Solution:**
-Check your import syntax:
-```ts
-// Correct
-import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
-
-// Incorrect
-import ErebusClient from "@erebus-sh/sdk/client";
-```
-
-### Runtime Issues
-
-#### Memory Usage
-
-Monitor memory usage in long-running applications:
-
-```ts
-// Check memory periodically
-setInterval(() => {
-  if (typeof process !== 'undefined') {
-    const usage = process.memoryUsage();
-    console.log(`Memory: ${Math.round(usage.heapUsed / 1024 / 1024)}MB`);
-  }
-}, 60000);
-```
-
-#### Connection Debugging
-
-Enable debugging to troubleshoot connection issues:
-
-```ts
-const client = ErebusClient.createClient({
-  client: ErebusClientState.PubSub,
-  authBaseUrl: "your-auth-url",
-  debug: true,  // Enable debug logging
-  log: (level, msg, meta) => {
-    console.log(`[${level.toUpperCase()}] ${msg}`, meta);
-  }
-});
-```
-
----
-
-## Framework-Specific Setup
-
-### Next.js
-
-```bash
-npx create-next-app@latest my-erebus-app --typescript
-cd my-erebus-app
-npm install @erebus-sh/sdk
-```
-
-**Configuration:**
-```js title="next.config.js"
-/** @type {import('next').NextConfig} */
-const nextConfig = {
-  experimental: {
-    serverActions: true // For server-side Erebus adapters
-  },
-  transpilePackages: ['@erebus-sh/sdk']
-};
-
-module.exports = nextConfig;
-```
-
-### React + Vite
-
-```bash
-npm create vite@latest my-erebus-app -- --template react-ts
-cd my-erebus-app
-npm install @erebus-sh/sdk
-```
-
-**Configuration:**
-```ts title="vite.config.ts"
-import { defineConfig } from 'vite';
-import react from '@vitejs/plugin-react';
-
-export default defineConfig({
-  plugins: [react()],
-  define: {
-    global: 'globalThis' // For browser compatibility
-  }
-});
-```
-
-### Node.js Server
-
-```bash
-mkdir my-erebus-server
-cd my-erebus-server
-npm init -y
-npm install @erebus-sh/sdk typescript @types/node
-npx tsc --init
-```
-
-### Express.js Integration
-
-```ts title="server.js"
-import express from 'express';
-import { createGenericAdapter } from '@erebus-sh/sdk/server';
-
-const app = express();
-
-const erebusAdapter = createGenericAdapter({
-  authorize: async (channel) => {
-    // Your authorization logic
-  }
-});
-
-app.use('/api/erebus', erebusAdapter);
-app.listen(3000);
-```
-
----
-
-## Testing Your Setup
-
-### Minimal Working Example
-
-```ts title="test-erebus.ts"
-import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
-
-// Create client (should not throw)
-const client = ErebusClient.createClient({
-  client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:4919"
-});
-
-console.log("✅ Client created successfully");
-console.log("Connection state:", client.isConnected); // Should be false
-
-// Test channel joining
-client.joinChannel("test-channel");
-console.log("✅ Channel joined successfully");
-```
-
-### Connection Test
-
-```ts title="connection-test.ts"
-import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
-
-async function testConnection() {
-  const client = ErebusClient.createClient({
-    client: ErebusClientState.PubSub,
-    authBaseUrl: process.env.EREBUS_AUTH_URL || "http://localhost:4919",
-    debug: true
-  });
-
-  try {
-    client.joinChannel("test");
-    await client.connect(5000); // 5 second timeout
-    console.log("✅ Connection successful");
-    
-    await client.subscribe("test-topic", (msg) => {
-      console.log("📩 Test message received:", msg.payload);
-    });
-    
-    await client.publish("test-topic", "Hello Erebus!");
-    console.log("✅ Publish successful");
-    
-  } catch (error) {
-    console.error("❌ Connection test failed:", error);
-  } finally {
-    client.close();
-  }
-}
-
-testConnection();
-```
-
----
-
 ## Next Steps
 
-After successful installation, choose your path:
+After successful installation, choose your implementation path:
 
-### Core SDK (Recommended for most use cases)
+### 🚀 Core SDK (Recommended)
+Start here for vanilla JavaScript/TypeScript, Node.js, or any JavaScript runtime:
 - **[Core Quickstart](/docs/get-started/core/quickstart-example)** - Basic publish/subscribe example
-- **[Getting Started with APIs](/docs/sdk/core/getting-started-api)** - API walkthrough
-- **[Messaging Guide](/docs/sdk/core/messaging)** - Real-time messaging patterns
+- **[Core API Reference](/docs/sdk/core/apis)** - Complete API documentation
 
-### React SDK (Experimental)
-- **[React Quickstart](/docs/get-started/next.js/quickstart-example)** - Next.js integration
-- **React Hooks Reference** - Coming soon
+The Core SDK guides include framework-specific examples for Express.js, Node.js servers, and more.
 
-### Advanced Topics
+### ⚛️ React SDK (Experimental)
+For React applications and Next.js:
+- **[React Quickstart](/docs/get-started/next.js/quickstart-example)** - Next.js integration with hooks
+- **[React Provider Setup](/docs/sdk/react/provider)** - Context provider configuration
+
+The React SDK guides include complete Next.js, Vite, and Create React App setup instructions.
+
+### 📚 Advanced Topics
 - **[Schema Validation](/docs/sdk/core/schema-facade)** - Type-safe messaging
 - **[Connection Management](/docs/sdk/core/connection-management)** - Robust connection handling
 - **[Message History](/docs/sdk/core/history)** - Historical message retrieval
