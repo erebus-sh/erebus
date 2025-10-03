@@ -20,3 +20,20 @@ export const Roadmap = z.object({
 
 export type ListForRepoResponse =
   RestEndpointMethodTypes["issues"]["listForRepo"]["response"];
+
+export interface Roadmap {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  labels: string[];
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+  url: string;
+}
+
+export interface RoadmapListResponse {
+  success: boolean;
+  roadmap: Roadmap[];
+}

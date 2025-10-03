@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@auth/core": "0.37.0",
+    "@repo/roadmap": "workspace:*",
     "@convex-dev/aggregate": "^0.1.23",
     "@convex-dev/auth": "^0.0.87",
     "@convex-dev/polar": "^0.6.4",

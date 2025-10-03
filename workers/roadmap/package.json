@@ -1,5 +1,5 @@
 {
-  "name": "cloudflare-workers-openapi",
+  "name": "@repo/roadmap",
   "version": "0.0.1",
   "private": true,
   "scripts": {
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "chanfana": "^2.6.3",
-    "hono": "^4.6.20",
+    "hono": "^4.9.9",
     "octokit": "^5.0.3",
     "zod": "^3.24.1"
   },

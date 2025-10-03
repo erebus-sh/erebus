@@ -2,6 +2,7 @@ import { Bool, OpenAPIRoute } from "chanfana";
 import { z } from "zod";
 import { type AppContext, ListForRepoResponse, Roadmap } from "../types";
 import { Octokit } from "octokit";
+import { RoadmapListResponse } from "../types";
 
 export class RoadmapList extends OpenAPIRoute {
   schema = {
@@ -44,7 +45,7 @@ export class RoadmapList extends OpenAPIRoute {
       return c.json({
         success: true,
         roadmap: JSON.parse(cachedData as string),
-      });
+      }) as unknown as RoadmapListResponse;
     }
 
     const roadMapIssues: ListForRepoResponse =
@@ -57,7 +58,7 @@ export class RoadmapList extends OpenAPIRoute {
         direction: "asc",
         per_page: 100,
       });
-    const roadmap = roadMapIssues.data.map((issue) => ({
+    const roadmap: Roadmap[] = roadMapIssues.data.map((issue) => ({
       id: issue.number.toString(),
       title: issue.title,
       description: issue.body || undefined,
@@ -86,7 +87,7 @@ export class RoadmapList extends OpenAPIRoute {
 
     return c.json({
       success: true,
-      roadmap: roadmap,
-    });
+      roadmap,
+    }) as unknown as RoadmapListResponse;
   }
 }
