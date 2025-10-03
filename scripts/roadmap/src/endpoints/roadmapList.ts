@@ -16,12 +16,6 @@ export class RoadmapList extends OpenAPIRoute {
           "X-Cache-Status": z
             .enum(["HIT", "MISS"])
             .describe("Indicates if the response was served from cache"),
-          "X-Cache-Age": z
-            .string()
-            .optional()
-            .describe(
-              "Age of the cached data in seconds (only present on cache HIT)",
-            ),
         }),
         content: {
           "application/json": {
@@ -40,23 +34,16 @@ export class RoadmapList extends OpenAPIRoute {
 
     const CACHE_TTL = 15 * 60; // 15 minutes in seconds
 
-    // Check cache with metadata
-    const cachedData = await c.env.ROADMAP_GIT_ISSUES_CACHE.getWithMetadata<{
-      timestamp: number;
-    }>("roadmap");
-    if (cachedData.value) {
-      const cacheAge = cachedData.metadata?.timestamp
-        ? Math.floor((Date.now() - cachedData.metadata.timestamp) / 1000)
-        : 0;
-
-      console.log(`Cache HIT - Age: ${cacheAge}s`);
+    // Check cache
+    const cachedData = await c.env.ROADMAP_GIT_ISSUES_CACHE.get("roadmap");
+    if (cachedData) {
+      console.log("Cache HIT");
       c.header("X-Cache-Status", "HIT");
-      c.header("X-Cache-Age", cacheAge.toString());
       c.header("Cache-Control", `public, max-age=${CACHE_TTL}`);
 
       return c.json({
         success: true,
-        roadmap: JSON.parse(cachedData.value as string),
+        roadmap: JSON.parse(cachedData as string),
       });
     }
 
@@ -84,13 +71,12 @@ export class RoadmapList extends OpenAPIRoute {
       url: issue.html_url,
     }));
 
-    // Store in cache with timestamp metadata
+    // Store in cache
     await c.env.ROADMAP_GIT_ISSUES_CACHE.put(
       "roadmap",
       JSON.stringify(roadmap),
       {
         expirationTtl: CACHE_TTL,
-        metadata: { timestamp: Date.now() },
       },
     );
 
