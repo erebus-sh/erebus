@@ -4,7 +4,7 @@
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "roadmap",
+	"name": "erebus-roadmap",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-10-03",
 	"observability": {

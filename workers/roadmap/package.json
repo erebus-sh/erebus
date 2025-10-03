@@ -5,6 +5,7 @@
   "scripts": {
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
+    "build": "wrangler build",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types"
   },
