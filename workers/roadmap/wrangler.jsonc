@@ -1,0 +1,26 @@
+/**
+ * For more details on how to configure Wrangler, refer to:
+ * https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "roadmap",
+	"main": "src/index.ts",
+	"compatibility_date": "2025-10-03",
+	"observability": {
+		"enabled": true
+	},
+	"routes": [
+		{
+			"pattern": "roadmap.erebus.sh",
+			"custom_domain": true
+		}
+	],
+	"kv_namespaces": [
+		{
+			"binding": "ROADMAP_GIT_ISSUES_CACHE",
+			"id": "fd8b726317ff4af7ae3e4c11f62b4a97",
+			"remote": true
+		}
+	],
+}
