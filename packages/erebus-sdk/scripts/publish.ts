@@ -2,6 +2,7 @@
 
 import { $ } from "bun";
 import { parseArgs } from "util";
+import { join } from "path";
 
 try {
   console.log("🚀 Starting publish process...");
@@ -16,52 +17,53 @@ try {
     allowPositionals: true,
   });
 
-  if (values.beta) {
-    console.log("🔰 Entering beta pre mode...");
-    const res = await $`bunx changeset pre enter beta`.nothrow().quiet();
-    if (res.exitCode === 0) {
-      console.log("✅ Beta pre mode entered");
-    } else {
-      const msg = res.stderr.toString() + res.stdout.toString();
-      if (msg.includes("cannot be run when in pre mode")) {
-        console.log("ℹ️ Already in pre mode, skipping enter");
-      } else {
-        console.error("⚠️ Failed to enter pre mode:", msg);
-        process.exit(1);
-      }
-    }
-  } else {
-    console.log("🔰 Exiting pre mode for normal release...");
-    const res = await $`bunx changeset pre exit`.nothrow().quiet();
-    if (res.exitCode === 0) {
-      console.log("✅ Exited pre mode");
-    } else {
-      const msg = res.stderr.toString() + res.stdout.toString();
-      if (msg.includes("can only be run when")) {
-        console.log("ℹ️ Not in pre mode, skipping exit");
-      } else {
-        console.error("⚠️ Failed to exit pre mode:", msg);
-        process.exit(1);
-      }
-    }
+  // Read package.json
+  const packageJsonPath = join(import.meta.dir, "../package.json");
+  const packageJson = await Bun.file(packageJsonPath).json();
+  const currentVersion = packageJson.version;
+
+  console.log(`📌 Current version: ${currentVersion}`);
+
+  // Parse version (e.g., "0.0.179" or "0.0.179-beta.1")
+  const versionMatch = currentVersion.match(
+    /^(\d+)\.(\d+)\.(\d+)(?:-beta\.(\d+))?$/,
+  );
+  if (!versionMatch) {
+    throw new Error(`Invalid version format: ${currentVersion}`);
   }
 
-  // Step 1: Run the build
+  const [, major, minor, patch, betaNum] = versionMatch;
+
+  // Increment patch version
+  const newPatch = parseInt(patch) + 1;
+  let newVersion: string;
+
+  if (values.beta) {
+    // For beta: increment patch and add -beta.0 (or increment beta number if already beta)
+    if (betaNum) {
+      const newBetaNum = parseInt(betaNum) + 1;
+      newVersion = `${major}.${minor}.${patch}-beta.${newBetaNum}`;
+    } else {
+      newVersion = `${major}.${minor}.${newPatch}-beta.0`;
+    }
+  } else {
+    // For normal release: just increment patch
+    newVersion = `${major}.${minor}.${newPatch}`;
+  }
+
+  console.log(`🔢 New version: ${newVersion}`);
+
+  // Update package.json with new version
+  packageJson.version = newVersion;
+  await Bun.write(packageJsonPath, JSON.stringify(packageJson, null, 2) + "\n");
+  console.log("✅ Version updated in package.json");
+
+  // Run the build
   console.log("📦 Building package...");
   await $`bun run build`;
   console.log("✅ Build completed");
 
-  // Step 2: Versioning with changeset
-  console.log("🔢 Running changeset version...");
-  await $`bunx changeset version`;
-  console.log("✅ Version updated using changeset");
-
-  // Step 3: Publish to npm
-  const publishArgs = ["changeset", "publish"];
-  if (values.beta) {
-    publishArgs.push("--tag", "beta");
-  }
-
+  // Confirm for latest tag
   if (!values.beta) {
     process.stdout.write(
       "⚠️ You are about to publish with the 'latest' tag. Are you sure? (y/N): ",
@@ -77,8 +79,10 @@ try {
     }
   }
 
-  console.log(`📤 Publishing to npm ${values.beta ? "(beta)" : "(latest)"}...`);
-  await $`bunx ${publishArgs}`;
+  // Publish to npm
+  const publishTag = values.beta ? "beta" : "latest";
+  console.log(`📤 Publishing to npm (${publishTag})...`);
+  await $`npm publish --tag ${publishTag}`;
 
   console.log("✅ Package published successfully!");
 } catch (error) {
