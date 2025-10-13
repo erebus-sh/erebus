@@ -50,9 +50,7 @@
     "@typescript-eslint/parser": "^8.44.0"
   },
   "peerDependencies": {
-    "typescript": "^5.9.2",
-    "react": "^18 || ^19",
-    "zustand": "^4 || ^5"
+    "typescript": "^5.9.2"
   },
   "dependencies": {
     "@hono/node-server": "^1.18.2",
@@ -60,7 +58,9 @@
     "hono": "^4.9.1",
     "ky": "^1.8.2",
     "nanoid": "^5.1.5",
-    "zod": "^4.0.17"
+    "zod": "^4.0.17",
+    "@repo/schemas": "workspace:*",
+    "@repo/shared": "workspace:*"
   },
   "exclude": [
     "test_projects"

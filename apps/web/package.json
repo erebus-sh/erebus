@@ -17,6 +17,9 @@
   "dependencies": {
     "@auth/core": "0.37.0",
     "@convex-dev/aggregate": "^0.1.23",
+    "@tanstack/react-table": "^8.21.3",
+    "date-fns": "^4.1.0",
+    "nuqs": "^2.6.0",
     "@convex-dev/auth": "^0.0.87",
     "@convex-dev/polar": "^0.6.4",
     "@edge-runtime/vm": "^5.0.0",
