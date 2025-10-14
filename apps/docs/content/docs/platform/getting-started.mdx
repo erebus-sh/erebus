@@ -1,0 +1,285 @@
+---
+title: Getting Started
+description: Complete step-by-step guide to get started with the Erebus platform, from sign-up to your first real-time connection.
+---
+
+# Getting Started with Erebus Platform
+
+This guide will walk you through everything you need to start building real-time applications with Erebus, from creating your account to making your first WebSocket connection.
+
+## Prerequisites
+
+Before getting started, make sure you have:
+- A GitHub account (required for authentication)
+- A modern web browser
+- Basic familiarity with JavaScript/TypeScript
+- A project where you want to add real-time features
+
+## Step 1: Sign In with GitHub
+
+*[Screenshot placeholder: Sign-in page with GitHub button]*
+
+1. Navigate to [erebus.sh](https://erebus.sh)
+2. Click "Sign in with GitHub"
+3. Authorize Erebus to access your GitHub account
+4. You'll be redirected to the platform dashboard
+
+The Erebus platform uses GitHub OAuth for secure authentication. This ensures we never store your passwords and provides seamless access management.
+
+## Step 2: Choose Your Plan
+
+*[Screenshot placeholder: Pricing page with plan selection]*
+
+After signing in, you'll need to select a subscription plan:
+
+1. Review the available pricing tiers
+2. Select the plan that fits your usage needs
+3. Complete the subscription process
+4. You'll be redirected to create your first project
+
+<Callout title="Free Tier Available" type="note">
+Most plans include generous free usage limits, perfect for development and small applications.
+</Callout>
+
+## Step 3: Create Your First Project
+
+*[Screenshot placeholder: Create project dialog with form fields]*
+
+Projects organize your real-time applications and provide isolated environments for different use cases.
+
+### Creating the Project
+
+1. Click "Create new project" from your dashboard
+2. Enter a descriptive project name (3-100 characters)
+3. Choose your deployment region:
+   - **Global**: Automatically routes to the closest region (recommended)
+   - **EU**: Fixed deployment in European data centers (coming soon)
+4. Click "Create Project"
+
+### Project Organization
+
+Each project provides:
+- Isolated API keys and authentication
+- Separate analytics and monitoring
+- Independent audit logs
+- Project-specific settings and webhooks
+
+<Callout title="Project Limits" type="info">
+You can create up to 50 projects per account. Each project can have unlimited API keys.
+</Callout>
+
+## Step 4: Generate Your First API Key
+
+*[Screenshot placeholder: API Keys page with create dialog]*
+
+API keys authenticate your applications and control access to your real-time infrastructure.
+
+### Creating an API Key
+
+1. Navigate to the "API Keys" section in your project
+2. Click "Create new key"
+3. Enter a descriptive label (e.g., "Development Key")
+4. Choose your environment:
+   - **Development**: For testing and development work
+   - **Production**: For live applications
+
+<Callout title="Environment Types" type="note">
+Currently, development and production keys have the same capabilities. The separation exists for organization and security best practices.
+</Callout>
+
+### API Key Format
+
+Your API keys follow this format:
+- Production: `sk-er-[random-string]`
+- Development: `dv-er-[random-string]`
+
+**Important**: Copy your API key immediately after creation. You won't be able to see the full key again for security reasons.
+
+## Step 5: Explore the Project Dashboard
+
+*[Screenshot placeholder: Project dashboard with navigation sidebar]*
+
+Your project dashboard provides access to all platform features:
+
+### Navigation Overview
+
+- **Dashboard**: Analytics overview with connection metrics
+- **Usage**: Detailed usage analytics and time-range selection
+- **API Keys**: Manage authentication keys and permissions
+- **Audit Logs**: Security and activity tracking
+- **Settings**: Project configuration and webhooks
+- **WebSocket Inspector**: Real-time connection debugging (coming soon)
+
+### Dashboard Metrics
+
+The main dashboard shows:
+- Total connections over time
+- Message volume and subscription counts
+- Peak usage statistics
+- Real-time activity graphs
+
+## Step 6: Configure Project Settings
+
+*[Screenshot placeholder: Project settings page with webhook configuration]*
+
+### Basic Settings
+
+1. Navigate to "Settings" in your project
+2. Configure your project name and description
+3. Set up webhook URLs for message forwarding (optional)
+
+### Webhook Configuration
+
+Webhooks allow you to forward messages to your backend services:
+
+1. Enter a valid HTTPS base URL (e.g., `https://yourapi.com`)
+2. The system validates the URL format automatically
+3. Messages will be forwarded to `[webhook-url]/erebus/webhook`
+
+<Callout title="Webhook Requirements" type="warning">
+Webhook URLs must use HTTPS and be base URLs without paths. The system automatically appends `/erebus/webhook` to your configured URL.
+</Callout>
+
+## Step 7: Make Your First Connection
+
+Now let's connect to your Erebus project using the SDK:
+
+### Install the SDK
+
+```bash
+npm install @erebus-sh/sdk
+```
+
+### Basic Connection Example
+
+```typescript
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+
+// Initialize the client
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "YOUR_AUTH_SERVER_URL" // Your backend auth endpoint
+});
+
+// Join a channel (this creates the channel if it doesn't exist)
+client.joinChannel("my-first-channel");
+
+// Connect to Erebus
+await client.connect();
+
+// Subscribe to messages
+await client.subscribe("notifications", (message) => {
+  console.log("📩 Received message:", message.payload);
+});
+
+// Publish a test message
+await client.publish("notifications", {
+  type: "welcome",
+  message: "Hello from Erebus! 🚀"
+});
+
+console.log("✅ Successfully connected to Erebus!");
+```
+
+### Authentication Server Setup
+
+You'll need an authentication endpoint that returns JWT tokens. Here's a minimal Express.js example:
+
+```javascript
+// auth-server.js
+const express = require('express');
+const jwt = require('jsonwebtoken');
+const app = express();
+
+app.post('/auth/erebus', (req, res) => {
+  // Validate your user here
+  const token = jwt.sign(
+    {
+      sub: 'user-123',
+      erebus_api_key: 'your-api-key-here'
+    },
+    'your-jwt-secret',
+    { expiresIn: '1h' }
+  );
+
+  res.json({ token });
+});
+
+app.listen(3001);
+```
+
+<Callout title="Authentication Required" type="info">
+Erebus requires JWT tokens for authentication. The token must include your API key in the `erebus_api_key` field. See our [authentication guide](/docs/sdk/core/getting-started-api#authentication) for detailed setup.
+</Callout>
+
+## Step 8: Monitor Your Application
+
+*[Screenshot placeholder: Dashboard showing live metrics]*
+
+Once your application is connected:
+
+### Real-Time Monitoring
+
+1. Return to your project dashboard
+2. Watch real-time metrics update as you connect and send messages
+3. Use the time-range selector to view historical data
+4. Monitor connection counts and message volume
+
+### Audit Log Verification
+
+1. Navigate to "Audit Logs"
+2. See logged events for API key creation and project changes
+3. Use audit logs for security monitoring and compliance
+
+## Next Steps
+
+Congratulations! You've successfully set up your first Erebus project. Here's what to explore next:
+
+### Advanced Features
+
+- **[Project Management](/docs/platform/project-management)** - Advanced project configuration
+- **[API Key Management](/docs/platform/api-key-management)** - Key rotation and security
+- **[Audit Logs](/docs/platform/audit-logs)** - Security and compliance tracking
+- **[Analytics Dashboard](/docs/platform/analytics-dashboard)** - Deep-dive into metrics
+
+### SDK Guides
+
+- **[Core SDK](/docs/sdk/core/getting-started-api)** - Complete API reference
+- **[React SDK](/docs/get-started/next.js/quickstart-example)** - React hooks and components
+- **[Message History](/docs/sdk/core/history)** - Access message history
+- **[Presence Tracking](/docs/sdk/core/presence)** - User awareness features
+
+### Example Applications
+
+- **[Chat Application](/examples/chat-app)** - Complete chat implementation
+- **[Live Collaboration](/examples/collaborative-editor)** - Document editing
+- **[Real-time Notifications](/examples/notifications)** - Push notification system
+
+## Troubleshooting
+
+### Common Issues
+
+**Connection Fails**
+- Verify your API key is correct and active
+- Check that your auth server is returning valid JWT tokens
+- Ensure your JWT includes the `erebus_api_key` field
+
+**Messages Not Received**
+- Confirm you're subscribed to the correct channel
+- Verify the channel name matches exactly (case-sensitive)
+- Check the audit logs for any error events
+
+**Authentication Errors**
+- Validate your JWT token format and expiration
+- Ensure your API key hasn't been disabled or revoked
+- Check that the JWT secret matches your configuration
+
+### Getting Help
+
+- **Documentation**: Comprehensive guides at [docs.erebus.sh](https://docs.erebus.sh)
+- **Support**: Direct support at [hey@v0id.me](mailto:hey@v0id.me)
+- **Community**: Follow updates at [x.com/v0id_user](https://x.com/v0id_user)
+
+---
+
+> **Ready to build?** Check out our [SDK documentation](/docs/sdk) for comprehensive API guides and examples.

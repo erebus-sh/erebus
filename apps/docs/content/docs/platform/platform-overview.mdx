@@ -1,0 +1,153 @@
+---
+title: Platform Overview
+description: Introduction to the Erebus platform, its features, and architecture for real-time infrastructure at the edge.
+---
+
+# Platform Overview
+
+The Erebus platform is your complete real-time infrastructure solution built for the edge. It provides WebSocket-based pub/sub messaging, presence tracking, and analytics with global distribution through Cloudflare's network.
+
+## What is the Erebus Platform?
+
+The Erebus platform consists of several integrated components that work together to provide a seamless real-time infrastructure experience:
+
+### Core Infrastructure
+- **Edge-First Architecture**: Built on Cloudflare Durable Objects for global distribution
+- **WebSocket Infrastructure**: High-performance real-time messaging with guaranteed ordering
+- **Serverless by Design**: Pay only for what you use with automatic scaling to zero
+
+### Platform Features
+
+#### Project Management
+- **Multi-Project Organization**: Organize your applications into separate projects (up to 50 projects per account)
+- **Regional Deployment**: Choose between Global (auto-region) and EU-specific deployment
+- **Project Settings**: Configure webhooks, naming, and other project-specific options
+
+#### API Key Management
+- **Environment Separation**: Separate development and production API keys for security
+- **Key States**: Active, disabled, and revoked states for granular access control
+- **Security Features**: Built-in key rotation and usage monitoring
+
+#### Real-Time Analytics
+- **Connection Metrics**: Track WebSocket connections, subscriptions, and message volume
+- **Time-Range Analysis**: View metrics by hour or day with flexible date ranges
+- **Performance Monitoring**: Identify peak usage and optimize accordingly
+
+#### Audit Logging
+- **Complete Activity Tracking**: Every API key creation, project change, and setting modification is logged
+- **Security Compliance**: Detailed audit trails for regulatory compliance and security monitoring
+- **Recent History**: Access to the 100 most recent audit events per project
+
+## Architecture Overview
+
+*[Screenshot placeholder: Architecture diagram showing Cloudflare Durable Objects distribution]*
+
+### Built on Cloudflare Durable Objects
+
+Erebus leverages Cloudflare's Durable Objects technology to provide:
+
+- **Global Distribution**: 300+ edge locations worldwide
+- **Consistent State**: Stateful objects that maintain consistency without global coordination
+- **Automatic Scaling**: Scale to zero when idle, instantly scale up under load
+- **Low Latency**: Users connect to the nearest point of presence
+
+### How It Works
+
+1. **Client Connection**: Your application connects to the nearest Cloudflare edge location
+2. **Durable Object Routing**: Connections are routed to the appropriate Durable Object based on channel names
+3. **State Management**: Each Durable Object maintains consistent state for its channels
+4. **Message Ordering**: ULID-based sequencing ensures message ordering within channels
+5. **Presence Tracking**: Automatic presence updates when clients join/leave channels
+
+## Platform Capabilities
+
+### Real-Time Messaging
+- **Pub/Sub Channels**: Publish and subscribe to named channels with guaranteed message ordering
+- **Quality of Service**: QoS 1 support with acknowledgments for reliable delivery
+- **Message History**: Access to recent message history for catching up on missed events
+
+### Presence System
+- **Automatic Tracking**: Know who's online in each channel without additional setup
+- **Real-Time Updates**: Instant presence notifications when users join or leave
+- **Metadata Support**: Attach custom data to presence events
+
+### Developer Experience
+- **TypeScript-First**: Full type safety with comprehensive TypeScript support
+- **Framework Agnostic**: Works with React, Vue, Node.js, and any JavaScript runtime
+- **Rich SDKs**: Purpose-built SDKs for different use cases and frameworks
+
+## Platform Limits and Quotas
+
+### Project Limits
+- **Maximum Projects**: 50 projects per account
+- **API Keys**: Unlimited API keys per project
+- **Regions**: Global (auto-region) and EU available
+
+### Audit Logs
+- **Retention**: 100 most recent audit events per project
+- **Real-Time**: Audit events appear immediately after actions
+
+### Performance
+- **Concurrent Connections**: No hard limits (scales with your usage plan)
+- **Message Rate**: Optimized for high-throughput applications
+- **Channel Limits**: No restrictions on channel names or count
+
+## Use Cases
+
+### Chat and Messaging Applications
+*[Screenshot placeholder: Sample chat application dashboard]*
+
+Perfect for building chat rooms, direct messaging, and comment systems with:
+- Message ordering guarantees
+- Online user presence
+- Message history and catch-up
+- Typing indicators and read receipts
+
+### Live Collaboration
+*[Screenshot placeholder: Collaborative editing interface]*
+
+Enable real-time collaboration features like:
+- Document co-editing
+- Cursor tracking
+- Operational transforms
+- Conflict resolution
+
+### Real-Time Notifications
+*[Screenshot placeholder: Notification management panel]*
+
+Build notification systems with:
+- Targeted user delivery
+- Delivery confirmations
+- Push notification integration
+- Priority-based routing
+
+### Live Analytics and Monitoring
+*[Screenshot placeholder: Analytics dashboard]*
+
+Stream real-time data for:
+- Live dashboards
+- Metric aggregation
+- Event tracking
+- Performance monitoring
+
+## Getting Started
+
+Ready to build with Erebus? Here's your next steps:
+
+1. **[Get Started Guide](/docs/platform/getting-started)** - Complete onboarding walkthrough
+2. **[Project Management](/docs/platform/project-management)** - Learn project configuration
+3. **[API Keys](/docs/platform/api-key-management)** - Set up authentication
+4. **[SDK Documentation](/docs/sdk)** - Start building with our SDKs
+
+## Security and Compliance
+
+The Erebus platform is built with security as a foundational principle:
+
+- **Audit Logging**: Complete activity tracking for compliance requirements
+- **API Key Security**: Environment-based key separation and state management
+- **Data Privacy**: Messages are not persisted beyond configured retention periods
+- **Regional Compliance**: EU-specific deployment options for data sovereignty
+
+---
+
+> **Next**: Start with our [Getting Started Guide](/docs/platform/getting-started) to create your first project and begin building real-time features.
