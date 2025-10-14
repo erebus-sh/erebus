@@ -77,11 +77,6 @@
       "import": "./dist/client/core/index.js",
       "require": "./dist/client/core/index.cjs"
     },
-    "./react": {
-      "types": "./dist/client/react/index.d.ts",
-      "import": "./dist/client/react/index.js",
-      "require": "./dist/client/react/index.cjs"
-    },
     "./server": {
       "types": "./dist/server/index.d.ts",
       "import": "./dist/server/index.js",

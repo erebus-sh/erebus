@@ -10,9 +10,6 @@ export default defineConfig({
     // Client core
     "client/core/index": "./src/client/core/index.ts",
 
-    // React client
-    "client/react/index": "./src/client/react/index.ts",
-
     // Server SDK
     "server/index": "./src/server/index.ts",
     "server/adapter/next/index": "./src/server/adapter/next/index.ts",
