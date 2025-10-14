@@ -97,7 +97,7 @@ export default function AuditPage() {
         <p className="text-muted-foreground text-sm">
           Learn more about{" "}
           <Link
-            href={`${process.env.NEXT_PUBLIC_DOCS_URL}/audit-logs`}
+            href={`${process.env.NEXT_PUBLIC_DOCS_URL}/docs/platform/audit-logs`}
             className="hover:text-foreground underline"
             target="_blank"
             rel="noopener noreferrer"
