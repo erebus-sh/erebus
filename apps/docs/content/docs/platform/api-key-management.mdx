@@ -1,0 +1,365 @@
+---
+title: API Key Management
+description: Advanced guide to managing API keys in Erebus platform, including key states, security practices, and lifecycle management.
+---
+
+# API Key Management
+
+API keys are the primary authentication mechanism for accessing Erebus platform services. This comprehensive guide covers advanced key management practices, security features, and lifecycle management for production applications.
+
+## API Key Overview
+
+### Purpose and Function
+
+API keys serve multiple critical functions:
+
+- **Authentication**: Verify client identity when connecting to Erebus
+- **Authorization**: Control access to specific projects and resources
+- **Billing Attribution**: Track usage for accurate billing and analytics
+- **Audit Trail**: Provide accountability for all API operations
+
+### Key Architecture
+
+Each API key is associated with:
+- **Single Project**: Keys are project-scoped for security isolation
+- **Environment Type**: Development or production classification
+- **Status State**: Active, disabled, or revoked status control
+- **Metadata**: Labels, creation dates, and usage tracking
+
+*[Screenshot placeholder: API keys dashboard showing key list with status indicators]*
+
+## API Key States
+
+### State Overview
+
+API keys have three distinct states that control their functionality:
+
+**Active State**
+- **Full Functionality**: Complete access to all authorized operations
+- **Normal Operation**: Default state for newly created keys
+- **Production Ready**: Suitable for live applications
+- **Status Indicator**: Green status in dashboard
+
+**Disabled State**
+- **Temporary Suspension**: Key functionality is suspended but not permanently revoked
+- **Reversible**: Can be re-enabled without generating a new key
+- **Settings Locked**: Cannot modify key settings while disabled
+- **Status Indicator**: Yellow/orange status in dashboard
+
+**Revoked State**
+- **Permanent Deactivation**: Key is permanently disabled and cannot be reactivated
+- **Security Action**: Typically used when keys are compromised or no longer needed
+- **Irreversible**: Revoked keys cannot be restored
+- **Status Indicator**: Red status with timestamp
+
+*[Screenshot placeholder: API key card showing different states and action buttons]*
+
+### State Transitions
+
+**Active → Disabled**
+- **Use Case**: Temporary suspension for maintenance or debugging
+- **Action**: Click "Disable" button on active key
+- **Reversibility**: Can be re-enabled at any time
+- **Audit Log**: State change is logged with timestamp and actor
+
+**Disabled → Active**
+- **Use Case**: Re-enable temporarily disabled key
+- **Action**: Click "Enable" button on disabled key
+- **Requirements**: No restrictions for re-enabling
+- **Audit Log**: Re-enablement is tracked in audit logs
+
+**Any State → Revoked**
+- **Use Case**: Permanent deactivation for security or cleanup
+- **Action**: Click "Revoke" button and confirm destructive action
+- **Confirmation**: Multiple confirmation steps required
+- **Audit Log**: Revocation is permanently logged with reason
+
+<Callout title="Key State Best Practices" type="info">
+Use the disabled state for temporary suspensions (debugging, maintenance) and the revoked state only for permanent deactivation when keys are compromised or definitively no longer needed.
+</Callout>
+
+## Environment Types
+
+### Development vs Production
+
+**Development Keys (`dv-er-*`)**
+- **Purpose**: Testing, development, and staging environments
+- **Security Level**: Lower security requirements, frequent regeneration acceptable
+- **Usage Patterns**: High experimentation, frequent changes
+- **Monitoring**: Less stringent monitoring requirements
+
+**Production Keys (`sk-er-*`)**
+- **Purpose**: Live applications serving real users
+- **Security Level**: Highest security standards, careful lifecycle management
+- **Usage Patterns**: Stable, predictable usage with change controls
+- **Monitoring**: Comprehensive monitoring and alerting required
+
+### Environment Best Practices
+
+**Separation Strategy**
+```
+Development Project: my-app-dev
+├── dv-er-frontend-testing
+├── dv-er-backend-integration
+└── dv-er-local-development
+
+Production Project: my-app-prod
+├── sk-er-frontend-production
+├── sk-er-backend-production
+└── sk-er-monitoring-service
+```
+
+**Key Lifecycle Management**
+- **Development**: Regenerate keys frequently during development
+- **Staging**: Use production-type keys with development security practices
+- **Production**: Implement formal change management for key operations
+
+## Key Creation and Configuration
+
+### Creating New API Keys
+
+*[Screenshot placeholder: Create API key dialog with environment selection]*
+
+**Step-by-Step Process**
+1. **Navigate to API Keys**: Go to your project's API Keys section
+2. **Click "Create new key"**: Opens the key creation dialog
+3. **Configure Key Details**:
+   - **Key Label**: Descriptive name for identification (3-100 characters)
+   - **Environment**: Choose Development or Production
+4. **Generate Key**: Click "Create Key" to generate the new API key
+5. **Copy Immediately**: Copy the full key value (only visible once)
+
+**Key Label Best Practices**
+- Use descriptive names that indicate purpose and environment
+- Include service or component names for multi-service applications
+- Consider including dates or version numbers for tracking
+- Avoid sensitive information in labels (they appear in audit logs)
+
+### Key Configuration Options
+
+**Current Features**
+- **Label Management**: Update descriptive names anytime
+- **Status Control**: Enable, disable, or revoke keys
+- **Environment Type**: Set during creation (not changeable)
+- **Scope**: Full read-write access to project resources
+
+**Future Enhancements (Planned)**
+- **Resource Restrictions**: Limit access to specific channels or queues
+- **Permission Scoping**: Read-only or write-only key types
+- **Expiration Dates**: Automatic key expiration for security
+- **IP Restrictions**: Limit key usage to specific IP ranges
+
+## Security Management
+
+### Key Security Best Practices
+
+**Storage and Handling**
+- **Environment Variables**: Store keys in environment variables, never in code
+- **Secrets Management**: Use dedicated secrets management systems in production
+- **Rotation Schedule**: Implement regular key rotation policies
+- **Access Control**: Limit who can view and manage API keys
+
+**Code Security**
+```typescript
+// ✅ Good: Using environment variables
+const apiKey = process.env.EREBUS_API_KEY;
+
+// ❌ Bad: Hard-coded in source code
+const apiKey = "sk-er-abc123def456...";
+
+// ✅ Good: Validation before use
+if (!apiKey) {
+  throw new Error("Erebus API key not configured");
+}
+```
+
+**Network Security**
+- **HTTPS Only**: Always use encrypted connections
+- **Certificate Validation**: Verify SSL/TLS certificates
+- **Key Transmission**: Never transmit keys via insecure channels
+- **Logging**: Avoid logging keys in application logs
+
+### Key Rotation Strategies
+
+**Development Key Rotation**
+- **Frequency**: Weekly or bi-weekly rotation
+- **Process**: Generate new key → Update configuration → Revoke old key
+- **Testing**: Verify new key functionality before revoking old key
+- **Automation**: Consider automated rotation for development environments
+
+**Production Key Rotation**
+- **Frequency**: Monthly or quarterly rotation
+- **Process**: Coordinated deployment with zero-downtime strategy
+- **Monitoring**: Enhanced monitoring during rotation period
+- **Rollback Plan**: Keep old key active briefly for emergency rollback
+
+**Zero-Downtime Rotation Process**
+1. **Generate New Key**: Create replacement key without affecting current operations
+2. **Update Configuration**: Deploy new key to all services using blue-green or rolling deployment
+3. **Verify Functionality**: Confirm all services are using new key successfully
+4. **Monitor Period**: Watch for any issues with new key for 24-48 hours
+5. **Revoke Old Key**: Permanently disable previous key after successful transition
+
+## Monitoring and Analytics
+
+### Usage Tracking
+
+*[Screenshot placeholder: API key usage analytics showing connection metrics]*
+
+**Key Metrics**
+- **Connection Count**: Number of active connections using each key
+- **Message Volume**: Messages published/subscribed using each key
+- **Error Rates**: Authentication failures and connection errors
+- **Usage Patterns**: Time-based usage analysis for optimization
+
+**Performance Insights**
+- **Peak Usage**: Identify highest usage periods for capacity planning
+- **Geographic Distribution**: Understanding where keys are used globally
+- **Application Patterns**: How different keys are used across your application stack
+- **Efficiency Metrics**: Connection success rates and performance indicators
+
+### Security Monitoring
+
+**Unusual Activity Detection**
+- **Geographic Anomalies**: Keys used from unexpected locations
+- **Usage Spikes**: Sudden increases in key usage patterns
+- **Time Patterns**: Usage outside normal operational hours
+- **Error Clustering**: High failure rates indicating potential attacks
+
+**Audit Integration**
+- **Key Operations**: All key management actions are logged
+- **Usage Attribution**: Connection and message activities tracked per key
+- **Security Events**: Failed authentications and suspicious patterns
+- **Change Tracking**: Complete history of key modifications
+
+## Advanced Management
+
+### Multi-Key Strategies
+
+**Service-Based Organization**
+```
+Project: my-marketplace-app
+├── sk-er-user-service-prod      (User authentication & profiles)
+├── sk-er-chat-service-prod      (Real-time messaging)
+├── sk-er-notifications-prod     (Push notifications)
+└── sk-er-admin-dashboard-prod   (Administrative interface)
+```
+
+**Environment-Based Organization**
+```
+Project: my-app
+├── dv-er-integration-tests      (Automated testing)
+├── dv-er-local-development      (Developer machines)
+├── sk-er-staging-env           (Pre-production testing)
+└── sk-er-production-env        (Live application)
+```
+
+### Key Lifecycle Automation
+
+**Automated Key Management**
+While Erebus doesn't currently provide API access for key management, you can implement processes for:
+
+**Documentation and Tracking**
+- Maintain inventory of all API keys and their purposes
+- Document key rotation schedules and procedures
+- Track key age and usage patterns for rotation planning
+- Coordinate key lifecycle with deployment processes
+
+**Integration Strategies**
+- **CI/CD Integration**: Include key rotation in deployment pipelines
+- **Monitoring Integration**: Alert on key usage anomalies
+- **Secret Management**: Integrate with enterprise secret management systems
+- **Change Management**: Coordinate key changes with formal change processes
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication Failures**
+- **Key Status**: Verify key is in active state
+- **Key Format**: Ensure complete key is being used (no truncation)
+- **Environment Match**: Confirm key environment matches usage context
+- **Network Issues**: Check for connectivity problems
+
+**Performance Issues**
+- **Key Overuse**: Single key handling excessive load
+- **Geographic Latency**: Key usage far from optimal regions
+- **Connection Pooling**: Inefficient connection management
+- **Rate Limiting**: Hitting usage limits or throttling
+
+**Security Concerns**
+- **Compromised Keys**: Immediate revocation and replacement required
+- **Unusual Usage**: Investigate unexpected usage patterns
+- **Access Control**: Verify proper key access and handling procedures
+- **Audit Discrepancies**: Resolve audit log inconsistencies
+
+### Diagnostic Steps
+
+**Connectivity Testing**
+```typescript
+// Test API key connectivity
+async function testApiKey(apiKey: string) {
+  try {
+    const client = ErebusClient.createClient({
+      client: ErebusClientState.PubSub,
+      authBaseUrl: "your-auth-endpoint"
+    });
+
+    await client.connect();
+    console.log("✅ API key is working correctly");
+
+    await client.disconnect();
+  } catch (error) {
+    console.error("❌ API key test failed:", error.message);
+  }
+}
+```
+
+**Usage Verification**
+1. **Check Audit Logs**: Review recent key activities for anomalies
+2. **Monitor Dashboard**: Use platform analytics to verify expected usage
+3. **Test Connections**: Perform controlled connection tests
+4. **Verify Configuration**: Confirm key is properly configured in applications
+
+## Migration and Upgrades
+
+### Key Migration Strategies
+
+**Project Migration**
+When moving between projects:
+1. **Create New Keys**: Generate keys in the target project
+2. **Update Applications**: Deploy applications with new keys
+3. **Verify Functionality**: Confirm all services work with new keys
+4. **Cleanup**: Revoke old keys after successful migration
+
+**Environment Promotion**
+Moving from development to production:
+1. **Generate Production Keys**: Create production-class keys
+2. **Update Configuration**: Change application configuration
+3. **Monitor Deployment**: Watch for any issues during transition
+4. **Audit Verification**: Confirm audit logs show expected usage
+
+### Future-Proofing
+
+**Preparing for Platform Updates**
+- **Key Format Changes**: Monitor for announcements about key format updates
+- **Feature Enhancements**: Prepare for additional key management features
+- **API Access**: Plan for programmatic key management capabilities
+- **Integration Updates**: Prepare for enhanced integrations and tooling
+
+## Getting Help
+
+### Documentation Resources
+- **[Getting Started Guide](/docs/platform/getting-started)** - Basic key setup and usage
+- **[API Keys Basics](/docs/platform/api-keys)** - Fundamental key concepts
+- **[Security Best Practices](/docs/platform/security)** - Comprehensive security guide
+- **[Audit Logs](/docs/platform/audit-logs)** - Key activity monitoring
+
+### Support Channels
+- **Email Support**: [hey@v0id.me](mailto:hey@v0id.me) for key management assistance
+- **Security Issues**: Priority support for security-related key concerns
+- **Integration Help**: Assistance with key integration and automation
+
+---
+
+> **Security First**: API keys are the foundation of your application's security. Implement strong key management practices from the beginning to protect your real-time infrastructure and user data.

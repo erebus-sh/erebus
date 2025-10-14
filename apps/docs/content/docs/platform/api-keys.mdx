@@ -1,27 +1,157 @@
 ---
 title: API Keys
-description: How to use API keys to interact with the Erebus platform.
+description: How to use API keys to interact with the Erebus platform - basic setup and essential concepts.
 ---
 
 # API Keys
 
-API keys are used to authenticate requests to the Erebus platform. You can generate API keys in the Erebus dashboard.
+API keys are used to authenticate requests to the Erebus platform. They provide secure access to your real-time infrastructure and enable you to build applications that connect to Erebus services.
+
+<Callout title="Advanced Features" type="info">
+This guide covers the basics of API keys. For comprehensive key management, security practices, and advanced features, see our [API Key Management Guide](/docs/platform/api-key-management).
+</Callout>
+
+## What are API Keys?
+
+API keys serve as the primary authentication mechanism for accessing Erebus platform services. Each key:
+
+- **Authenticates** your application when connecting to Erebus
+- **Authorizes** access to specific project resources
+- **Tracks** usage for billing and analytics
+- **Provides** audit trail for security and compliance
 
 ## How to use API keys
 
 API keys are the gateway to your project. They are used to authenticate requests and determine billing and access.
 
-How to start using your API keys:
+### Creating Your First API Key
 
-1. Open your project in the Erebus dashboard
-2. Go to the API Keys section
-3. Click on the "Create API Key" button
-4. Enter a name for your API key
-5. Choose Development or Production (Currently, there is no performance or literal difference between development and production environments. This separation exists for security best practices and key organization purposes only.)
-6. Click on the "Create" button
-7. Copy the API key
-8. Use the API key in your code
+1. **Open your project** in the Erebus dashboard
+2. **Navigate to API Keys** section in the project sidebar
+3. **Click "Create new key"** button
+4. **Enter a descriptive name** for your API key (e.g., "Development Frontend")
+5. **Choose Environment Type**:
+   - **Development** (`dv-er-*`): For testing and development
+   - **Production** (`sk-er-*`): For live applications
+6. **Click "Create Key"** to generate the new API key
+7. **Copy the API key immediately** (you won't see the full key again)
+8. **Store securely** in environment variables or secrets management
+
+<Callout title="Environment Types" type="note">
+Currently, there is no performance or literal difference between development and production environments. This separation exists for security best practices and key organization purposes only.
+</Callout>
+
+### Using API Keys in Your Code
+
+Store API keys securely and use them to authenticate your Erebus connections:
+
+```typescript
+// Store in environment variables
+const apiKey = process.env.EREBUS_API_KEY;
+
+// Use in your authentication server
+const token = jwt.sign({
+  sub: 'user-123',
+  erebus_api_key: apiKey
+}, 'your-jwt-secret');
+```
 
 ## API Key Format
 
-API keys are in the format of `sk-er-<random-string>` for production and `dv-er-<random-string>` for development.
+API keys follow a specific format to indicate their environment and purpose:
+
+- **Production**: `sk-er-<random-string>`
+- **Development**: `dv-er-<random-string>`
+
+The prefix clearly identifies the key type and helps prevent accidentally using development keys in production environments.
+
+## Key States and Management
+
+API keys have different states that control their functionality:
+
+### Key States
+
+**Active**
+- ✅ Full functionality and access
+- Default state for newly created keys
+- Ready for production use
+
+**Disabled**
+- ⏸️ Temporarily suspended functionality
+- Can be re-enabled without creating a new key
+- Useful for debugging or maintenance
+
+**Revoked**
+- ❌ Permanently disabled and cannot be reactivated
+- Used when keys are compromised or no longer needed
+- Irreversible action with audit trail
+
+### Basic Key Operations
+
+**Enable/Disable Keys**
+- Temporarily suspend key functionality without permanent removal
+- Useful during maintenance or debugging
+- Can be reversed at any time
+
+**Revoke Keys**
+- Permanently disable compromised or unused keys
+- Cannot be undone - requires creating new keys
+- All revocation actions are logged in audit trails
+
+**Update Key Information**
+- Change descriptive labels and metadata
+- Update key settings and configuration
+- Track changes through audit logs
+
+<Callout title="Advanced Key Management" type="info">
+For detailed information about key states, security best practices, rotation strategies, and advanced features, see our comprehensive [API Key Management Guide](/docs/platform/api-key-management).
+</Callout>
+
+## Security Best Practices
+
+### Basic Security
+
+- **Environment Variables**: Never hard-code API keys in source code
+- **Secure Storage**: Use dedicated secrets management in production
+- **Access Control**: Limit who can view and manage API keys
+- **Regular Review**: Periodically audit active keys and revoke unused ones
+
+### Key Organization
+
+- **Descriptive Names**: Use clear labels that indicate purpose and environment
+- **Environment Separation**: Keep development and production keys separate
+- **Service-Specific Keys**: Consider separate keys for different services
+- **Regular Rotation**: Plan for periodic key rotation, especially in production
+
+## Getting Started
+
+Ready to start using API keys? Follow these next steps:
+
+1. **[Platform Getting Started](/docs/platform/getting-started)** - Complete setup walkthrough
+2. **[SDK Documentation](/docs/sdk)** - Use your API keys with Erebus SDKs
+3. **[API Key Management](/docs/platform/api-key-management)** - Advanced key management features
+4. **[Security Best Practices](/docs/platform/api-key-management#security-management)** - Comprehensive security guide
+
+## Troubleshooting
+
+### Common Issues
+
+**Authentication Failures**
+- Verify the API key is active (not disabled or revoked)
+- Check that the complete key is being used
+- Ensure your JWT includes the `erebus_api_key` field
+
+**Key Access Issues**
+- Confirm you have access to the correct project
+- Check that the key hasn't been revoked
+- Verify the key is being used in the correct environment
+
+### Getting Help
+
+- **Documentation**: [API Key Management Guide](/docs/platform/api-key-management) for detailed help
+- **Support**: [hey@v0id.me](mailto:hey@v0id.me) for technical assistance
+- **Audit Logs**: Use [audit logs](/docs/platform/audit-logs) to track key activities
+
+---
+
+> **Next Steps**: Once you have your API key, follow our [Getting Started Guide](/docs/platform/getting-started) to create your first real-time connection, or dive deeper with our [API Key Management Guide](/docs/platform/api-key-management) for advanced features and security practices.

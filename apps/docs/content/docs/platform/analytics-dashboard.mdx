@@ -1,0 +1,354 @@
+---
+title: Analytics Dashboard
+description: Comprehensive guide to Erebus platform analytics, metrics, and monitoring capabilities for real-time applications.
+---
+
+# Analytics Dashboard
+
+The Erebus analytics dashboard provides comprehensive insights into your real-time application's performance, usage patterns, and system health. Monitor connections, track message volume, and optimize your application based on detailed metrics and trends.
+
+## Dashboard Overview
+
+### Analytics Philosophy
+
+The Erebus analytics dashboard is designed around key principles:
+
+- **Real-Time Insights**: Live metrics update as your application operates
+- **Historical Context**: Track trends and patterns over time
+- **Actionable Data**: Metrics that directly inform optimization decisions
+- **Performance Focus**: Understanding system health and user experience
+
+*[Screenshot placeholder: Main analytics dashboard showing metrics cards and charts]*
+
+### Key Metrics Categories
+
+**Connection Metrics**
+- **Active Connections**: Real-time count of connected users
+- **Connection Rate**: New connections per time period
+- **Connection Duration**: Average session length and patterns
+- **Geographic Distribution**: Where your users connect from globally
+
+**Message Analytics**
+- **Message Volume**: Total messages published and received
+- **Message Rate**: Messages per second/minute/hour
+- **Channel Activity**: Most active channels and usage patterns
+- **Message Size**: Average payload sizes and data transfer
+
+**Subscription Tracking**
+- **Active Subscriptions**: Current subscription count across all channels
+- **Subscription Patterns**: How users subscribe to different channels
+- **Subscription Duration**: How long users stay subscribed
+- **Channel Popularity**: Most subscribed channels and their usage
+
+**Performance Indicators**
+- **Response Times**: Connection establishment and message delivery times
+- **Error Rates**: Failed connections and message delivery issues
+- **System Health**: Overall platform performance and availability
+- **Peak Usage**: Highest usage periods and capacity utilization
+
+## Main Dashboard Interface
+
+### Summary Cards
+
+*[Screenshot placeholder: Four main metric cards showing totals and trends]*
+
+The dashboard header provides immediate insights through key metric cards:
+
+**Total Connections**
+- **Current Period Total**: Complete connection count for selected time range
+- **Peak Connections**: Maximum concurrent connections reached
+- **Growth Indicator**: Percentage change from previous period
+- **Visual Trend**: Sparkline showing connection trends
+
+**Total Subscriptions**
+- **Subscription Volume**: Total subscriptions created in the period
+- **Peak Subscriptions**: Maximum concurrent subscriptions
+- **Average per User**: Subscriptions per connected user
+- **Channel Distribution**: How subscriptions spread across channels
+
+**Total Messages**
+- **Message Count**: Complete message volume for the period
+- **Peak Throughput**: Maximum messages per time unit
+- **Average Size**: Mean message payload size
+- **Success Rate**: Percentage of successful message deliveries
+
+**Performance Overview**
+- **Average Response Time**: Mean connection and message latency
+- **Error Rate**: Percentage of failed operations
+- **Uptime**: System availability percentage
+- **Health Score**: Overall system performance indicator
+
+### Time Range Selection
+
+*[Screenshot placeholder: Time range dropdown with preset options]*
+
+Flexible time range controls allow detailed analysis:
+
+**Preset Options**
+- **Last 24 Hours**: Detailed hourly breakdown for recent activity
+- **Last 7 Days**: Daily aggregation for weekly patterns
+- **Last 30 Days**: Daily aggregation for monthly trends
+- **Last 90 Days**: Daily aggregation for quarterly analysis
+
+**Granularity Selection**
+- **Hourly Data**: Available for last 24 hours, ideal for debugging and optimization
+- **Daily Data**: Available for longer periods, perfect for trend analysis
+- **Automatic Selection**: System chooses optimal granularity based on time range
+
+**Custom Ranges**
+- **Start/End Dates**: Select specific date ranges for targeted analysis
+- **Event Correlation**: Align analytics with deployment dates or incidents
+- **Comparative Analysis**: Compare different periods side by side
+
+## Interactive Charts
+
+### Connection Timeline
+
+*[Screenshot placeholder: Line chart showing connections over time with multiple metrics]*
+
+The main timeline chart displays multiple metrics simultaneously:
+
+**Primary Metrics**
+- **Connection Count**: Blue line showing connection volume over time
+- **Subscription Count**: Green line showing subscription activity
+- **Message Volume**: Orange line showing message throughput
+
+**Chart Interactions**
+- **Zoom and Pan**: Focus on specific time periods for detailed analysis
+- **Metric Toggle**: Show/hide specific metrics to focus on relevant data
+- **Hover Details**: Point-in-time metric values and context
+- **Peak Identification**: Automatic highlighting of usage peaks
+
+**Trend Analysis**
+- **Growth Patterns**: Identify consistent growth or decline trends
+- **Seasonality**: Recognize daily, weekly, or monthly usage patterns
+- **Anomaly Detection**: Spot unusual spikes or drops in activity
+- **Correlation Insights**: See how different metrics relate to each other
+
+### Metric Breakdown
+
+**Connection Analysis**
+- **Connection Success Rate**: Percentage of successful connection attempts
+- **Average Session Duration**: How long users stay connected
+- **Connection Geographic Distribution**: Where users connect from globally
+- **Connection Method**: WebSocket, Server-Sent Events, or polling breakdown
+
+**Message Analysis**
+- **Message Types**: Breakdown of different message categories
+- **Channel Performance**: Which channels see the most activity
+- **Message Size Distribution**: Understanding payload characteristics
+- **Delivery Success Rate**: Percentage of successful message deliveries
+
+## Advanced Analytics
+
+### Performance Monitoring
+
+*[Screenshot placeholder: Performance metrics dashboard with latency charts]*
+
+**Latency Metrics**
+- **Connection Establishment Time**: How quickly users can connect
+- **Message Delivery Time**: End-to-end message transmission latency
+- **Geographic Latency**: Performance differences by user location
+- **Peak vs Average**: Performance consistency during high usage
+
+**Error Tracking**
+- **Connection Failures**: Failed connection attempts and reasons
+- **Message Delivery Failures**: Messages that couldn't be delivered
+- **Timeout Events**: Operations that exceeded time limits
+- **Error Rate Trends**: Whether error rates are improving or worsening
+
+**Resource Utilization**
+- **Bandwidth Usage**: Data transfer volumes and efficiency
+- **Connection Concurrency**: Simultaneous connection handling
+- **Channel Scalability**: How performance scales with channel count
+- **Peak Capacity**: Understanding maximum system capabilities
+
+### Usage Optimization
+
+**Efficiency Insights**
+- **Channel Utilization**: Which channels are underused or oversaturated
+- **Connection Patterns**: Optimal connection timing and duration
+- **Message Batching**: Opportunities for message batching optimization
+- **Resource Allocation**: How to distribute load more effectively
+
+**Cost Optimization**
+- **Usage Efficiency**: Getting maximum value from your plan
+- **Peak Shaving**: Strategies to reduce peak usage costs
+- **Channel Consolidation**: Opportunities to merge similar channels
+- **Connection Optimization**: Reducing unnecessary connection overhead
+
+## Time-Based Analysis
+
+### Daily Patterns
+
+*[Screenshot placeholder: 24-hour usage pattern chart]*
+
+**Business Hours Analysis**
+- **Peak Hours**: When your users are most active
+- **Off-Hours Usage**: Background activity and automated systems
+- **Time Zone Distribution**: Global usage patterns across time zones
+- **Weekend vs Weekday**: Different usage patterns by day type
+
+**Hourly Breakdowns**
+- **Traffic Patterns**: Understanding when usage spikes occur
+- **Performance by Hour**: How system performance varies by time
+- **Error Clustering**: Whether errors correlate with specific times
+- **Maintenance Windows**: Optimal times for system updates
+
+### Weekly and Monthly Trends
+
+**Growth Tracking**
+- **Week-over-Week Growth**: Consistent growth patterns and rate
+- **Monthly Active Users**: Understanding user engagement trends
+- **Seasonal Variations**: How usage changes with seasons or events
+- **Long-Term Trajectory**: Overall application growth direction
+
+**Comparative Analysis**
+- **Period-over-Period**: Compare current period to previous periods
+- **Year-over-Year**: Long-term growth and seasonal trend analysis
+- **Event Correlation**: How external events impact usage patterns
+- **Forecast Modeling**: Predicting future usage based on trends
+
+## Real-Time Monitoring
+
+### Live Metrics
+
+*[Screenshot placeholder: Real-time metrics updating with live counters]*
+
+**Current Activity**
+- **Active Connections**: Live count of connected users
+- **Messages per Second**: Real-time message throughput
+- **Active Channels**: Currently active channel count
+- **Response Times**: Current system performance metrics
+
+**Real-Time Alerts**
+- **Usage Spikes**: Automatic detection of unusual activity increases
+- **Performance Degradation**: Alerts when response times increase
+- **Error Clusters**: Notification when error rates spike
+- **Capacity Warnings**: Alerts when approaching usage limits
+
+### Operational Dashboard
+
+**System Health**
+- **Overall Status**: Green/yellow/red system health indicators
+- **Service Availability**: Uptime percentage and reliability metrics
+- **Geographic Performance**: Regional performance variations
+- **Capacity Utilization**: How close to limits your usage is
+
+**Incident Response**
+- **Error Investigation**: Quick access to error details and patterns
+- **Performance Debugging**: Tools for diagnosing performance issues
+- **Usage Anomaly Investigation**: Understanding unusual usage patterns
+- **Capacity Planning**: Data for scaling decisions
+
+## Data Export and Integration
+
+### Export Capabilities
+
+**Data Formats**
+- **CSV Export**: Download metrics data for external analysis
+- **JSON Export**: Programmatic access to analytics data
+- **Image Export**: Save charts and graphs for reporting
+- **PDF Reports**: Generate formatted analytics reports
+
+**Integration Options**
+- **API Access**: Programmatic access to analytics data (planned)
+- **Webhook Notifications**: Real-time alerts to external systems
+- **Third-Party Integration**: Connect with monitoring and alerting systems
+- **Dashboard Embedding**: Include metrics in external dashboards
+
+### Reporting and Analysis
+
+**Custom Reports**
+- **Executive Summaries**: High-level usage and performance summaries
+- **Technical Deep-Dives**: Detailed performance and optimization reports
+- **Trend Analysis**: Long-term pattern and growth analysis
+- **Incident Reports**: Post-mortem analysis with relevant metrics
+
+**Business Intelligence**
+- **Usage Correlation**: How application features relate to real-time usage
+- **User Behavior**: Understanding how users interact with real-time features
+- **Revenue Impact**: How real-time features impact business metrics
+- **Growth Planning**: Data-driven expansion and optimization planning
+
+## Troubleshooting and Optimization
+
+### Performance Investigation
+
+**Identifying Issues**
+- **Latency Spikes**: When and why response times increase
+- **Connection Failures**: Patterns in connection establishment problems
+- **Message Delivery Issues**: Understanding message delivery failures
+- **Capacity Bottlenecks**: When and where system limits are reached
+
+**Root Cause Analysis**
+- **Timeline Correlation**: Relating performance issues to specific events
+- **Geographic Analysis**: Whether issues are location-specific
+- **Load Correlation**: How performance relates to usage volume
+- **Error Pattern Analysis**: Understanding systematic vs random errors
+
+### Optimization Strategies
+
+**Performance Optimization**
+- **Connection Pooling**: Optimizing connection establishment and reuse
+- **Message Batching**: Reducing overhead through message grouping
+- **Channel Organization**: Structuring channels for optimal performance
+- **Geographic Distribution**: Leveraging global edge deployment
+
+**Capacity Planning**
+- **Growth Projection**: Predicting future capacity needs
+- **Peak Planning**: Preparing for usage spikes and high-traffic events
+- **Scaling Strategies**: When and how to scale your usage plan
+- **Cost Optimization**: Balancing performance with cost efficiency
+
+## Best Practices
+
+### Monitoring Strategy
+
+**Key Performance Indicators**
+- **Connection Success Rate**: Should maintain >99% under normal conditions
+- **Message Delivery Rate**: Target >99.9% successful message delivery
+- **Average Response Time**: Maintain < 100ms for optimal user experience
+- **Error Rate**: Keep below 0.1% for production applications
+
+**Alert Configuration**
+- **Performance Thresholds**: Set alerts for degraded performance
+- **Usage Anomalies**: Monitor for unusual usage patterns
+- **Error Rate Spikes**: Alert on increased error rates
+- **Capacity Warnings**: Notifications before reaching limits
+
+### Regular Review Process
+
+**Daily Monitoring**
+- **Quick Health Check**: Overall system status and key metrics
+- **Error Review**: Investigate any error spikes or patterns
+- **Performance Check**: Verify response times are within acceptable ranges
+- **Usage Validation**: Confirm usage patterns match expectations
+
+**Weekly Analysis**
+- **Trend Review**: Week-over-week growth and pattern analysis
+- **Performance Trends**: Long-term performance improvement or degradation
+- **Capacity Planning**: Review usage growth for scaling decisions
+- **Optimization Opportunities**: Identify areas for improvement
+
+**Monthly Deep Dive**
+- **Comprehensive Performance Review**: Detailed analysis of all metrics
+- **Capacity Planning**: Long-term scaling and optimization planning
+- **ROI Analysis**: Understanding the value of real-time features
+- **Strategic Planning**: Using analytics to guide product decisions
+
+## Getting Help
+
+### Documentation Resources
+- **[Getting Started Guide](/docs/platform/getting-started)** - Basic platform setup and usage
+- **[Project Management](/docs/platform/project-management)** - Project configuration and organization
+- **[Performance Optimization](/docs/sdk/core/connection-management)** - SDK-level optimization strategies
+
+### Analytics Support
+- **Email Support**: [hey@v0id.me](mailto:hey@v0id.me) for analytics questions and optimization help
+- **Performance Consulting**: Guidance on interpreting metrics and optimization strategies
+- **Integration Support**: Help with integrating analytics into your monitoring systems
+
+---
+
+> **Data-Driven Optimization**: Regular analysis of your analytics dashboard enables continuous improvement of your real-time application's performance, user experience, and cost efficiency.
