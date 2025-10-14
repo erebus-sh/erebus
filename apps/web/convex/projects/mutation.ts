@@ -7,6 +7,7 @@ import {
   getValidatedProjectBySlugWithOwnership,
   getValidatedProjectWithOwnership,
 } from "../lib/guard";
+import { audit } from "../utils/audit";
 
 export const createProject = mutation({
   args: {
@@ -140,7 +141,6 @@ export const updateProjectWebhookUrl = mutation({
     });
 
     // Log audit entry
-    const { audit } = await import("../utils/audit");
     await audit(ctx, {
       user: user as any,
       project,
@@ -182,8 +182,6 @@ export const updateProjectName = mutation({
       title,
     });
 
-    // Log audit entry
-    const { audit } = await import("../utils/audit");
     await audit(ctx, {
       user: user as any,
       project,

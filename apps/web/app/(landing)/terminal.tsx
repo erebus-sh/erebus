@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Copy, Check } from "lucide-react";
 import { Highlight, themes } from "prism-react-renderer";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence } from "motion/react";
 import clsx from "clsx";
 
 type TabType = "cli" | "client" | "server";

@@ -14,7 +14,7 @@
     "build": "bun run --filter @erebus-sh/sdk build && bun run --filter @repo/service build:wrangler",
     "build:wrangler": "wrangler build",
     "preview": "wrangler deploy --env preview",
-    "dev": "wrangler types && clear && wrangler dev --port 8787",
+    "dev": "bun cf-typegen && clear && wrangler dev --port 8787",
     "format": "prettier --write .",
     "test": "vitest --run --config vitest.config.ts",
     "start": "wrangler dev",

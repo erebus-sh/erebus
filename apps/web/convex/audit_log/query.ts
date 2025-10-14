@@ -1,7 +1,7 @@
 import { query } from "../_generated/server";
 import { ConvexError, v } from "convex/values";
 import { getValidatedProjectBySlugWithOwnershipForQuery } from "../lib/guard";
-import type { AuditProps } from "../../components/audit";
+import type { AuditProps } from "../../components/types";
 
 export const getAuditLogsForProject = query({
   args: {

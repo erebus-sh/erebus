@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { shuffleString } from "../utils/shuffle";
+import { shuffleStringAndObfuscate } from "../utils/shuffle";
 import { nanoid } from "nanoid";
 
 test("shuffleString produces a permutation of the input for 100 random ids of varying length", () => {
@@ -7,7 +7,7 @@ test("shuffleString produces a permutation of the input for 100 random ids of va
   for (let i = 0; i < 100; i++) {
     const len = 2 + Math.floor(i * (30 / 99)); // 2 to 32
     const original = nanoid(len);
-    const shuffled = shuffleString(original);
+    const shuffled = shuffleStringAndObfuscate(original);
 
     // Should be same length
     expect(shuffled.length).toBe(original.length);

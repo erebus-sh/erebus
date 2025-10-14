@@ -11,6 +11,10 @@
     "skipLibCheck": true,
     "allowSyntheticDefaultImports": true,
 
+    /* Add jsx and react */
+    "jsx": "react-jsx",
+    "types": ["react", "react-dom"],
+
     /* These compiler options are required by Convex */
     "target": "ESNext",
     "lib": ["ES2021", "dom"],

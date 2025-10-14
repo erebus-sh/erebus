@@ -9,15 +9,7 @@ import {
   TimelineTitle,
 } from "@/components/ui/timeline";
 import { formatRelativeTime } from "@/utils/timeLanguage";
-
-export interface AuditProps {
-  id: string;
-  date: string;
-  title: string;
-  action: string;
-  description: string;
-  image: string;
-}
+import { AuditProps } from "./types";
 
 export default function Audit({ items }: { items: AuditProps[] }) {
   return (
