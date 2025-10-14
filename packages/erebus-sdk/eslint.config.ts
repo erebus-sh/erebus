@@ -6,6 +6,7 @@ import _import from "eslint-plugin-import";
 import { FlatCompat } from "@eslint/eslintrc";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import type { Linter } from "eslint"; // 👈 add this import
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -15,7 +16,9 @@ const compat = new FlatCompat({
   allConfig: eslint.configs.all,
 });
 
-export default defineConfig([
+// this cause The inferred type of 'default' cannot be named without a reference to, it's a known issue
+// https://github.com/eslint/rewrite/issues/283
+const config: Linter.FlatConfig[] = defineConfig([
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
@@ -84,3 +87,5 @@ export default defineConfig([
     },
   },
 ]);
+
+export default config;
