@@ -85,29 +85,13 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 **Development Keys (`dv-er-*`)**
 - **Purpose**: Testing, development, and staging environments
 - **Security Level**: Lower security requirements, frequent regeneration acceptable
-- **Usage Patterns**: High experimentation, frequent changes
 - **Monitoring**: Less stringent monitoring requirements
 
 **Production Keys (`sk-er-*`)**
 - **Purpose**: Live applications serving real users
 - **Security Level**: Highest security standards, careful lifecycle management
-- **Usage Patterns**: Stable, predictable usage with change controls
 - **Monitoring**: Comprehensive monitoring and alerting required
 
-### Environment Best Practices
-
-**Separation Strategy**
-```
-Development Project: my-app-dev
-├── dv-er-frontend-testing
-├── dv-er-backend-integration
-└── dv-er-local-development
-
-Production Project: my-app-prod
-├── sk-er-frontend-production
-├── sk-er-backend-production
-└── sk-er-monitoring-service
-```
 
 **Key Lifecycle Management**
 - **Development**: Regenerate keys frequently during development
@@ -212,12 +196,6 @@ if (!apiKey) {
 - **Error Rates**: Authentication failures and connection errors
 - **Usage Patterns**: Time-based usage analysis for optimization
 
-**Performance Insights**
-- **Peak Usage**: Identify highest usage periods for capacity planning
-- **Geographic Distribution**: Understanding where keys are used globally
-- **Application Patterns**: How different keys are used across your application stack
-- **Efficiency Metrics**: Connection success rates and performance indicators
-
 ### Security Monitoring
 
 **Unusual Activity Detection**
@@ -280,12 +258,6 @@ While Erebus doesn't currently provide API access for key management, you can im
 - **Key Format**: Ensure complete key is being used (no truncation)
 - **Environment Match**: Confirm key environment matches usage context
 - **Network Issues**: Check for connectivity problems
-
-**Performance Issues**
-- **Key Overuse**: Single key handling excessive load
-- **Geographic Latency**: Key usage far from optimal regions
-- **Connection Pooling**: Inefficient connection management
-- **Rate Limiting**: Hitting usage limits or throttling
 
 **Security Concerns**
 - **Compromised Keys**: Immediate revocation and replacement required
