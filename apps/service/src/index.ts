@@ -12,7 +12,7 @@ import { createMiddleware } from "hono/factory";
 import { validator } from "hono/validator";
 import { nanoid } from "nanoid";
 import { pauseProjectId, unpauseProjectId } from "./handlers/commands";
-import { env } from "process";
+import { env } from "cloudflare:workers";
 
 // API version configuration
 const API_VERSION = "v1";
