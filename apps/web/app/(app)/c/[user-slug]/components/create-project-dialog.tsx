@@ -151,7 +151,12 @@ export default function CreateProjectDialog() {
                 Cancel
               </Button>
             </DialogClose>
-            <Button type="submit" disabled={isLoading}>
+            <Button
+              type="submit"
+              disabled={
+                isLoading || process.env.NEXT_PUBLIC_EREBUS_ON_HOLD === "true"
+              }
+            >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
