@@ -12,6 +12,7 @@ import { createMiddleware } from "hono/factory";
 import { validator } from "hono/validator";
 import { nanoid } from "nanoid";
 import { pauseProjectId, unpauseProjectId } from "./handlers/commands";
+import { env } from "process";
 
 // API version configuration
 const API_VERSION = "v1";
@@ -185,6 +186,14 @@ const apiRouter = new Hono<{
     const request = c.req.raw;
     const upgrade = request.headers.get("upgrade");
     const requestId = c.get("requestId");
+
+    if (env.EREBUS_ON_HOLD === "true") {
+      console.log(`[${requestId}] Erebus on hold, returning 403`);
+      return c.json(
+        { error: "Erebus on hold, please contact support@erebus.sh thanks!" },
+        403,
+      );
+    }
 
     if (upgrade !== "websocket") {
       console.log(
