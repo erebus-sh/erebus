@@ -30,7 +30,7 @@ import {
 // import SettingsMenu from "../navbar-components/settings-menu";
 import Banner from "../Banner";
 import { useQueryWithState } from "@/utils/query";
-import { CreditCard } from "lucide-react";
+import { AlertCircle, CreditCard } from "lucide-react";
 
 export default function NavbarConsole() {
   const { navStack, pushPage } = useNavStackStore();
@@ -179,6 +179,14 @@ export default function NavbarConsole() {
           textLink="Subscribe"
           textLinkHref={customerPortalUrl!}
           icon={CreditCard}
+        />
+      )}
+      {process.env.NEXT_PUBLIC_EREBUS_ON_HOLD === "true" && (
+        <Banner
+          text="Erebus is on hold, please contact support@erebus.sh thanks!"
+          textLink="Contact support"
+          textLinkHref="mailto:support@erebus.sh"
+          icon={AlertCircle}
         />
       )}
     </>
