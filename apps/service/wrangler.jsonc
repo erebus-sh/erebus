@@ -3,59 +3,61 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "erebus-service",
-	"main": "src/index.ts",
-	"compatibility_date": "2025-07-12",
-	"keep_vars": true,
-	"vars": {
-		"DEBUG": "true",
-    "EREBUS_ON_HOLD": "true"
-	},
-	"routes": [
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "erebus-service",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-07-12",
+  "keep_vars": true,
+  "vars": {
+    "DEBUG": "true",
+    "EREBUS_ON_HOLD": "true",
+  },
+  "routes": [
     {
       "pattern": "gateway.erebus.sh",
-      "custom_domain": true
-    }
+      "custom_domain": true,
+    },
+    {
+      "pattern": "gateway.erebus.sh/*",
+      "zone_id": "41268da4e165a3a0c79078684448a9c6",
+    },
   ],
-	"migrations": [
-		{
-			"new_sqlite_classes": [
-				"ChannelV1"
-			],
-			"tag": "v1"
-		}
-	],
-	"durable_objects": {
-		"bindings": [
-			{
-				"class_name": "ChannelV1",
-				"name": "CHANNEL"
-			}
-		]
-	},
-	"observability": {
-		"enabled": true
-	},
-	"queues": {
-		"producers": [
-			{
-				"queue": "erebus-queue",
-				"binding": "EREBUS_QUEUE"
-			}
-		],
-		"consumers": [
-			{
-				"queue": "erebus-queue",
-				"max_batch_size": 100,
-				"max_batch_timeout": 60
-			}
-		]
-	},
-	"kv_namespaces": [
-		{
-			"binding": "CACHE",
-			"id": "3ee8243079c847c78fe6a68bdcb256a4"
-		}
-	]
+  "migrations": [
+    {
+      "new_sqlite_classes": ["ChannelV1"],
+      "tag": "v1",
+    },
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "class_name": "ChannelV1",
+        "name": "CHANNEL",
+      },
+    ],
+  },
+  "observability": {
+    "enabled": true,
+  },
+  "queues": {
+    "producers": [
+      {
+        "queue": "erebus-queue",
+        "binding": "EREBUS_QUEUE",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "erebus-queue",
+        "max_batch_size": 100,
+        "max_batch_timeout": 60,
+      },
+    ],
+  },
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "3ee8243079c847c78fe6a68bdcb256a4",
+    },
+  ],
 }

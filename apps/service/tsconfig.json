@@ -41,5 +41,9 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["./**/*.ts", "./worker-configuration.d.ts", "../../packages/shared/enums/wserrors.ts"]
+  "include": [
+    "./**/*.ts",
+    "./worker-configuration.d.ts",
+    "../../packages/shared/enums/wserrors.ts"
+  ]
 }
