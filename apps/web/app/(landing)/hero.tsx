@@ -11,7 +11,7 @@ export function Hero({ id }: { id: string }) {
         <div className="lg:grid lg:grid-cols-12 lg:gap-8">
           <div className="sm:text-center md:mx-auto md:max-w-2xl lg:col-span-6 lg:text-left">
             <span className="block text-xs text-zinc-500 font-black">
-              [Public Beta]
+              [Public Beta] (Archived Project - No Longer Maintained. Thanks for the support Everyone!)
             </span>
             <h1 className="text-foreground text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl">
               Erebus
