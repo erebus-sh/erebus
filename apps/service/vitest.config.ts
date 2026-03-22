@@ -9,6 +9,11 @@ export default defineWorkersConfig({
         miniflare: {
           bindings: {
             EREBUS_ON_HOLD: "false",
+            PUBLIC_KEY_JWK: JSON.stringify({
+              crv: "Ed25519",
+              kty: "OKP",
+              x: "3OYFTPVBTnxu58THGxT_GTpYhXC2SzMOeihTi1esMdE",
+            }),
           },
         },
       },
