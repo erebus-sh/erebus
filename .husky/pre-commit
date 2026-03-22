@@ -1,2 +1,0 @@
-bun format && git add .
-cd apps/service && bun wrangler types && git add .

@@ -1,0 +1,32 @@
+# Lefthook — git hooks for Erebus
+# https://github.com/evilmartians/lefthook
+
+pre-commit:
+  parallel: true
+  commands:
+    format:
+      glob: "*.{ts,tsx,js,jsx,md,json,css}"
+      run: bunx prettier --write {staged_files} && git add {staged_files}
+      stage_fixed: true
+      skip:
+        - merge
+        - rebase
+
+    lint:
+      glob: "*.{ts,tsx,js,jsx}"
+      run: bunx eslint {staged_files} --no-error-on-unmatched-pattern
+      skip:
+        - merge
+        - rebase
+
+    wrangler-types:
+      root: "apps/service/"
+      run: bun wrangler types && git add .
+      skip:
+        - merge
+        - rebase
+
+commit-msg:
+  commands:
+    commitlint:
+      run: bunx commitlint --edit {1}
