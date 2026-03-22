@@ -1,0 +1,96 @@
+---
+title: Examples
+description: Working example apps you can run and learn from
+---
+
+## Next.js Chat App
+
+A full Next.js application with three interactive demos, each showcasing a different SDK feature.
+
+```bash
+cd examples/chat-app
+bun install
+bun run dev  # runs on port 3002
+```
+
+### Demo pages
+
+| Route | What it shows |
+| --- | --- |
+| `/chat` | Basic real-time chat — `subscribe`, `publish`, message list |
+| `/presence` | Who's online — `onPresence`, `offPresence`, join/leave events |
+| `/typed` | Type-safe messaging — `ErebusPubSubSchemas` with Zod validation |
+
+### How it works
+
+**Server** (`src/app/api/erebus/[...all]/route.ts`):
+
+The API route uses `createRouteHandler` from `@erebus-sh/sdk/server/next` to handle grant token generation. It creates an `ErebusService` with your API key, prepares a session, joins the requested channel, and allows read-write access to all topics.
+
+**Client** (each page):
+
+Every page creates an `ErebusPubSubClient` using the factory:
+
+```typescript
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "",  // same-origin — hits /api/erebus/pubsub/grant
+  wsBaseUrl: process.env.NEXT_PUBLIC_WS_URL,
+});
+
+client.joinChannel("demo");
+await client.connect();
+```
+
+Then subscribes and publishes:
+
+```typescript
+await client.subscribe("chat", (msg) => {
+  const data = JSON.parse(msg.payload as string);
+  // handle message
+});
+
+await client.publish("chat", JSON.stringify({ text: "hello", user: "alice" }));
+```
+
+---
+
+## Plain TypeScript
+
+A minimal example that runs with `bun run index.ts` — no framework, no UI. Good for understanding the raw SDK API.
+
+```bash
+cd examples/chat-ts
+bun install
+bun run index.ts
+```
+
+Demonstrates: client creation, auth server with `createGenericAdapter`, channel joining, subscribe, publish, presence tracking.
+
+---
+
+## Typed TypeScript
+
+Same as the plain example but wraps the client with `ErebusPubSubSchemas` for compile-time and runtime type safety using Zod schemas.
+
+```bash
+cd examples/chat-ts-typed
+bun install
+bun run index.ts
+```
+
+---
+
+## Terminal UI (TUI)
+
+An interactive terminal chat app built with [Ink](https://github.com/vadimdemedes/ink) (React for CLIs). Features login, chat creation, SQLite message persistence, and real-time sync.
+
+```bash
+cd examples/chat-tui
+bun install
+bun run index.tsx
+```
+
+Login with `user` / `user`.

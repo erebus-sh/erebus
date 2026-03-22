@@ -1,4 +1,4 @@
 {
   "title": "Getting Started",
-  "pages": ["install", "quickstart-example", "core", "next.js"]
+  "pages": ["install", "quickstart-example", "core", "next.js", "examples"]
 }
