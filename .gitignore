@@ -40,6 +40,9 @@ yarn-error.log*
 *.pem
 Thumbs.db
 
+# Lefthook
+.husky/
+
 # Cloudflare Workers
 .dev.vars
 .wrangler/
