@@ -18,7 +18,7 @@ Erebus is a real-time infrastructure platform built on Cloudflare Durable Object
 - **Linting**: ESLint 9 flat config
 - **Formatting**: Prettier 3.6.2 (+ Tailwind plugin in apps/web)
 - **Testing**: Vitest 3.2.x
-- **Git hooks**: Husky (pre-commit: format + wrangler types)
+- **Git hooks**: Lefthook (pre-commit: format + lint + wrangler types, commit-msg: commitlint)
 
 ## Monorepo Structure
 
@@ -187,7 +187,8 @@ cd apps/service && bun run test
 - **Build SDK before service**: `apps/service/build` depends on `@erebus-sh/sdk` being built first.
 - **Wrangler types**: Run `bun run cf-typegen` in apps/service after changing wrangler.jsonc bindings.
 - **Convex dev**: `apps/web` dev runs Convex and Next.js concurrently via `concurrently`.
-- **Pre-commit hook**: Husky runs `bun format && git add .` then generates wrangler types.
+- **Pre-commit hook**: Lefthook runs format (prettier), lint (eslint), and wrangler types in parallel.
+- **Commit-msg hook**: Commitlint enforces conventional commit format (`type(scope): description`).
 - **No .env.example checked in** — environment variables are documented in each app's README.
 - **EREBUS_ON_HOLD**: Feature flag that disables project creation in the UI.
 - **AGPL license**: All contributions must be AGPL-compatible.
