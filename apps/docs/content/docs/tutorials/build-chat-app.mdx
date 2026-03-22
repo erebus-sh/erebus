@@ -1,0 +1,293 @@
+---
+title: "Build a Chat App"
+description: "Build a real-time chat application with Erebus in under 10 minutes"
+---
+
+Build a working real-time chat app using the Erebus SDK with Next.js. By the end, two browser tabs will exchange messages in real time.
+
+## Prerequisites
+
+- An Erebus account with an API key (starts with `dv-er-`)
+- Node.js 18+ or Bun installed
+- Basic familiarity with Next.js
+
+## Step 1: Create a Next.js project and install the SDK
+
+```bash
+npx create-next-app@latest chat-app --typescript --app
+cd chat-app
+npm install @erebus-sh/sdk
+```
+
+Or with Bun:
+
+```bash
+bun create next-app chat-app --typescript --app
+cd chat-app
+bun add @erebus-sh/sdk
+```
+
+## Step 2: Set up the server-side route handler
+
+The SDK needs a server endpoint to authorize clients. This endpoint validates the user, creates a session, and grants access to channels and topics.
+
+Create the file `src/app/api/erebus/[...all]/route.ts`:
+
+```ts
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+import { createRouteHandler } from "@erebus-sh/sdk/server/next";
+import { cookies } from "next/headers";
+
+export const { POST } = createRouteHandler({
+  authorize: async (channel, ctx) => {
+    // Authenticate the user however your app does it.
+    // Here we read a simple cookie for demonstration purposes.
+    const ckis = await cookies();
+    const userId = ckis.get("userId")?.value;
+    if (!userId) {
+      throw new Error("Not authenticated");
+    }
+
+    const service = new ErebusService({
+      secret_api_key: process.env.EREBUS_SECRET_KEY!,
+    });
+
+    const session = await service.prepareSession({ userId });
+
+    // Join the requested channel and grant read-write on all topics
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+
+    return session;
+  },
+  fireWebhook: async (message) => {
+    // Handle webhook events (optional)
+  },
+});
+```
+
+Add your secret key to `.env.local`:
+
+```
+EREBUS_SECRET_KEY=dv-er-your_secret_key_here
+```
+
+## Step 3: Create the chat client
+
+Create a client instance that connects to your auth endpoint. Create `src/lib/erebus.ts`:
+
+```ts
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+
+export const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:3000", // your Next.js app URL
+});
+```
+
+`authBaseUrl` tells the SDK where to find your `/api/erebus` route handler. In production, set this to your deployed URL.
+
+## Step 4: Build the chat UI
+
+Create `src/app/chat/page.tsx`:
+
+```tsx
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { client } from "@/lib/erebus";
+
+type ChatMessage = {
+  id: string;
+  text: string;
+  senderId: string;
+  timestamp: number;
+};
+
+export default function ChatPage() {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [connected, setConnected] = useState(false);
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    async function setup() {
+      // 1. Join a channel
+      client.joinChannel("chat");
+
+      // 2. Connect to the Erebus gateway
+      await client.connect();
+      setConnected(true);
+
+      // 3. Subscribe to a topic within the channel
+      await client.subscribe("room_general", (msg) => {
+        const payload = JSON.parse(msg.payload);
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: msg.id,
+            text: payload.text,
+            senderId: msg.senderId,
+            timestamp: payload.timestamp,
+          },
+        ]);
+      });
+    }
+
+    setup().catch(console.error);
+
+    return () => {
+      client.close();
+    };
+  }, []);
+
+  const sendMessage = async () => {
+    if (!input.trim() || !connected) return;
+
+    await client.publish(
+      "room_general",
+      JSON.stringify({ text: input.trim(), timestamp: Date.now() }),
+    );
+    setInput("");
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: 600, margin: "0 auto", padding: 20 }}>
+      <h1>Chat</h1>
+      <div
+        style={{
+          border: "1px solid #ddd",
+          borderRadius: 8,
+          padding: 16,
+          height: 400,
+          overflowY: "auto",
+          marginBottom: 16,
+        }}
+      >
+        {messages.map((msg) => (
+          <div key={msg.id} style={{ marginBottom: 8 }}>
+            <strong>{msg.senderId.slice(0, 8)}</strong>: {msg.text}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", gap: 8 }}>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a message..."
+          disabled={!connected}
+          style={{
+            flex: 1,
+            padding: 12,
+            borderRadius: 4,
+            border: "1px solid #ddd",
+          }}
+        />
+        <button
+          onClick={sendMessage}
+          disabled={!input.trim() || !connected}
+          style={{ padding: "12px 24px", borderRadius: 4 }}
+        >
+          Send
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+The key concepts:
+
+- **`joinChannel("chat")`** selects which channel to connect to. Channels are alphanumeric + underscores, max 64 characters.
+- **`connect()`** opens a WebSocket to the Erebus gateway and authenticates via your route handler.
+- **`subscribe("room_general", handler)`** listens for messages on a topic within the channel.
+- **`publish("room_general", payload)`** sends a string payload to all subscribers on that topic.
+
+## Step 5: Run it
+
+```bash
+npm run dev
+```
+
+Open two browser tabs to `http://localhost:3000/chat`. Messages sent in one tab appear in the other in real time.
+
+### Acknowledgements
+
+If you need delivery confirmation, use `publishWithAck` instead of `publish`:
+
+```ts
+await client.publishWithAck(
+  "room_general",
+  JSON.stringify({ text: input, timestamp: Date.now() }),
+  (ack) => {
+    if (ack.success) {
+      console.log("Delivered:", ack.seq);
+    } else {
+      console.error("Failed:", ack.error);
+    }
+  },
+);
+```
+
+### Type-safe messages with schemas
+
+For compile-time and runtime payload validation, use `ErebusPubSubSchemas` with Zod:
+
+```ts
+import {
+  ErebusClient,
+  ErebusClientState,
+  ErebusPubSubSchemas,
+} from "@erebus-sh/sdk/client";
+import { z } from "zod";
+
+const schemas = {
+  chat: z.object({
+    text: z.string(),
+    timestamp: z.number(),
+  }),
+} as const;
+
+const rawClient = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:3000",
+});
+
+const client = new ErebusPubSubSchemas(rawClient, schemas);
+
+client.joinChannel("chat");
+await client.connect();
+
+// Subscribe with typed payloads
+await client.subscribe("chat", "general", (msg) => {
+  // msg.payload is typed as { text: string; timestamp: number }
+  console.log(msg.payload.text);
+});
+
+// Publish with validation -- wrong shapes are caught at compile time and runtime
+await client.publish("chat", "general", {
+  text: "Hello!",
+  timestamp: Date.now(),
+});
+```
+
+With `ErebusPubSubSchemas`, the topic is split into two parts: the schema key (`"chat"`) and a sub-topic (`"general"`). They are merged internally as `chat_general`.
+
+## Next steps
+
+- [Add presence tracking](/docs/tutorials/add-presence) to show who is online
+- Read the [SDK reference](/docs/sdk) for the full API
+- Explore [webhooks](/docs/platform/webhooks) for server-side event handling

@@ -1,0 +1,174 @@
+---
+title: "Add Presence Tracking"
+description: "Show who's online in your app with Erebus presence"
+---
+
+Presence tracking lets you know when users join or leave a topic in real time. Use it to build "who's online" indicators, typing indicators, or active user lists.
+
+## Prerequisites
+
+- A working Erebus setup (see [Build a Chat App](/docs/tutorials/build-chat-app))
+- The `@erebus-sh/sdk` package installed
+
+## How presence works
+
+When a client subscribes to a topic, Erebus broadcasts a presence event with status `"online"` to all other subscribers on that topic. When a client disconnects or unsubscribes, a `"offline"` event is broadcast. Each presence event includes the `clientId`, `topic`, `status`, and `timestamp`.
+
+## Step 1: Subscribe to presence events
+
+After subscribing to a topic, register a presence handler with `onPresence`. The handler fires whenever a user joins or leaves.
+
+```ts
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
+
+const client = ErebusClient.createClient({
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:3000",
+});
+
+client.joinChannel("chat");
+await client.connect();
+
+// Subscribe to the topic first -- presence requires an active subscription
+await client.subscribe("room_general", (msg) => {
+  console.log("Message:", msg.payload);
+});
+
+// Register a presence handler for the same topic
+await client.onPresence("room_general", (presence) => {
+  console.log(presence.clientId, "is now", presence.status);
+  // presence.status is "online" or "offline"
+  // presence.topic is "room_general"
+  // presence.timestamp is a Unix ms timestamp
+  // presence.subscribers is an optional array of current subscriber client IDs
+});
+```
+
+`onPresence` waits for the subscription to be ready before registering, so you can safely call it right after `subscribe`.
+
+## Step 2: Handle join and leave events
+
+Track online users by maintaining a Set of client IDs:
+
+```ts
+const onlineUsers = new Set<string>();
+
+await client.onPresence("room_general", (presence) => {
+  if (presence.status === "online") {
+    onlineUsers.add(presence.clientId);
+  } else {
+    onlineUsers.delete(presence.clientId);
+  }
+
+  console.log("Online users:", [...onlineUsers]);
+});
+```
+
+In a React component:
+
+```tsx
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { client } from "@/lib/erebus";
+
+export function OnlineUsers() {
+  const [users, setUsers] = useState<Set<string>>(new Set());
+  const initialized = useRef(false);
+
+  useEffect(() => {
+    if (initialized.current) return;
+    initialized.current = true;
+
+    async function setup() {
+      client.joinChannel("chat");
+      await client.connect();
+
+      await client.subscribe("room_general", (msg) => {
+        // handle messages
+      });
+
+      await client.onPresence("room_general", (presence) => {
+        setUsers((prev) => {
+          const next = new Set(prev);
+          if (presence.status === "online") {
+            next.add(presence.clientId);
+          } else {
+            next.delete(presence.clientId);
+          }
+          return next;
+        });
+      });
+    }
+
+    setup().catch(console.error);
+
+    return () => {
+      client.close();
+    };
+  }, []);
+
+  return (
+    <div>
+      <h3>{users.size} online</h3>
+      <ul>
+        {[...users].map((id) => (
+          <li key={id}>{id.slice(0, 8)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+```
+
+## Step 3: Remove presence handlers
+
+To stop listening for presence events on a topic, use `offPresence` with the same handler reference:
+
+```ts
+const handler = (presence) => {
+  console.log(presence.clientId, presence.status);
+};
+
+// Start listening
+await client.onPresence("room_general", handler);
+
+// Stop listening
+client.offPresence("room_general", handler);
+```
+
+To remove all presence handlers for a topic at once:
+
+```ts
+client.clearPresenceHandlers("room_general");
+```
+
+## Presence with typed schemas
+
+If you are using `ErebusPubSubSchemas`, the presence API takes both the schema key and sub-topic:
+
+```ts
+import { ErebusPubSubSchemas } from "@erebus-sh/sdk/client";
+
+// Assuming `client` is an ErebusPubSubSchemas instance
+await client.onPresence("chat", "general", (presence) => {
+  console.log(presence.clientId, "is", presence.status);
+});
+```
+
+## Presence event shape
+
+Every presence callback receives an object with these fields:
+
+| Field         | Type                    | Description                                                     |
+| ------------- | ----------------------- | --------------------------------------------------------------- |
+| `clientId`    | `string`                | The unique ID of the client that joined or left                 |
+| `topic`       | `string`                | The topic the event occurred on                                 |
+| `status`      | `"online" \| "offline"` | Whether the client connected or disconnected                    |
+| `timestamp`   | `number`                | Unix timestamp in milliseconds                                  |
+| `subscribers` | `string[] \| undefined` | Current list of subscriber client IDs (included in some events) |
+
+## Next steps
+
+- Read the [SDK reference](/docs/sdk) for the full client API
+- Learn about [channels and topics](/docs/concepts) in the concepts section
