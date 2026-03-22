@@ -11,4 +11,16 @@ image: https://shadcnblocks.com/images/block/placeholder-5.svg
 
 ## What is Convex?
 
-Convex is a backend-as-a-service platform that provides a set of tools for building real-time applications. It is built on top of Cloudflare Durable Objects and provides a set of tools for building real-time applications.
+Convex is a reactive backend platform that combines a document database, server functions, and real-time subscriptions into a single service. Unlike traditional databases where you poll for changes, Convex pushes updates to every connected client the moment data changes.
+
+## Why we skipped the analytics pipeline
+
+Most platforms bolt on a separate analytics stack: events flow into a queue, get processed by a pipeline, land in a warehouse, and finally render in a dashboard that refreshes every few minutes. That is a lot of infrastructure for showing developers how many messages their channels handled today.
+
+Erebus already uses Convex as its primary database for projects, channels, and API keys. Every mutation — a message published, a connection opened, a grant issued — is already a Convex write. By aggregating counters and storing usage snapshots directly in mutation handlers, we capture analytics at the source with zero additional infrastructure.
+
+The key advantage is reactivity. Convex queries are live subscriptions. When a usage counter increments, the dashboard updates instantly without polling or WebSocket plumbing on our side. The `useQuery()` hook in the dashboard component receives the new value within milliseconds.
+
+This approach keeps the architecture simple. There is no event bus, no batch ETL job, and no separate read replica for analytics. Aggregations run inside Convex server functions close to the data. For the scale Erebus operates at, this is faster, cheaper, and far easier to maintain than a dedicated analytics pipeline.
+
+The tradeoff is clear: we lose the flexibility of a full data warehouse. But for product analytics — usage charts, connection counts, message throughput — Convex gives us real-time accuracy with almost no operational cost.

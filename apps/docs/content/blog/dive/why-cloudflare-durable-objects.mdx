@@ -11,10 +11,20 @@ image: https://shadcnblocks.com/images/block/placeholder-5.svg
 
 ## What are Durable Objects?
 
-Durable Objects are distributed V8 isolates that can run across Cloudflare’s global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.
+Durable Objects are distributed V8 isolates that can run across Cloudflare's global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.
 
 Because they are V8 instances, they can also hibernate and scale down to zero when idle. That means Erebus runs serverless by design, so you only pay for what you actually use.
 
 ## Why Erebus chose Durable Objects
 
-WIP...
+Traditional real-time infrastructure stacks a WebSocket server on top of a message broker (Redis Pub/Sub, Kafka, NATS) and a separate database for persistence. Each layer adds latency, operational overhead, and failure modes. Durable Objects collapse all three into a single primitive.
+
+Each Erebus channel maps to one Durable Object. That object is a single-threaded actor: it processes one message at a time with no concurrency, which eliminates entire classes of race conditions around sequencing and state mutation. There is no need for distributed locks or compare-and-swap loops.
+
+Durable Objects provide built-in WebSocket hibernation. When all clients disconnect, the isolate sleeps and consumes zero resources. When a client reconnects, Cloudflare wakes the object and rehydrates its state from embedded SQLite storage. This gives Erebus durable message history and sequence tracking without an external database.
+
+The SQLite backing store is co-located with the isolate, so reads are sub-millisecond. Writes are transactional and survive restarts. Combined with alarm-based TTL cleanup, Erebus can buffer and replay messages without a separate cache tier.
+
+Finally, Durable Objects run on Cloudflare's global network. Each channel is pinned to the region closest to its first client, which keeps latency low. There is no single-region bottleneck and no cross-region replication to manage. The platform handles failover and migration transparently.
+
+The result is a real-time backend with fewer moving parts, lower tail latency, and zero infrastructure to operate.
