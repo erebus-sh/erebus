@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { loader } from "fumadocs-core/source";
 import {
   isBlogRootPage,
   isSeriesPage,
@@ -45,7 +45,7 @@ export interface OGImageGeneratorConfig {
   /**
    * Blog source to get post data
    */
-  blogSource: any;
+  blogSource: ReturnType<typeof loader>;
 }
 
 /**

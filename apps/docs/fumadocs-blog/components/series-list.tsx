@@ -1,16 +1,18 @@
 import React from "react";
 import Link from "next/link";
-import { getPostsBySeries } from "./utils";
 import { BookOpen } from "lucide-react";
-import { BlogConfiguration } from "./types";
+import { BlogConfiguration, BlogPost } from "./types";
 import { slot } from "./shared";
 
 interface SeriesListProps {
   seriesSlug: string;
   configuration?: BlogConfiguration;
-  posts?: any[];
-  getSortedByDatePosts?: any;
-  getSeriesBySlug: (slug: string) => any;
+  posts?: BlogPost[];
+  getSortedByDatePosts?: (
+    posts: BlogPost[],
+    includeDrafts?: boolean,
+  ) => BlogPost[];
+  getSeriesBySlug: (slug: string) => { label: string; description?: string };
 }
 
 export function SeriesList({

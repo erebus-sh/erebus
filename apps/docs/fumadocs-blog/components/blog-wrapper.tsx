@@ -26,7 +26,7 @@ interface BlogWrapperProps {
   configuration: BlogConfiguration;
   getCategoryBySlug: (slug: string) => {
     label: string;
-    icon?: any;
+    icon?: React.ReactNode;
     description?: string;
   };
   getSeriesBySlug: (slug: string) => { label: string; description?: string };
@@ -36,7 +36,7 @@ interface BlogWrapperProps {
 
 export async function BlogWrapper({
   params,
-  blogSource,
+  blogSource: _blogSource,
   posts,
   configuration,
   getCategoryBySlug,

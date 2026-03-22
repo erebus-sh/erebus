@@ -10,10 +10,12 @@ import {
   getSeriesSlug,
   getCategorySlug,
 } from "./page-type";
+import type { loader } from "fumadocs-core/source";
 import { createUrlUtils } from "./url-utils";
+import type { BlogConstants } from "./types";
 
 // Helper function to generate image metadata for OpenGraph and Twitter
-function getImageMetadata(url: string, blogConstants: any) {
+function getImageMetadata(url: string, blogConstants: BlogConstants) {
   return {
     alt: blogConstants.blogTitle,
     url,
@@ -24,11 +26,14 @@ function getImageMetadata(url: string, blogConstants: any) {
 
 export async function generateBlogMetadata(props: {
   params: { slug?: string[] };
-  createBlogMetadata: (override: Metadata, blogConstants: any) => Metadata;
-  blogConstants: any;
-  blogSource: any;
-  getCategoryBySlug: (slug: string) => any;
-  getSeriesBySlug: (slug: string) => any;
+  createBlogMetadata: (
+    override: Metadata,
+    blogConstants: BlogConstants,
+  ) => Metadata;
+  blogConstants: BlogConstants;
+  blogSource: ReturnType<typeof loader>;
+  getCategoryBySlug: (slug: string) => { label: string; description?: string };
+  getSeriesBySlug: (slug: string) => { label: string; description?: string };
 }): Promise<Metadata> {
   const {
     params,

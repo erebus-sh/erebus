@@ -1,5 +1,3 @@
-import { BlogConfig } from "./types";
-
 /**
  * Configuration for URL utilities
  */

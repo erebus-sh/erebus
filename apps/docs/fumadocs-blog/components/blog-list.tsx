@@ -85,7 +85,7 @@ export function CategoryBlogList({
   disablePagination?: boolean;
   configuration?: BlogConfiguration;
   posts: BlogPost[];
-  getCategoryBySlug: (slug: string) => any;
+  getCategoryBySlug: (slug: string) => { label: string; description?: string };
 }) {
   const pageSize = configuration?.config?.pageSize || 5;
   const categoryInfo = getCategoryBySlug(category);

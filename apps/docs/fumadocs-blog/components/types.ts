@@ -50,18 +50,18 @@ export interface PostCardProps {
   configuration?: BlogConfiguration;
 }
 
-// Define BlogConfiguration as an interface that extends Record<string, any>
-export interface BlogConfiguration extends Record<string, any> {
+// Define BlogConfiguration as an interface that extends Record<string, unknown>
+export interface BlogConfiguration extends Record<string, unknown> {
   GridBackground?: React.ComponentType<{ maxWidthClass?: string }>;
   PostCard?: React.ComponentType<PostCardProps>;
-  Button?: React.ComponentType<any>;
-  Popover?: React.ComponentType<any>;
-  PopoverContent?: React.ComponentType<any>;
-  PopoverTrigger?: React.ComponentType<any>;
-  Badge?: React.ComponentType<any>;
-  Book?: React.ComponentType<any>;
-  Card?: React.ComponentType<any>;
-  cn?: (...inputs: any[]) => string;
+  Button?: React.ComponentType<Record<string, unknown>>;
+  Popover?: React.ComponentType<Record<string, unknown>>;
+  PopoverContent?: React.ComponentType<Record<string, unknown>>;
+  PopoverTrigger?: React.ComponentType<Record<string, unknown>>;
+  Badge?: React.ComponentType<Record<string, unknown>>;
+  Book?: React.ComponentType<Record<string, unknown>>;
+  Card?: React.ComponentType<Record<string, unknown>>;
+  cn?: (...inputs: unknown[]) => string;
   backgroundPattern?: {
     enabled: boolean;
     component: React.ReactNode;
@@ -77,5 +77,7 @@ export interface MetadataImageResult {
   getImageMeta: (slugs: string[]) => { alt: string; url: string };
   withImage: (slugs: string[], metadata?: Metadata) => Metadata;
   generateParams: () => { slug: string[] }[];
-  createAPI: (handler: any) => any;
+  createAPI: (
+    handler: (request: Request) => Response | Promise<Response>,
+  ) => (request: Request) => Response | Promise<Response>;
 }

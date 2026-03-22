@@ -2,7 +2,6 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { BlogConfiguration } from "./types";
 import type { BlogPost } from "@/lib/source";
-import { cn } from "./utils";
 
 interface PostCardProps {
   post: NonNullable<BlogPost>;

@@ -3,12 +3,13 @@ import Link from "next/link";
 import { getSeriesInfo } from "./utils";
 import { cn } from "./utils";
 import { BlogConfiguration } from "./types";
+import type { BlogPost } from "@/lib/source";
 import { createUrlUtils } from "./url-utils";
 
 interface SeriesComponentProps {
   seriesName: string;
   currentPart: number;
-  posts: any[];
+  posts: BlogPost[];
   configuration?: BlogConfiguration;
 }
 

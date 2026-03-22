@@ -1,8 +1,9 @@
 import type { BlogPost } from "@/lib/source";
+import type { loader } from "fumadocs-core/source";
 import { getSeriesNames } from "./utils";
 
 export async function generateAllParams(
-  blogSource: any,
+  blogSource: ReturnType<typeof loader>,
   posts: BlogPost[],
   includeBlogPosts = true,
 ) {
@@ -38,7 +39,7 @@ export async function generateAllParams(
  * - Pagination for root and category pages
  */
 export async function generateBlogStaticParams(
-  blogSource: any,
+  blogSource: ReturnType<typeof loader>,
   posts: BlogPost[],
 ) {
   return await generateAllParams(blogSource, posts, true);
@@ -124,7 +125,7 @@ export function generateSeriesPathParams(posts: BlogPost[]) {
  * Creates image routes by adding image.png to each existing slug array
  */
 export async function generateOgImageStaticParams(
-  blogSource: any,
+  blogSource: ReturnType<typeof loader>,
   posts: BlogPost[],
 ) {
   // Get all the regular params first

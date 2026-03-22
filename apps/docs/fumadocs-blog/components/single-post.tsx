@@ -5,7 +5,8 @@ import {
   DocsDescription,
   DocsTitle,
 } from "fumadocs-ui/page";
-import { BlogConfiguration } from "./types";
+import { BlogConfiguration, BlogPost } from "./types";
+import type { MDXComponents } from "mdx/types";
 
 import { DocsLayout } from "fumadocs-ui/layouts/docs";
 import { Calendar, BookOpen } from "lucide-react";
@@ -18,15 +19,21 @@ import { getSeriesInfo } from "./utils";
 import { slot } from "./shared";
 import { createUrlUtils } from "./url-utils";
 
+interface CategoryInfo {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  description?: string;
+}
+
 interface SinglePostProps {
-  page: any;
+  page: BlogPost;
   category?: string;
   lastUpdate?: Date;
   tags: string[];
   configuration?: BlogConfiguration;
-  getCategoryBySlug: (slug: string) => any;
-  mdxComponents: any;
-  posts?: any[];
+  getCategoryBySlug: (slug: string) => CategoryInfo;
+  mdxComponents: MDXComponents;
+  posts?: BlogPost[];
 }
 
 export function SinglePost({
