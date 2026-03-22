@@ -1,0 +1,236 @@
+---
+title: Server Adapters
+description: Set up Erebus authentication on any backend framework
+---
+
+# Server Adapters
+
+Your server is responsible for generating **grant tokens** that authorize clients to connect to Erebus channels. The SDK provides adapters that handle the token-generation endpoint for you, so you only need to write the authorization logic.
+
+There are three approaches, from most convenient to most flexible:
+
+- **`createRouteHandler`** -- for Next.js App Router
+- **`createGenericAdapter`** -- for any fetch-compatible server (Bun, Express, Hono, Fastify, etc.)
+- **`ErebusService`** directly -- full manual control in any framework
+
+---
+
+## Next.js (App Router)
+
+The `createRouteHandler` function returns a `POST` handler that you can export directly from a Next.js route file. It reads the requested channel from the request body, calls your `authorize` callback, and returns a signed grant JWT.
+
+### Route handler file
+
+Create the file `app/api/erebus/pubsub/grant/route.ts`:
+
+```ts
+import { createRouteHandler } from "@erebus-sh/sdk/server/next";
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+
+export const { POST } = createRouteHandler({
+  authorize: async (channel, { req }) => {
+    // Authenticate the user from cookies, headers, or session
+    const userId = await getUserFromRequest(req);
+
+    const service = new ErebusService({
+      secret_api_key: process.env.EREBUS_SECRET_API_KEY!,
+    });
+
+    const session = await service.prepareSession({ userId });
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+
+    return session;
+  },
+  fireWebhook: async (message) => {
+    // Handle incoming webhook events from Erebus
+    console.log("Webhook received:", message);
+  },
+});
+```
+
+### How it works
+
+Under the hood, `createRouteHandler` does three things:
+
+1. Parses the `channel` field from the JSON request body.
+2. Calls your **`authorize`** callback with the channel name and the raw `Request`, so you can authenticate the caller however you like (cookies, bearer tokens, session stores).
+3. Passes the returned `ErebusSession` into the internal Hono app that serves the `/api/erebus/pubsub/grant` endpoint, which calls `session.authorize()` and returns the signed JWT.
+
+### Callbacks
+
+| Callback      | Signature                                                                             | Purpose                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `authorize`   | `(channel: string, ctx: { req: Request }) => ErebusSession \| Promise<ErebusSession>` | Authenticate the caller and return a configured session with channel and topic permissions.   |
+| `fireWebhook` | `(message: FireWebhookSchema) => Promise<void>`                                       | Handle webhook events sent from Erebus to your server (e.g., message delivery confirmations). |
+
+---
+
+## Generic Adapter (Bun, Express, Hono, etc.)
+
+The `createGenericAdapter` function returns an object with a `fetch` method that is compatible with any server that accepts `(req: Request) => Response | Promise<Response>`.
+
+```ts
+import { createGenericAdapter } from "@erebus-sh/sdk/server";
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+
+const app = createGenericAdapter({
+  authorize: async (channel, ctx) => {
+    const userId = getUserIdFromRequest(ctx.req);
+
+    const service = new ErebusService({
+      secret_api_key: process.env.EREBUS_SECRET_API_KEY!,
+    });
+
+    const session = await service.prepareSession({ userId });
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+
+    return session;
+  },
+  fireWebhook: async (message) => {
+    console.log("Webhook received:", message);
+  },
+});
+```
+
+### With Bun.serve
+
+```ts
+Bun.serve({
+  port: 4919,
+  fetch: app.fetch,
+});
+```
+
+### With Express
+
+Express does not natively use the `Request`/`Response` Web API, so you need a small bridge. The adapter's `fetch` method accepts a standard `Request` and returns a standard `Response`:
+
+```ts
+import express from "express";
+
+const server = express();
+
+server.all("/api/erebus/*", async (req, res) => {
+  // Convert Express request to a Web Request
+  const url = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const webRequest = new Request(url, {
+    method: req.method,
+    headers: req.headers as Record<string, string>,
+    body: ["GET", "HEAD"].includes(req.method)
+      ? undefined
+      : JSON.stringify(req.body),
+  });
+
+  const webResponse = await app.fetch(webRequest);
+
+  res.status(webResponse.status);
+  webResponse.headers.forEach((value, key) => res.setHeader(key, value));
+  res.send(await webResponse.text());
+});
+
+server.listen(4919);
+```
+
+### With Hono
+
+Since the adapter returns a standard `fetch`, it integrates directly:
+
+```ts
+import { Hono } from "hono";
+
+const server = new Hono();
+
+server.all("/api/erebus/*", (c) => app.fetch(c.req.raw));
+
+export default server;
+```
+
+---
+
+## Manual Setup with ErebusService
+
+If you want full control over the endpoint shape, skip the adapters and use `ErebusService` directly. This is useful when you need to embed grant logic into an existing controller or RPC handler.
+
+### Session lifecycle
+
+1. **Create a service** with your secret API key.
+2. **Prepare a session** for the authenticated user.
+3. **Join a channel** -- each session targets exactly one channel.
+4. **Allow topics** -- grant `Read` or `ReadWrite` access to specific topics (or `"*"` for all).
+5. **Authorize** -- call `session.authorize()` to get a signed JWT.
+
+```ts
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+
+async function handleGrantRequest(req: Request): Promise<Response> {
+  // 1. Authenticate the user however you like
+  const userId = await getUserFromRequest(req);
+  const { channel } = await req.json();
+
+  // 2. Create the service
+  const service = new ErebusService({
+    secret_api_key: process.env.EREBUS_SECRET_API_KEY!,
+  });
+
+  // 3. Prepare a session
+  const session = await service.prepareSession({ userId });
+
+  // 4. Join channel and set permissions
+  session.join(channel);
+  session.allow("*", Access.ReadWrite);
+
+  // 5. Optionally set a custom expiration (10 min to 2 hours from now)
+  // session.setExpiration(Math.floor(Date.now() / 1000) + 60 * 30);
+
+  // 6. Get the signed JWT
+  const token = await session.authorize();
+
+  return Response.json({ grant_jwt: token });
+}
+```
+
+### Access levels
+
+The `Access` enum controls what a client can do on a topic:
+
+| Value              | Meaning                                  |
+| ------------------ | ---------------------------------------- |
+| `Access.Read`      | Subscribe and receive messages only      |
+| `Access.ReadWrite` | Subscribe, receive, and publish messages |
+
+### Topic permissions
+
+You can grant fine-grained permissions per topic:
+
+```ts
+session.allow("chat_messages", Access.ReadWrite);
+session.allow("system_events", Access.Read);
+```
+
+Or use the wildcard to grant access to all topics in the channel:
+
+```ts
+session.allow("*", Access.ReadWrite);
+```
+
+### Constraints
+
+- Channel names must be alphanumeric with underscores, max 64 characters.
+- Topic names follow the same rules (or `"*"` for wildcard).
+- A session can join exactly one channel.
+- A session supports up to 64 topic permissions.
+- Token expiration defaults to 2 hours and must be between 10 minutes and 2 hours from now.
+
+---
+
+## Which adapter to use
+
+| Scenario                                                                   | Adapter                  | Import                       |
+| -------------------------------------------------------------------------- | ------------------------ | ---------------------------- |
+| Next.js App Router                                                         | `createRouteHandler`     | `@erebus-sh/sdk/server/next` |
+| Any fetch-compatible server (Bun, Deno, Cloudflare Workers, Hono, Fastify) | `createGenericAdapter`   | `@erebus-sh/sdk/server`      |
+| Full control / custom endpoint                                             | `ErebusService` directly | `@erebus-sh/sdk/service`     |
+
+As a rule of thumb: start with the adapter that matches your framework. Drop down to `ErebusService` only when you need to customize the endpoint response shape or embed grant logic into an existing handler.
