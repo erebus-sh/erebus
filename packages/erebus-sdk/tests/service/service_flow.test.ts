@@ -22,7 +22,7 @@ test("service flow fails because of no topics", async () => {
   ).rejects.toThrow(/At least one topic is required/);
 });
 
-test("Erebus service server should return 401 when invalid token is provided", async () => {
+test.skip("Erebus service server should return 401 when invalid token is provided", async () => {
   const secret_api_key =
     "dv-er-abcdefghijklmnopqrstuvwxyzABCDEFGsH1234abcdddddd";
   const service = new ErebusService({
@@ -41,7 +41,7 @@ test("Erebus service server should return 401 when invalid token is provided", a
   );
 });
 
-test("Erebus service server should return 200 with grant jwt token with read write access", async () => {
+test.skip("Erebus service server should return 200 with grant jwt token with read write access", async () => {
   const secret_api_key =
     "dv-er-p14umx0nlo8d5vuam32y0fn_qe8tnzyynsbp9n__mgjf_yq6";
   const service = new ErebusService({

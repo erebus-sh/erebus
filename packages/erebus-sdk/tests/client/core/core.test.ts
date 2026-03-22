@@ -14,6 +14,9 @@ test("Testing types and API for the pubsub client", async () => {
   // Test that user-friendly API works without topicSub parameter
   // This is a compilation test - if it type-checks, the API is correct
 
+  // Must join a channel before subscribing/publishing
+  client.joinChannel("test-channel");
+
   // These should all compile without errors:
 
   // Subscribe with just topic and handler
@@ -21,13 +24,15 @@ test("Testing types and API for the pubsub client", async () => {
     console.log(msg);
   });
 
-  // Publish with just topic and payload
-  const _test2 = client.publish("topic", "payload");
+  // Publish with just topic and payload (catch since not connected)
+  const _test2 = client.publish("topic", "payload").catch(() => {});
 
-  // PublishWithAck with topic, payload, and callback
-  const _test3 = client.publishWithAck("topic", "payload", (ack) => {
-    console.log(ack);
-  });
+  // PublishWithAck with topic, payload, and callback (catch since not connected)
+  const _test3 = client
+    .publishWithAck("topic", "payload", (ack) => {
+      console.log(ack);
+    })
+    .catch(() => {});
 
   // If this compiles, the types are working correctly!
 }, 15000);

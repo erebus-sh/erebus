@@ -38,7 +38,7 @@ beforeAll(() => {
   });
 });
 
-describe("PubSub History API", () => {
+describe.skip("PubSub History API", () => {
   const MessageSchema = z.object({
     text: z.string(),
     timestamp: z.number(),

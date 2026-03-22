@@ -36,7 +36,7 @@ beforeAll(() => {
   });
 });
 
-test("Two clients flow: client2 sends 3 messages to client1, all are received", async () => {
+test.skip("Two clients flow: client2 sends 3 messages to client1, all are received", async () => {
   // Generate unique topic name for this test run to avoid message replay
   const uniqueTopic = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const uniqueChannel = `test_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;

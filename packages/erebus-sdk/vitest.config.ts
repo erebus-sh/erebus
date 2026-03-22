@@ -5,6 +5,11 @@ export default defineConfig({
   test: {
     environment: "node",
     globals: true,
+    server: {
+      deps: {
+        inline: ["zod"],
+      },
+    },
   },
   resolve: {
     alias: {
