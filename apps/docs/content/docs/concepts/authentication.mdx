@@ -1,0 +1,169 @@
+---
+title: Authentication
+description: How Erebus authenticates clients using Grant JWTs
+---
+
+# Authentication
+
+Erebus uses short-lived JWT tokens called **grants** to authenticate WebSocket connections. Your backend generates grants; clients present them when connecting to the Erebus service. This keeps your secret API key on the server and gives you full control over who can access which channels and topics.
+
+## The Grant Flow
+
+Authentication follows a three-party flow between your client, your server, and Erebus:
+
+```
+1. Client ──── POST /api/erebus/pubsub/grant ────▸ Your Server
+2.                                                  Your Server validates the user
+3.                                                  Your Server builds a grant via ErebusService
+4. Client ◂── { grant_jwt: "eyJ..." } ──────────── Your Server
+5. Client ──── WebSocket + grant JWT ────────────▸ Erebus Service
+6.                                                  Erebus verifies JWT signature + permissions
+7. Client ◂── Connection established ────────────── Erebus Service
+```
+
+**Step by step:**
+
+1. The client requests a grant from your server (e.g., `POST /api/erebus/pubsub/grant`).
+2. Your server authenticates the user using your own auth system (cookies, sessions, bearer tokens, etc.).
+3. Your server creates an `ErebusService` instance and calls `prepareSession()` to build a grant with specific channel and topic permissions.
+4. The SDK sends the grant request to the Erebus API, which signs it and returns a JWT.
+5. Your server returns the signed JWT (`grant_jwt`) to the client.
+6. The client connects to the Erebus WebSocket, presenting the grant.
+7. Erebus verifies the JWT signature (Ed25519) and enforces the permissions encoded in the token.
+
+## Grant Structure
+
+A grant JWT contains the following claims:
+
+| Claim         | Type                                 | Description                                |
+| ------------- | ------------------------------------ | ------------------------------------------ |
+| `channel`     | `string`                             | The channel this grant allows access to    |
+| `topics`      | `{ topic: string, scope: string }[]` | Fine-grained topic permissions             |
+| `userId`      | `string`                             | The user identity, set by your server      |
+| `project_id`  | `string`                             | The project this grant belongs to          |
+| `key_id`      | `string`                             | The API key that issued this grant         |
+| `webhook_url` | `string`                             | Webhook URL for server-side event delivery |
+| `issuedAt`    | `number`                             | Unix timestamp when the token was issued   |
+| `expiresAt`   | `number`                             | Unix timestamp when the token expires      |
+
+Grants are signed using **Ed25519** (`EdDSA` algorithm) and verified by the Erebus service on every connection.
+
+## Access Scopes
+
+Each topic in a grant has a **scope** that controls what the client can do:
+
+| Scope        | Description                                        |
+| ------------ | -------------------------------------------------- |
+| `read`       | Can subscribe to and receive messages on the topic |
+| `write`      | Can publish messages to the topic                  |
+| `read-write` | Can both subscribe and publish                     |
+
+Use the wildcard topic `*` to grant access to all topics in the channel.
+
+```typescript
+import { Access } from "@erebus-sh/sdk/service";
+
+session.allow("chat", Access.Read); // subscribe only
+session.allow("typing", Access.Write); // publish only
+session.allow("messages", Access.ReadWrite); // both
+session.allow("*", Access.ReadWrite); // all topics, full access
+```
+
+## Server-Side Setup
+
+### Using `createRouteHandler` (Next.js)
+
+The simplest approach uses the built-in Next.js adapter. It handles the Hono routing and token exchange for you:
+
+```typescript
+// app/api/erebus/[...all]/route.ts
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+import { createRouteHandler } from "@erebus-sh/sdk/server/next";
+import { cookies } from "next/headers";
+
+export const { POST } = createRouteHandler({
+  authorize: async (channel, ctx) => {
+    // 1. Validate the user with YOUR auth system
+    const ckis = await cookies();
+    const userId = ckis.get("x-User-Id")?.value;
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // 2. Create a service instance with your secret key
+    const service = new ErebusService({
+      secret_api_key: process.env.EREBUS_API_KEY!,
+    });
+
+    // 3. Build the session grant
+    const session = await service.prepareSession({ userId });
+    session.join(channel);
+    session.allow("messages", Access.ReadWrite);
+    session.allow("presence", Access.Read);
+
+    return session;
+  },
+  fireWebhook: async (webhookMessage) => {
+    // Handle webhook events from Erebus
+  },
+});
+```
+
+### Manual Grant Creation
+
+If you are not using Next.js, you can build grants directly with `ErebusService`:
+
+```typescript
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+
+const service = new ErebusService({
+  secret_api_key: process.env.EREBUS_API_KEY!,
+});
+
+// In your API route handler:
+async function handleGrantRequest(userId: string, channel: string) {
+  const session = await service.prepareSession({ userId });
+
+  session.join(channel);
+  session.allow("messages", Access.ReadWrite);
+  session.allow("notifications", Access.Read);
+
+  // Returns the signed JWT string
+  const token = await session.authorize();
+  return { grant_jwt: token };
+}
+```
+
+### Setting Token Expiration
+
+Grants default to **2 hours**. You can customize the expiration between 10 minutes and 2 hours:
+
+```typescript
+const session = await service.prepareSession({ userId: "user-123" });
+session.join("my_channel");
+session.allow("*", Access.ReadWrite);
+
+// Set a custom expiration (unix timestamp in seconds)
+const thirtyMinutes = Math.floor(Date.now() / 1000) + 30 * 60;
+session.setExpiration(thirtyMinutes);
+
+const token = await session.authorize();
+```
+
+## Validation Rules
+
+The SDK enforces these constraints when building grants:
+
+- **Channel names**: Letters, numbers, and underscores only (`[A-Za-z0-9_]`). Max 64 characters.
+- **Topic names**: Same rules as channels, plus the `*` wildcard. Max 64 characters.
+- **Topics per grant**: Maximum of 64 topics.
+- **Expiration range**: Minimum 10 minutes, maximum 2 hours from the current time.
+- **Single channel**: Each session grants access to exactly one channel. Call `join()` only once.
+
+## Security Best Practices
+
+- **Validate users on your server first.** Never issue a grant without authenticating the request through your own auth system.
+- **Keep your API key server-side.** The secret key (`sk-er-*` or `dv-er-*`) must never be exposed to the client. It is only used in `ErebusService` on your backend.
+- **Use short expiration times.** Default is 2 hours, but shorter is better. Set 10-30 minute expirations for sensitive channels.
+- **Grant minimal permissions.** Only allow the scopes and topics each user actually needs. Prefer explicit topic names over the `*` wildcard.
+- **Use `read` scope for consumers.** If a client only needs to receive messages, do not grant `write` or `read-write`.
