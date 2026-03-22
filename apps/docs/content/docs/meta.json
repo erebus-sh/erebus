@@ -1,0 +1,16 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "---Getting Started---",
+    "get-started",
+    "---Tutorials---",
+    "tutorials",
+    "---Concepts---",
+    "concepts",
+    "---SDK Reference---",
+    "sdk",
+    "---Platform---",
+    "platform"
+  ]
+}

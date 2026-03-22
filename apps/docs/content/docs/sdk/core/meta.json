@@ -1,0 +1,14 @@
+{
+  "title": "Core API",
+  "pages": [
+    "getting-started-api",
+    "apis",
+    "messaging",
+    "presence",
+    "history",
+    "connection-management",
+    "schema-facade",
+    "quick-reference",
+    "types-reference"
+  ]
+}

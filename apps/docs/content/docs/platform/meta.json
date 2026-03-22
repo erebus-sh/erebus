@@ -1,0 +1,13 @@
+{
+  "title": "Platform",
+  "pages": [
+    "platform-overview",
+    "getting-started",
+    "project-management",
+    "api-keys",
+    "api-key-management",
+    "webhooks",
+    "analytics-dashboard",
+    "audit-logs"
+  ]
+}
