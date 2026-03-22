@@ -1,13 +1,96 @@
 ---
 title: Topics and Patterns
-description: What are the patterns available in Erebus?
+description: Common real-time messaging patterns you can build with Erebus channels and topics.
 ---
 
 # Topics and Patterns
 
-In Erebus, pattern-based subscriptions are still very limited.
+Erebus channels and topics are low-level primitives. How you combine them determines the real-time experience you deliver. Below are the most common patterns, each with a brief explanation and code example.
 
-For example, subscribing to something like `chat:*` is **not supported yet**.  
-The only supported wildcard is `*`, which simply means “subscribe to everything.”
+## Fan-out
 
-Channels names currently do not support scoped or partial patterns either. This feature is still immature and very much a work-in-progress (WIP).
+One publisher sends a message, and every subscriber on that topic receives it. This is the default behavior of `publish` — the Durable Object broadcasts to all connected clients subscribed to the target topic. Fan-out is ideal for chat rooms, live feeds, collaborative editing notifications, and any scenario where multiple consumers need the same data simultaneously.
+
+```typescript
+// Publisher: send a chat message to everyone in the room
+await client.publish(
+  "messages",
+  JSON.stringify({
+    user: "alice",
+    text: "Meeting starts in 5 minutes",
+  }),
+);
+
+// Every client subscribed to "messages" receives this
+await client.subscribe("messages", (msg) => {
+  const data = JSON.parse(msg.payload);
+  console.log(`${data.user}: ${data.text}`);
+});
+```
+
+## Request-Response with ACK
+
+When you need confirmation that the server received and processed a message, use `publishWithAck`. The server responds with an acknowledgement packet containing the assigned sequence ID. This is useful for form submissions, commands, or any action where the client needs to know the message was persisted before proceeding. Erebus uses QoS level 1 (at-least-once delivery) for acknowledged publishes.
+
+```typescript
+await client.publishWithAck(
+  "commands",
+  JSON.stringify({ action: "lock_document", docId: "doc_42" }),
+  (ack) => {
+    console.log("Server confirmed with seq:", ack.seq);
+  },
+  5000, // timeout in ms
+);
+```
+
+## Presence
+
+Track which users are currently connected to a channel. Erebus emits presence events (join and leave) automatically when clients connect and disconnect from a channel. Subscribe to presence data to build "who's online" indicators, typing notifications, or participant lists. Presence events flow through the same WebSocket connection as regular messages.
+
+```typescript
+// The client exposes a presence handler for join/leave events
+client.onPresence((event) => {
+  if (event.type === "join") {
+    console.log(`${event.clientId} came online`);
+  } else {
+    console.log(`${event.clientId} went offline`);
+  }
+});
+```
+
+## Catch-up
+
+When a client reconnects after a brief disconnection, it may have missed messages. Pass `streamOldMessages: true` in the subscribe options, and the server will replay any buffered messages the client has not yet seen (based on its last-seen sequence ID). This avoids the need for a full history fetch on reconnect. The server stores up to 100 messages per topic with a 3-day TTL.
+
+```typescript
+await client.subscribe(
+  "messages",
+  (msg) => {
+    renderMessage(msg);
+  },
+  { streamOldMessages: true },
+);
+// On reconnect, the server streams missed messages before new ones
+```
+
+## History Replay
+
+For full message replay beyond the catch-up buffer, use the history API. It provides cursor-based pagination over all stored messages for a topic. This is useful for loading chat history when a user opens a room for the first time, building audit logs, or implementing infinite scroll. The API supports both forward and backward pagination.
+
+```typescript
+// Fetch the most recent 50 messages
+const { items, nextCursor } = await client.getHistory("messages", {
+  limit: 50,
+  direction: "backward",
+});
+
+// Paginate through older messages
+const getNext = client.createHistoryIterator("messages", {
+  limit: 50,
+  direction: "backward",
+});
+
+const firstBatch = await getNext(); // { items: [...], hasMore: true }
+const secondBatch = await getNext(); // { items: [...], hasMore: false }
+const done = await getNext(); // null — no more messages
+```

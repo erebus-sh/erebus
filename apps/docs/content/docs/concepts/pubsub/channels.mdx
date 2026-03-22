@@ -1,20 +1,126 @@
 ---
 title: Pub/Sub Channels
-description: What are Pub/Sub Channels?
+description: Deep dive into Erebus channels and topics — isolated namespaces backed by Cloudflare Durable Objects for real-time messaging.
 ---
 
 # Pub/Sub Channels
 
-Pub/Sub Channels are the core primitive of Erebus. They are used to publish and subscribe to topics on channels.
-The design is similar to MQTT with Quality of Service level 1.
+Channels are the core primitive of Erebus. Every real-time interaction — chat messages, presence updates, cursor tracking — flows through a channel. Under the hood, each channel maps to a dedicated Cloudflare Durable Object instance, giving you strong ordering guarantees and zero race conditions without any infrastructure to manage.
 
-## What is avaliable?
+## What are Channels?
 
-- Core (low-level building block)
-- React (high-level building block with typesafety and schemas)
+A channel is an isolated namespace that groups related real-time activity together. When a client calls `joinChannel("project-123")`, it connects to a specific Durable Object instance responsible for that channel. All subscribers on the same channel share the same DO instance within a given region, which means:
 
-## How does it work?
+- Messages are processed sequentially — no race conditions, no distributed locks.
+- Every message gets a monotonically increasing sequence ID (ULID-based).
+- Subscribers receive messages in the exact order they were published.
 
-![Cloudflare Architecture](/Erebus%20Provider%20diagram.png)
+Think of a channel as a room. Everyone in the room hears the same messages in the same order.
 
-For deep dive on how it works, check out the blog [Erebus Provider diagram](/blog/dive/why-cloudflare-durable-objects)
+## Topics within Channels
+
+Topics are the routing keys inside a channel. When you publish to a topic, only subscribers of that specific topic receive the message. This lets you multiplex different streams of data over a single channel connection.
+
+Think of channels as rooms and topics as conversations within a room. A client connected to the `project-123` channel can subscribe to `messages` for chat, `presence` for online status, and `cursors` for live cursor positions — all over one WebSocket connection.
+
+```typescript
+const client = new ErebusPubSubClient({
+  wsUrl: "wss://gateway.erebus.sh",
+  tokenProvider: async (channel) => await getGrant(channel),
+});
+
+client.joinChannel("project-123");
+await client.connect();
+
+// Subscribe to different topics in the same channel
+await client.subscribe("messages", (msg) => {
+  // Chat messages
+});
+
+await client.subscribe("presence", (msg) => {
+  // Who's online
+});
+
+await client.subscribe("cursors", (msg) => {
+  // Cursor positions
+});
+
+// Publish to a specific topic
+await client.publish("messages", JSON.stringify({ text: "Hello!" }));
+```
+
+Publishing to `messages` delivers only to `messages` subscribers. Clients listening on `presence` or `cursors` are not affected.
+
+### Wildcard Subscriptions
+
+The special topic `*` subscribes to all topics on a channel. This is useful for debugging, logging, or building audit trails. Partial wildcards like `chat:*` are not supported — `*` is all-or-nothing.
+
+## Channel Naming Rules
+
+Channel names must follow these constraints:
+
+- **Characters**: alphanumeric characters and underscores (`a-z`, `A-Z`, `0-9`, `_`)
+- **Length**: maximum 64 characters
+- **Examples**: `project_123`, `chat_room_general`, `team_42_notifications`
+
+## Topic Naming Rules
+
+Topic names follow the same constraints as channel names:
+
+- **Characters**: alphanumeric characters and underscores (`a-z`, `A-Z`, `0-9`, `_`)
+- **Length**: maximum 64 characters
+- **Wildcard**: `*` subscribes to all topics on the channel
+- **Examples**: `messages`, `presence`, `cursor_updates`
+
+## How Channels Map to Durable Objects
+
+When a client connects to a channel, Erebus constructs a distributed key from the project ID, channel name, and region. This key deterministically routes to a specific Durable Object instance via Cloudflare's `getByName()` API.
+
+```
+DistributedKey = {
+  projectId: "proj_abc",
+  resource: "chat_room_1",
+  resourceType: "channel",
+  version: "v1"
+} + locationHint
+```
+
+This design has several important implications:
+
+- **Colocation**: All clients in `chat_room_1` within the same region connect to the same DO instance. Messages never need cross-instance coordination for local delivery.
+- **Single-threaded execution**: The DO processes one message at a time. No mutex, no locks, no CRDTs — sequential processing eliminates race conditions by design.
+- **Subscriber limit**: Each channel supports up to **5,120 subscribers per topic** within a single region. For higher fan-out, Erebus automatically shards across multiple DO instances per region and coordinates cross-shard broadcasting.
+- **Monotonic ordering**: Every message receives a region-local ULID as its sequence ID. ULIDs are time-ordered and monotonic, so subscribers always see messages in publish order.
+
+### Multi-Region Sharding
+
+When clients connect from different regions, Erebus creates a separate DO shard per region (using Cloudflare location hints). A `ShardManager` inside each DO tracks all active shards, and published messages are forwarded across shards so every subscriber receives them regardless of region.
+
+## Channel Lifecycle
+
+Channels are ephemeral — they exist only as long as they are needed.
+
+### Creation
+
+A channel is created automatically on the first client connection. There is no explicit "create channel" API. The Durable Object is instantiated by Cloudflare the first time a request routes to its distributed key.
+
+### Active
+
+While clients are connected, the DO is active: processing publishes, managing subscriptions, and broadcasting messages. Each message is buffered in DO storage with a TTL for catch-up delivery to clients that reconnect.
+
+### Hibernation
+
+When all clients disconnect or go idle, the DO enters Cloudflare's [Hibernatable WebSockets](https://developers.cloudflare.com/durable-objects/api/hibernatable-websockets-api/) mode. In this state:
+
+- The DO consumes no compute resources.
+- Existing WebSocket connections remain open and survive hibernation.
+- The DO wakes up instantly when a new message arrives or a client reconnects.
+
+### Cleanup
+
+A DO alarm runs periodically to prune expired messages from storage. Messages have a **3-day TTL** — after 3 days, they are removed from the buffer. The message buffer holds up to 100 messages per topic for catch-up delivery.
+
+## What's Next?
+
+- [Topics and Patterns](/docs/concepts/pubsub/patterns) — common messaging patterns you can build with channels and topics.
+- [Quality of Service](/docs/concepts/pubsub/qos) — delivery guarantees and acknowledgements.
