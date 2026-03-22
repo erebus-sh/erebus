@@ -1,0 +1,172 @@
+---
+title: Webhooks
+description: Receive real-time event notifications from Erebus
+---
+
+# Webhooks
+
+Webhooks let Erebus push event notifications to your server in real time. When events occur on a channel (such as a new message being published), the Erebus service sends an HTTP POST request to your configured endpoint with the event payload and an HMAC signature for verification.
+
+## How Webhooks Work
+
+1. A client publishes a message to a channel topic.
+2. The Erebus service broadcasts the message to subscribers **and** fires a webhook to your server in parallel.
+3. Your server receives the POST request at `/api/erebus/pubsub/fire-webhook`, verifies the HMAC signature, and processes the event.
+
+The webhook URL is embedded in the grant JWT that the Erebus gateway issues when a client connects. This means every authenticated connection carries the destination for webhook delivery.
+
+## Setup
+
+### 1. Set the `WEBHOOK_SECRET` Environment Variable
+
+Your server needs a shared secret to verify incoming webhook signatures. Add `WEBHOOK_SECRET` to your environment:
+
+```bash title=".env"
+WEBHOOK_SECRET=your-secret-key-here
+```
+
+This must match the secret used by the Erebus service when signing payloads.
+
+### 2. Configure the Webhook Handler
+
+When using the SDK's server adapters, you provide a `fireWebhook` callback alongside your `authorize` function. The SDK handles routing, signature verification, and deserialization automatically.
+
+#### Next.js Route Handler
+
+```ts title="app/api/erebus/pubsub/[...slug]/route.ts"
+import { createRouteHandler } from "@erebus-sh/sdk/server";
+import { ErebusService, Access } from "@erebus-sh/sdk/service";
+
+export const { POST } = createRouteHandler({
+  authorize: async (channel, { req }) => {
+    const service = new ErebusService({
+      secret_api_key: process.env.EREBUS_SECRET_KEY!,
+    });
+
+    const session = await service.prepareSession({
+      userId: "user_123",
+    });
+
+    session.join(channel);
+    session.allow("*", Access.ReadWrite);
+
+    return session;
+  },
+  fireWebhook: async (webhookMessage) => {
+    // Process the webhook payload
+    // webhookMessage contains { messageBody, hmac }
+    console.log("Received webhook:", webhookMessage.messageBody);
+  },
+});
+```
+
+#### Generic Adapter (Bun, Express, etc.)
+
+```ts title="server.ts"
+import { createGenericAdapter } from "@erebus-sh/sdk/server";
+
+const adapter = createGenericAdapter({
+  authorize: async (channel, { req }) => {
+    // ... same as above
+  },
+  fireWebhook: async (webhookMessage) => {
+    // Process the webhook payload
+    console.log("Received webhook:", webhookMessage.messageBody);
+  },
+});
+```
+
+## Webhook Payload Structure
+
+Every webhook POST request sends a JSON body matching the `FireWebhookSchema`:
+
+```ts
+interface FireWebhookPayload {
+  messageBody: MessageBody[];
+  hmac: string;
+}
+```
+
+The `messageBody` array contains one or more messages. Each `MessageBody` has this shape:
+
+| Field             | Type     | Description                                            |
+| ----------------- | -------- | ------------------------------------------------------ |
+| `id`              | `string` | Globally unique message ID assigned by Erebus          |
+| `topic`           | `string` | The topic (room) the message was published to          |
+| `senderId`        | `string` | The user ID derived from the JWT session               |
+| `seq`             | `string` | Monotonic sequence number per channel                  |
+| `sentAt`          | `Date`   | Server-assigned timestamp at ingress                   |
+| `payload`         | `string` | The message content as a string                        |
+| `clientMsgId`     | `string` | _(optional)_ Client-generated correlation ID           |
+| `clientPublishTs` | `number` | _(optional)_ Client publish timestamp (ms since epoch) |
+
+Debug-mode fields (`t_ingress`, `t_enqueued`, `t_broadcast_begin`, `t_ws_write_end`, `t_broadcast_end`) may also be present when verbose instrumentation is enabled on the service.
+
+## HMAC Signature Verification
+
+Every webhook request includes an `hmac` field containing a hex-encoded HMAC-SHA256 signature. The signature is computed over the JSON-serialized `messageBody` array using the API key ID as the signing key.
+
+### How Verification Works
+
+The SDK's built-in `/api/erebus/pubsub/fire-webhook` endpoint handles verification automatically:
+
+1. It reads `WEBHOOK_SECRET` from your environment.
+2. It recomputes the HMAC by running `HMAC-SHA256(JSON.stringify(messageBody), WEBHOOK_SECRET)`.
+3. It compares the computed signature against the `hmac` field in the payload.
+4. If they do not match, the request is rejected with a `401` status.
+
+### Manual Verification
+
+If you need to verify the signature yourself (outside the SDK adapter), use the shared HMAC utilities:
+
+```ts
+import { verifyHmac } from "@repo/shared/utils/hmac";
+
+const isValid = await verifyHmac(
+  JSON.stringify(webhookMessage.messageBody),
+  process.env.WEBHOOK_SECRET!,
+  webhookMessage.hmac,
+);
+
+if (!isValid) {
+  throw new Error("Invalid webhook signature");
+}
+```
+
+The HMAC is generated using the Web Crypto API (`crypto.subtle`), so it works in Node.js, Bun, Cloudflare Workers, and other standard runtimes.
+
+## Error Handling
+
+### When Your Endpoint Fails
+
+- If your webhook endpoint returns a non-2xx status, the Erebus service logs a warning but does **not** retry the delivery. Message broadcasting to WebSocket subscribers is unaffected.
+- If your endpoint is unreachable or throws a network error, the failure is logged at warn level on the service side. The message is still delivered to connected clients.
+
+### When `WEBHOOK_SECRET` Is Missing
+
+If `WEBHOOK_SECRET` is not set in your server environment, the fire-webhook endpoint returns a `500` error with a message indicating the secret is not configured. Make sure this variable is set before deploying.
+
+### When Signature Verification Fails
+
+If the HMAC does not match, the endpoint returns `401 Unauthorized`. This can happen if:
+
+- The `WEBHOOK_SECRET` on your server does not match the secret used by the Erebus service.
+- The payload was tampered with in transit.
+- There is a serialization mismatch between the signing and verification steps.
+
+## Internal Architecture
+
+<Callout title="Implementation Detail" type="info">
+  This section describes the internal flow for advanced users. You do not need
+  to understand this to use webhooks.
+</Callout>
+
+The Erebus service fires webhooks from the `MessageBroadcaster` inside the Durable Object. After broadcasting a message to WebSocket subscribers, it concurrently:
+
+1. Buffers the message for history retrieval.
+2. Enqueues a usage event for analytics.
+3. Fires the webhook to the URL embedded in the client's grant JWT.
+
+The webhook is sent as an RPC call using the SDK's `createRpcClient`, targeting the `/api/erebus/pubsub/fire-webhook` path on your server's origin. This means your server must expose that route (which the SDK adapters do automatically).
+
+The service also sends **usage webhooks** separately via the `UsageWebhook` class, which posts batched usage events (connection, message, subscribe) to the configured `WEBHOOK_BASE_URL` with an HMAC signature in the `X-Erebus-Hmac` header. These are internal platform events used for billing and analytics.
