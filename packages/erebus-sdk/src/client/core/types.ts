@@ -1,6 +1,7 @@
-import type { AckPacketType } from "../../../../schemas/packetEnvelope";
-import type { MessageBody } from "../../../../schemas/messageBody";
 import { z } from "zod";
+
+import type { MessageBody } from "../../../../schemas/messageBody";
+import type { AckPacketType } from "../../../../schemas/packetEnvelope";
 
 export type ErebusOptions = {
   wsUrl: string; // wss://...

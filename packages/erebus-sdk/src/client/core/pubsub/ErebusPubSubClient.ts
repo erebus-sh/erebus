@@ -276,15 +276,15 @@ export class ErebusPubSubClient
         timeoutMs = timeoutMsOrOptions;
         opts = finalOptions;
       } else if (timeoutMsOrOptions && typeof timeoutMsOrOptions === "object") {
-        opts = timeoutMsOrOptions as SubscribeOptions;
+        opts = timeoutMsOrOptions;
       }
     } else if (onAckOrOptions && typeof onAckOrOptions === "object") {
       // onAckOrOptions is options
-      opts = onAckOrOptions as SubscribeOptions;
+      opts = onAckOrOptions;
     }
 
     // Wrap handler to match internal Handler type
-    const wrappedHandler: Handler = (payload, _meta) => {
+    const wrappedHandler: Handler = (payload) => {
       handler(payload);
     };
 
