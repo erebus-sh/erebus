@@ -6,6 +6,11 @@ export default defineWorkersConfig({
     poolOptions: {
       workers: {
         wrangler: { configPath: "./wrangler.jsonc" },
+        miniflare: {
+          bindings: {
+            EREBUS_ON_HOLD: "false",
+          },
+        },
       },
     },
   },

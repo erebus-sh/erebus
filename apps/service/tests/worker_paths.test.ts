@@ -9,6 +9,6 @@ describe("Hello World worker", () => {
 
     const response2 = await SELF.fetch("http://localhost:8787/umbra");
     console.log(await response2.statusText);
-    expect(await response2.status).toBe(400);
+    expect(await response2.status).toBe(404);
   });
 });
