@@ -6,8 +6,7 @@
     "dev": "next dev --port 3002",
     "build": "next build",
     "start": "next start",
-    "lint": "biome check",
-    "format": "biome format --write"
+    "lint": "biome check"
   },
   "dependencies": {
     "@erebus-sh/sdk": "0.0.157",

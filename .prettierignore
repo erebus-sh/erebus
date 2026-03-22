@@ -1,11 +1,22 @@
-# Ignore common artifacts:
+# Build output
 build
 dist
 out
-coverage
+.next
+.vercel
+.turbo
+.wrangler
+
+# Dependencies
 node_modules
+
+# Generated
+*.tsbuildinfo
+worker-configuration.d.ts
+bun.lock
+
+# Artifacts
+coverage
 *.log
 *.tmp
 *.cache
-*.tsbuildinfo
-worker-configuration.d.ts

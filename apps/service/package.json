@@ -4,7 +4,6 @@
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.8.60",
     "@cloudflare/workers-types": "^4.20250819.0",
-    "prettier": "3.6.2",
     "typescript": "^5.5.2",
     "wrangler": "^4.42.2"
   },
@@ -15,7 +14,6 @@
     "build:wrangler": "wrangler build",
     "preview": "wrangler deploy --env preview",
     "dev": "bun cf-typegen && clear && wrangler dev --port 8787",
-    "format": "prettier --write .",
     "test": "vitest --run --config vitest.config.ts",
     "start": "wrangler dev",
     "cf-typegen": "wrangler types"

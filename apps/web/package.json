@@ -5,7 +5,6 @@
   "scripts": {
     "dev": "bunx concurrently -n convex,next -c blue,green \"bunx convex dev\" \"bunx next dev --turbopack --port 3000\"",
     "build": "next build",
-    "format": "prettier . --write",
     "start": "next start",
     "lint": "eslint .",
     "test": "vitest",

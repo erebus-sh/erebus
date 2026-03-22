@@ -21,7 +21,6 @@
     "build": "bun run clean && bun run build:sdk",
     "build:dev": "NODE_ENV=development bun run build:sdk",
     "build:prod": "NODE_ENV=production bun run clean && bun run build:sdk",
-    "format": "bunx prettier . --write",
     "test": "vitest run",
     "test:react": "vitest run --config vitest.jsdom.config.ts",
     "test:logger:dev": "NODE_ENV=development bun run scripts/test-logger.ts",
@@ -44,7 +43,6 @@
     "eslint-plugin-import": "^2.32.0",
     "jsdom": "^26.1.0",
     "knip": "^5.64.0",
-    "prettier": "3.6.2",
     "tsdown": "^0.14.2",
     "typescript-eslint": "^8.44.1",
     "vitest": "^3.2.4"

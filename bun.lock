@@ -71,7 +71,6 @@
       "devDependencies": {
         "@cloudflare/vitest-pool-workers": "^0.8.60",
         "@cloudflare/workers-types": "^4.20250819.0",
-        "prettier": "3.6.2",
         "typescript": "^5.5.2",
         "wrangler": "^4.42.2",
       },
@@ -181,7 +180,6 @@
         "eslint-plugin-import": "^2.32.0",
         "jsdom": "^26.1.0",
         "knip": "^5.64.0",
-        "prettier": "3.6.2",
         "tsdown": "^0.14.2",
         "typescript-eslint": "^8.44.1",
         "vitest": "^3.2.4",
