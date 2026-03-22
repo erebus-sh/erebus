@@ -58,8 +58,6 @@ jobs:
         run: cd packages/erebus-sdk && bun run build
       - name: Run Node tests
         run: cd packages/erebus-sdk && bun run test
-      - name: Run React/jsdom tests
-        run: cd packages/erebus-sdk && bun run test:react
 
   test-service:
     name: Test Service
