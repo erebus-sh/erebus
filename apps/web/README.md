@@ -46,30 +46,31 @@ The dev command starts both the Convex development server and Next.js with Turbo
 
 See [.env.example](./.env.example) for the full list. Key variables:
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `NEXT_PUBLIC_CONVEX_URL` | Yes | Convex deployment URL |
-| `PRIVATE_KEY_JWK` | Yes | EC P-256 JWK for signing grant tokens |
-| `PUBLIC_KEY_JWK` | Yes | EC P-256 JWK for verifying grant tokens |
-| `WEBHOOK_SECRET` | Yes | HMAC secret for webhook validation |
-| `ACTION_SECRET` | Yes | Secret for internal action calls |
-| `POLAR_ORGANIZATION_TOKEN` | Yes | Polar API token |
-| `POLAR_SERVER` | Yes | `sandbox` or `production` |
-| `NEXT_PUBLIC_POSTHOG_KEY` | Yes | PostHog project API key |
+| Variable                   | Required | Description                             |
+| -------------------------- | -------- | --------------------------------------- |
+| `NEXT_PUBLIC_CONVEX_URL`   | Yes      | Convex deployment URL                   |
+| `PRIVATE_KEY_JWK`          | Yes      | EC P-256 JWK for signing grant tokens   |
+| `PUBLIC_KEY_JWK`           | Yes      | EC P-256 JWK for verifying grant tokens |
+| `WEBHOOK_SECRET`           | Yes      | HMAC secret for webhook validation      |
+| `ACTION_SECRET`            | Yes      | Secret for internal action calls        |
+| `POLAR_ORGANIZATION_TOKEN` | Yes      | Polar API token                         |
+| `POLAR_SERVER`             | Yes      | `sandbox` or `production`               |
+| `NEXT_PUBLIC_POSTHOG_KEY`  | Yes      | PostHog project API key                 |
 
 Generate JWT key pairs with:
+
 ```bash
 bun run scripts/generate_keys.ts
 ```
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `dev` | Start Convex + Next.js concurrently |
-| `build` | Build Next.js app |
-| `lint` | ESLint check |
-| `test` | Run Vitest in watch mode |
-| `test:once` | Run Vitest once |
-| `test:coverage` | Run tests with coverage report |
-| `generate-keys` | Generate EC P-256 JWK key pair |
+| Script          | Description                         |
+| --------------- | ----------------------------------- |
+| `dev`           | Start Convex + Next.js concurrently |
+| `build`         | Build Next.js app                   |
+| `lint`          | ESLint check                        |
+| `test`          | Run Vitest in watch mode            |
+| `test:once`     | Run Vitest once                     |
+| `test:coverage` | Run tests with coverage report      |
+| `generate-keys` | Generate EC P-256 JWK key pair      |

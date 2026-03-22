@@ -32,17 +32,17 @@ Erebus is built to avoid all three.
 
 ## Packages
 
-| Package | Description | README |
-|---------|-------------|--------|
-| `apps/web` | Next.js dashboard + Convex backend | [README](./apps/web/README.md) |
-| `apps/docs` | Fumadocs documentation site | [README](./apps/docs/README.md) |
-| `apps/service` | Cloudflare Workers edge gateway | [README](./apps/service/README.md) |
-| `packages/erebus-sdk` | Published SDK (`@erebus-sh/sdk`) | [README](./packages/erebus-sdk/README.md) |
-| `packages/schemas` | Shared Zod validation schemas | [README](./packages/schemas/README.md) |
-| `packages/shared` | Shared utilities | [README](./packages/shared/README.md) |
-| `packages/eslint-config` | Shared ESLint flat config | [README](./packages/eslint-config/README.md) |
-| `packages/typescript-config` | Shared tsconfig base configs | — |
-| `workers/roadmap` | Roadmap Cloudflare Worker | [README](./workers/roadmap/README.md) |
+| Package                      | Description                        | README                                       |
+| ---------------------------- | ---------------------------------- | -------------------------------------------- |
+| `apps/web`                   | Next.js dashboard + Convex backend | [README](./apps/web/README.md)               |
+| `apps/docs`                  | Fumadocs documentation site        | [README](./apps/docs/README.md)              |
+| `apps/service`               | Cloudflare Workers edge gateway    | [README](./apps/service/README.md)           |
+| `packages/erebus-sdk`        | Published SDK (`@erebus-sh/sdk`)   | [README](./packages/erebus-sdk/README.md)    |
+| `packages/schemas`           | Shared Zod validation schemas      | [README](./packages/schemas/README.md)       |
+| `packages/shared`            | Shared utilities                   | [README](./packages/shared/README.md)        |
+| `packages/eslint-config`     | Shared ESLint flat config          | [README](./packages/eslint-config/README.md) |
+| `packages/typescript-config` | Shared tsconfig base configs       | —                                            |
+| `workers/roadmap`            | Roadmap Cloudflare Worker          | [README](./workers/roadmap/README.md)        |
 
 ## Getting Started
 
@@ -78,13 +78,13 @@ Each app has its own `.env.example` file documenting all required and optional v
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `bun run dev` | Start all services in development mode |
-| `bun run build` | Build all packages via Turborepo |
-| `bun run lint` | Lint all packages |
-| `bun run format` | Format all files with Prettier |
-| `bun run check-types` | Type-check all packages |
+| Script                | Description                            |
+| --------------------- | -------------------------------------- |
+| `bun run dev`         | Start all services in development mode |
+| `bun run build`       | Build all packages via Turborepo       |
+| `bun run lint`        | Lint all packages                      |
+| `bun run format`      | Format all files with Prettier         |
+| `bun run check-types` | Type-check all packages                |
 
 ## Examples
 

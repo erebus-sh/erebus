@@ -1,27 +1,22 @@
 /**
  * Erebus PubSub Service Module
  *
- * This module provides a comprehensive set of services for building scalable,
- * real-time publish-subscribe systems on Cloudflare Durable Objects.
- *
  * Core Services:
- * - ErebusPubSubService: Abstract base class with common functionality
+ * - ErebusPubSubService: Abstract Durable Object base with WebSocket lifecycle
  * - MessageHandler: WebSocket message processing and routing
- * - SubscriptionManager: Client subscription and topic management
- * - MessageBroadcaster: High-performance message broadcasting
- * - MessageBuffer: Persistence, buffering, and message retrieval
- * - SequenceManager: ULID sequence generation and ordering
- * - ShardManager: Cross-region coordination and routing
+ * - SubscriptionManager: Client subscription management with in-memory caching
+ * - MessageBroadcaster: High-performance message broadcasting with pre-serialization
+ * - MessageBuffer: Persistence with TTL, alarm-based cleanup
+ * - SequenceManager: ULID sequence generation with caching
+ * - ShardManager: Cross-region coordination with cached location/shards
  *
- * Types and Configuration:
- * - Comprehensive TypeScript interfaces and types
- * - Default configurations and constants
- * - Storage key generators and utilities
+ * Utilities (composition over inheritance):
+ * - service-utils: Storage, logging, queue, and client utilities
+ * - ack-utils: ACK packet factory functions
  */
 
 // Core Services
 export { ErebusPubSubService } from "./ErebusPubSubService";
-export { BaseService } from "./BaseService";
 export { ErebusClient } from "./ErebusClient";
 export { MessageHandler } from "./MessageHandler";
 export type {
@@ -33,6 +28,27 @@ export { MessageBroadcaster } from "./MessageBroadcaster";
 export { MessageBuffer } from "./MessageBuffer";
 export { SequenceManager } from "./SequenceManager";
 export { ShardManager } from "./ShardManager";
+
+// Utilities
+export {
+  createLogger,
+  getStorageValue,
+  putStorageValue,
+  deleteStorageValue,
+  listStorage,
+  batchPutStorage,
+  batchDeleteStorage,
+  getErebusClients,
+  enqueueUsageEvent,
+} from "./service-utils";
+export type { Logger } from "./service-utils";
+
+export {
+  sendAck,
+  createPublishSuccessAck,
+  createPublishErrorAck,
+  createSubscriptionAck,
+} from "./ack-utils";
 
 // Types and Interfaces
 export type {
@@ -56,7 +72,5 @@ export {
   STORAGE_KEYS,
 } from "./types";
 
-/**
- * Re-export the refactored ChannelV1 class
- */
+// Channel
 export { ChannelV1 } from "./channel";

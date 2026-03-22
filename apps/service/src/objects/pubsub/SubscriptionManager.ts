@@ -1,49 +1,49 @@
 import {
   STORAGE_KEYS,
   PUBSUB_CONSTANTS,
-  SubscriptionParams,
-  ServiceContext,
+  type SubscriptionParams,
+  type ServiceContext,
 } from "./types";
-import { BaseService } from "./BaseService";
-import { ChannelV1 } from "./channel";
-import { ErebusClient } from "./ErebusClient";
+import {
+  type Logger,
+  createLogger,
+  getStorageValue,
+  putStorageValue,
+  listStorage,
+} from "./service-utils";
+import type { ChannelV1 } from "./channel";
+import type { ErebusClient } from "./ErebusClient";
 
 /**
- * Manages client subscriptions to topics with atomic operations and capacity limits.
+ * Manages client subscriptions to topics with in-memory caching.
  *
- * This service handles:
- * - Adding/removing client subscriptions to topics
- * - Checking subscription status across wildcard and specific topics
- * - Enforcing subscriber limits per topic
- * - Atomic subscription operations using transactions
- * - Bulk operations for performance optimization
+ * Key design decisions for Durable Objects single-threaded actor model:
+ * - In-memory cache (Map<topic, Set<clientId>>) eliminates redundant storage reads
+ * - No transactions needed — single-threaded DO already serializes access
+ * - Lazy hydration from storage on first access after hibernation wake
+ * - Async persistence after in-memory updates
  */
-export class SubscriptionManager extends BaseService {
+export class SubscriptionManager {
+  private readonly ctx: DurableObjectState;
+  private readonly env: ServiceContext["env"];
+  private readonly log: Logger;
   private readonly channel: ChannelV1;
 
-  /**
-   * Initialize the SubscriptionManager with required presence update callback.
-   *
-   * @param serviceContext - Service context containing DO state and environment
-   * @param presenceUpdateCallback - Required callback for sending presence updates
-   */
+  /** In-memory subscription cache: topic key → Set of clientIds */
+  private cache = new Map<string, Set<string>>();
+
   constructor(serviceContext: ServiceContext, channel: ChannelV1) {
-    super(serviceContext);
+    this.ctx = serviceContext.ctx;
+    this.env = serviceContext.env;
+    this.log = createLogger("[SUBSCRIPTION_MANAGER]", serviceContext.env);
     this.channel = channel;
   }
 
   /**
-   * Subscribe a client to a topic with atomic operations and capacity checks.
+   * Subscribe a client to a topic.
    *
-   * This method:
-   * - Checks current subscriber count against limits
-   * - Atomically adds the client to the subscriber list
-   * - Always sends presence updates (even for existing subscriptions)
-   * - Uses transactions for consistency
-   *
-   * @param params - Subscription parameters
-   * @param selfClient - Optional ErebusClient for self-identification in presence updates
-   * @throws Error if topic has reached maximum subscriber capacity
+   * Updates in-memory Set immediately, persists to storage async.
+   * No transaction needed — single-threaded DO.
    */
   async subscribeToTopic(
     params: SubscriptionParams,
@@ -51,56 +51,30 @@ export class SubscriptionManager extends BaseService {
   ): Promise<void> {
     const { topic, projectId, channelName, clientId } = params;
 
-    this.logDebug(
-      `[SUBSCRIBE] Starting subscription - topic: ${topic}, ` +
-        `projectId: ${projectId}, channelName: ${channelName}, clientId: ${clientId}`,
-    );
+    this.log.debug(`[SUBSCRIBE] topic: ${topic}, clientId: ${clientId}`);
 
     const key = STORAGE_KEYS.subscribers(projectId, channelName, topic);
-    this.logDebug(`[SUBSCRIBE] Storage key: ${key}`);
+    const subscribers = await this.getOrHydrate(key);
 
-    let wasAlreadySubscribed = false;
+    // Check capacity
+    if (subscribers.size >= PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC) {
+      this.log.error(
+        `[SUBSCRIBE] Channel capacity exceeded (${PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC} subscribers)`,
+      );
+      throw new Error(
+        `Channel is full and has more than ${PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC} subscribers`,
+      );
+    }
 
-    /**
-     * Transaction to ensure atomicity of the subscription operation
-     * It checks if the client is already subscribed and if the channel has reached the maximum number of subscribers
-     */
-    await this.transaction(async (txn) => {
-      // Get current subscribers within transaction
-      const current = (await txn.get<string[]>(key)) ?? [];
-      this.logDebug(`[SUBSCRIBE] Current subscribers count: ${current.length}`);
+    // Update in-memory immediately
+    subscribers.add(clientId);
 
-      // Check capacity limits
-      if (current.length >= PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC) {
-        const errorMsg = `Channel capacity exceeded (${PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC} subscribers)`;
-        this.logError(`[SUBSCRIBE] ${errorMsg}`);
-        throw new Error(
-          `Channel is full and has more than ${PUBSUB_CONSTANTS.MAX_SUBSCRIBERS_PER_TOPIC} subscribers`,
-        );
-      }
+    // Persist async — single-threaded DO guarantees no concurrent writes
+    await putStorageValue(this.ctx, key, Array.from(subscribers));
 
-      // Add client if not already present
-      if (!current.includes(clientId)) {
-        const updated = [...current, clientId];
-        await txn.put(key, updated);
-        this.logDebug(
-          `[SUBSCRIBE] Client added to subscribers, new count: ${updated.length}`,
-        );
-        wasAlreadySubscribed = false;
-      } else {
-        this.logDebug(`[SUBSCRIBE] Client already in subscribers list`);
-        wasAlreadySubscribed = true;
-      }
-    });
+    this.log.debug(`[SUBSCRIBE] Client added, count: ${subscribers.size}`);
 
-    this.logDebug(`[SUBSCRIBE] Subscription transaction completed`);
-
-    // Always send presence update, even if client was already subscribed
-    // This handles cases like page refreshes where the client needs to re-establish presence
-    this.logDebug(
-      `[SUBSCRIBE] Sending presence update to other subscribers (wasAlreadySubscribed: ${wasAlreadySubscribed})`,
-    );
-
+    // Always send presence update (handles page refreshes)
     await this.channel.sendPresenceUpdate(
       clientId,
       topic,
@@ -112,151 +86,92 @@ export class SubscriptionManager extends BaseService {
   }
 
   /**
-   * Unsubscribe a client from a topic using atomic operations.
+   * Unsubscribe a client from a topic.
    *
-   * @param params - Subscription parameters
+   * No transaction needed — single-threaded DO.
    */
-  async unsubscribeFromTopic(params: SubscriptionParams): Promise<void> {
+  async unsubscribeFromTopic(
+    params: SubscriptionParams,
+    skipPresence = false,
+  ): Promise<void> {
     const { topic, projectId, channelName, clientId } = params;
 
-    this.logDebug(
-      `[UNSUBSCRIBE] Starting unsubscription - topic: ${topic}, ` +
-        `projectId: ${projectId}, channelName: ${channelName}, clientId: ${clientId}`,
-    );
+    this.log.debug(`[UNSUBSCRIBE] topic: ${topic}, clientId: ${clientId}`);
 
     const key = STORAGE_KEYS.subscribers(projectId, channelName, topic);
-    this.logDebug(`[UNSUBSCRIBE] Storage key: ${key}`);
+    const subscribers = await this.getOrHydrate(key);
 
-    await this.transaction(async (txn) => {
-      const current = (await txn.get<string[]>(key)) ?? [];
-      this.logDebug(
-        `[UNSUBSCRIBE] Current subscribers count: ${current.length}`,
+    subscribers.delete(clientId);
+    await putStorageValue(this.ctx, key, Array.from(subscribers));
+
+    this.log.debug(`[UNSUBSCRIBE] Client removed, count: ${subscribers.size}`);
+
+    // Send presence update (unless caller handles it, e.g. bulkUnsubscribe)
+    if (!skipPresence) {
+      await this.channel.sendPresenceUpdate(
+        clientId,
+        topic,
+        projectId,
+        channelName,
+        "unsubscribe",
       );
-
-      // Remove client from subscribers
-      const updated = current.filter((id) => id !== clientId);
-      await txn.put(key, updated);
-      this.logDebug(
-        `[UNSUBSCRIBE] Client removed from subscribers, new count: ${updated.length}`,
-      );
-    });
-
-    this.logDebug(`[UNSUBSCRIBE] Unsubscription transaction completed`);
-
-    // Send presence update
-    await this.channel.sendPresenceUpdate(
-      clientId,
-      topic,
-      projectId,
-      channelName,
-      "unsubscribe",
-    );
+    }
   }
 
   /**
    * Check if a client is subscribed to a topic.
-   *
-   * This method checks both specific topic subscriptions and wildcard subscriptions
-   * in parallel for optimal performance.
-   *
-   * @param params - Subscription parameters
-   * @returns Promise resolving to true if client is subscribed
+   * Checks both specific topic and wildcard (*) subscriptions.
+   * Pure in-memory operation after first hydration.
    */
   async isSubscribedToTopic(params: SubscriptionParams): Promise<boolean> {
     const { topic, projectId, channelName, clientId } = params;
 
-    this.logDebug(
-      `[IS_SUBSCRIBED] Checking subscription - topic: ${topic}, ` +
-        `projectId: ${projectId}, channelName: ${channelName}, clientId: ${clientId}`,
-    );
+    const wildcardKey = STORAGE_KEYS.subscribers(projectId, channelName, "*");
+    const topicKey = STORAGE_KEYS.subscribers(projectId, channelName, topic);
 
-    // Check both wildcard (*) and specific topic subscriptions in parallel
-    const [wildcardSubscribers, topicSubscribers] = await Promise.all([
-      this.getSubscribers(projectId, channelName, "*"),
-      this.getSubscribers(projectId, channelName, topic),
+    const [wildcardSubs, topicSubs] = await Promise.all([
+      this.getOrHydrate(wildcardKey),
+      this.getOrHydrate(topicKey),
     ]);
 
-    this.logDebug(
-      `[IS_SUBSCRIBED] Wildcard subscribers: ${wildcardSubscribers.length}, ` +
-        `Topic subscribers: ${topicSubscribers.length}`,
-    );
-
-    const isSubscribed =
-      wildcardSubscribers.includes(clientId) ||
-      topicSubscribers.includes(clientId);
-    this.logDebug(`[IS_SUBSCRIBED] Final subscription result: ${isSubscribed}`);
-
-    return isSubscribed;
+    return wildcardSubs.has(clientId) || topicSubs.has(clientId);
   }
 
   /**
    * Get all subscribers for a specific topic.
-   *
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @param topic - Topic name (can be '*' for wildcard)
-   * @returns Promise resolving to array of subscriber client IDs
+   * Returns array for backward compatibility with broadcast code.
    */
   async getSubscribers(
     projectId: string,
     channelName: string,
     topic: string,
   ): Promise<string[]> {
-    this.logDebug(`[GET_SUBSCRIBERS] Getting subscribers for topic: ${topic}`);
-
     const key = STORAGE_KEYS.subscribers(projectId, channelName, topic);
-    const subscribers = (await this.getStorageValue<string[]>(key, [])) || [];
-
-    this.logDebug(
-      `[GET_SUBSCRIBERS] Found ${subscribers.length} subscribers for key: ${key} in topic: ${topic}`,
-    );
-    return subscribers;
+    const subscribers = await this.getOrHydrate(key);
+    return Array.from(subscribers);
   }
 
   /**
    * Get subscriber counts for multiple topics in parallel.
-   *
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @param topics - Array of topic names to check
-   * @returns Promise resolving to Map of topic -> subscriber count
    */
   async getSubscriberCounts(
     projectId: string,
     channelName: string,
     topics: string[],
   ): Promise<Map<string, number>> {
-    this.logDebug(
-      `[GET_SUBSCRIBER_COUNTS] Getting counts for ${topics.length} topics`,
-    );
-
     const counts = new Map<string, number>();
-
-    // Fetch all subscriber lists in parallel
-    const subscriberLists = await Promise.all(
+    const lists = await Promise.all(
       topics.map((topic) => this.getSubscribers(projectId, channelName, topic)),
     );
-
-    // Build counts map
-    topics.forEach((topic, index) => {
-      counts.set(topic, subscriberLists[index].length);
+    topics.forEach((topic, i) => {
+      counts.set(topic, lists[i].length);
     });
-
-    this.logDebug(
-      `[GET_SUBSCRIBER_COUNTS] Retrieved counts for ${counts.size} topics`,
-    );
     return counts;
   }
 
   /**
    * Bulk unsubscribe a client from multiple topics.
-   * Used during client disconnect to clean up all subscriptions efficiently.
-   *
-   * @param clientId - Client ID to unsubscribe
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @param topics - Array of topics to unsubscribe from
-   * @returns Promise that resolves when all unsubscriptions complete
+   * Fixed: no longer sends double presence updates.
    */
   async bulkUnsubscribe(
     clientId: string,
@@ -264,100 +179,77 @@ export class SubscriptionManager extends BaseService {
     channelName: string,
     topics: string[],
   ): Promise<void> {
-    this.logDebug(
-      `[BULK_UNSUBSCRIBE] Unsubscribing client ${clientId} from ${topics.length} topics`,
+    this.log.debug(
+      `[BULK_UNSUBSCRIBE] client ${clientId} from ${topics.length} topics`,
     );
 
-    // Process all unsubscriptions in parallel for performance
+    // unsubscribeFromTopic already sends presence, so no double-send
     await Promise.all(
-      topics.map(async (topic) => {
-        await this.unsubscribeFromTopic({
+      topics.map((topic) =>
+        this.unsubscribeFromTopic({
           topic,
           projectId,
           channelName,
           clientId,
-        });
-
-        // Send presence update
-        await this.channel.sendPresenceUpdate(
-          clientId,
-          topic,
-          projectId,
-          channelName,
-          "unsubscribe",
-        );
-      }),
+        }),
+      ),
     );
 
-    this.logDebug(`[BULK_UNSUBSCRIBE] Bulk unsubscription completed`);
+    this.log.debug(`[BULK_UNSUBSCRIBE] completed`);
   }
 
   /**
    * Get all topics that have subscribers in a channel.
-   * Useful for administrative and monitoring purposes.
-   *
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @returns Promise resolving to array of active topic names
    */
   async getActiveTopics(
     projectId: string,
     channelName: string,
   ): Promise<string[]> {
-    this.logDebug(
-      `[GET_ACTIVE_TOPICS] Getting active topics for channel: ${channelName}`,
-    );
-
     const prefix = `subs:${projectId}:${channelName}:`;
-    const storage = await this.listStorage({ prefix });
+    const storage = await listStorage(this.ctx, { prefix });
 
     const topics: string[] = [];
     for (const [key, subscribers] of storage) {
       if (Array.isArray(subscribers) && subscribers.length > 0) {
-        // Extract topic from key: subs:projectId:channelName:topic
-        const topic = key.slice(prefix.length);
-        topics.push(topic);
+        topics.push(key.slice(prefix.length));
       }
     }
-
-    this.logDebug(`[GET_ACTIVE_TOPICS] Found ${topics.length} active topics`);
     return topics;
   }
 
   /**
    * Get total subscriber count across all topics in a channel.
-   * Note: This counts unique subscriptions, not unique clients.
-   *
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @returns Promise resolving to total subscription count
    */
   async getTotalSubscriptionCount(
     projectId: string,
     channelName: string,
   ): Promise<number> {
-    this.logDebug(
-      `[GET_TOTAL_SUBS] Getting total subscription count for channel: ${channelName}`,
-    );
-
     const prefix = `subs:${projectId}:${channelName}:`;
-    const storage = await this.listStorage<string[]>({ prefix });
+    const storage = await listStorage<string[]>(this.ctx, { prefix });
 
-    let totalCount = 0;
+    let total = 0;
     for (const [, subscribers] of storage) {
       if (Array.isArray(subscribers)) {
-        totalCount += subscribers.length;
+        total += subscribers.length;
       }
     }
-
-    this.logDebug(`[GET_TOTAL_SUBS] Total subscriptions: ${totalCount}`);
-    return totalCount;
+    return total;
   }
 
+  // ── Private helpers ──────────────────────────────────────────────────
+
   /**
-   * Override service name for consistent logging.
+   * Get subscribers from cache, or hydrate from storage on miss.
+   * After hibernation wake, cache is empty — first access loads from storage.
    */
-  protected getServiceName(): string {
-    return "[SUBSCRIPTION_MANAGER]";
+  private async getOrHydrate(key: string): Promise<Set<string>> {
+    const cached = this.cache.get(key);
+    if (cached) return cached;
+
+    // Hydrate from storage
+    const stored = (await getStorageValue<string[]>(this.ctx, key, [])) || [];
+    const set = new Set(stored);
+    this.cache.set(key, set);
+    return set;
   }
 }

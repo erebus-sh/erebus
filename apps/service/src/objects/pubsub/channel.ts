@@ -1,56 +1,64 @@
-import { GrantSchema } from "@repo/schemas/grant";
-import { Env } from "@/env";
-import { MessageBody } from "@repo/schemas/messageBody";
 import { PresencePacket } from "@repo/schemas/packetEnvelope";
+import type { Env } from "@/env";
+import type { MessageBody } from "@repo/schemas/messageBody";
 import { monoNow } from "@/lib/monotonic";
+import { WsErrors } from "@/enums/wserrors";
 import { ErebusPubSubService } from "./ErebusPubSubService";
 import {
   MessageHandler,
-  MessageBroadcastCoordinator,
-  BroadcastResult,
+  type MessageBroadcastCoordinator,
+  type BroadcastResult,
 } from "./MessageHandler";
 import { SubscriptionManager } from "./SubscriptionManager";
 import { MessageBroadcaster } from "./MessageBroadcaster";
 import { MessageBuffer } from "./MessageBuffer";
 import { SequenceManager } from "./SequenceManager";
 import { ShardManager } from "./ShardManager";
-import { PublishMessageParams } from "./types";
+import type { PublishMessageParams } from "./types";
 import { ErebusClient } from "./ErebusClient";
-import { WsErrors } from "@/enums/wserrors";
+import {
+  type Logger,
+  createLogger,
+  getStorageValue,
+  putStorageValue,
+  deleteStorageValue,
+} from "./service-utils";
 
 /**
- * ChannelV1 - Main PubSub channel implementation extending ErebusPubSubService.
+ * ChannelV1 - Main PubSub channel Durable Object.
  *
- * This class orchestrates all PubSub services to provide:
- * - WebSocket connection management with hibernation support
- * - Real-time message publishing and broadcasting
- * - Topic-based subscription management
- * - Message persistence and catch-up delivery
- * - Cross-region shard coordination
- * - Performance instrumentation and monitoring
+ * Orchestrates all managers using composition (not inheritance for managers).
+ * Implements MessageBroadcastCoordinator for cross-shard broadcasting.
+ *
+ * Key improvements over previous implementation:
+ * - Managers use composition instead of 3-level class hierarchy
+ * - In-memory caching in SubscriptionManager, SequenceManager, ShardManager
+ * - No unnecessary transactions (single-threaded DO model)
+ * - DO alarm-based TTL cleanup instead of inline pruning
+ * - Pre-serialized messages, Set-based subscriber lookups
+ * - isPaused cached in memory
  */
 export class ChannelV1
   extends ErebusPubSubService
   implements MessageBroadcastCoordinator
 {
-  // Service dependencies
   private readonly messageHandler: MessageHandler;
   private readonly subscriptionManager: SubscriptionManager;
   private readonly messageBroadcaster: MessageBroadcaster;
   private readonly messageBuffer: MessageBuffer;
   private readonly sequenceManager: SequenceManager;
   private readonly shardManager: ShardManager;
+  private readonly log: Logger;
 
-  /**
-   * Initialize ChannelV1 with all required services.
-   *
-   * @param ctx - Durable Object state context
-   * @param env - Environment variables and bindings
-   */
+  /** Cached paused state — invalidated on pause()/resume() */
+  private pausedCache: boolean | null = null;
+
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
 
-    // Initialize base services first (no dependencies)
+    this.log = createLogger("[CHANNEL_V1]", env);
+
+    // Initialize managers with composition (ServiceContext + Logger)
     this.subscriptionManager = new SubscriptionManager(
       this.serviceContext,
       this,
@@ -59,23 +67,19 @@ export class ChannelV1
     this.sequenceManager = new SequenceManager(this.serviceContext);
     this.shardManager = new ShardManager(this.serviceContext);
 
-    // Initialize MessageBroadcaster with MessageBuffer dependency
     this.messageBroadcaster = new MessageBroadcaster(
       this.serviceContext,
       this.messageBuffer,
     );
 
-    // Initialize MessageHandler with all its dependencies (including this class as coordinator)
     this.messageHandler = new MessageHandler(
       this.serviceContext,
       this.subscriptionManager,
       this.messageBuffer,
-      this, // ChannelV1 implements MessageBroadcastCoordinator
+      this,
     );
 
-    this.log(
-      "[CONSTRUCTOR] ChannelV1 instance created with all services initialized",
-    );
+    this.log.debug("[CONSTRUCTOR] ChannelV1 initialized");
   }
 
   /**
@@ -83,116 +87,97 @@ export class ChannelV1
    */
   async fetch(request: Request): Promise<Response> {
     if (await this.isPaused()) {
-      this.log("[FETCH] Channel is paused, returning 403", "warn");
+      this.log.warn("[FETCH] Channel is paused");
       return new Response("Channel is paused", { status: 403 });
     }
 
-    this.log("[FETCH] WebSocket connection request received");
-
     const locationHint = request.headers.get("x-location-hint");
     if (!locationHint) {
-      this.log("[FETCH] Missing location hint, returning 400", "warn");
+      this.log.warn("[FETCH] Missing location hint");
       return new Response("Location hint is required", { status: 400 });
     }
 
-    this.log(`[FETCH] Location hint: ${locationHint}`);
-
     try {
       await this.shardManager.setLocationHint(locationHint);
-      this.log("[FETCH] Location hint stored in shard manager");
 
       const { client, server } = this.createWebSocketPair();
       this.acceptWebSocket(server);
-      this.log("[FETCH] WebSocket accepted, returning 101 response");
+
+      this.log.debug("[FETCH] WebSocket accepted");
 
       return new Response(null, {
         status: 101,
         webSocket: client,
       });
     } catch (error) {
-      this.log(
-        `[FETCH] Error setting up WebSocket connection: ${error}`,
-        "error",
-      );
+      this.log.error(`[FETCH] WebSocket setup error: ${error}`);
       return new Response("Internal Server Error", { status: 500 });
     }
   }
 
   /**
-   * Handle incoming WebSocket messages by delegating to MessageHandler.
-   * This is where all the message handling logic is implemented.
+   * Handle incoming WebSocket messages.
    */
   async webSocketMessage(ws: WebSocket, message: string): Promise<void> {
     if (await this.isPaused()) {
-      this.log("[WEBSOCKET_MESSAGE] Channel is paused, returning 403", "warn");
       ws.close(WsErrors.Forbidden, "Channel is paused");
       return;
     }
-
     await this.messageHandler.handleWebSocketMessage(ws, message);
   }
 
   /**
-   * Handle WebSocket close events with bulk cleanup operations.
+   * Handle WebSocket close events with bulk cleanup.
    */
   async webSocketClose(
     ws: WebSocket,
     code?: number,
     reason?: string,
-    wasClean?: boolean,
+    _wasClean?: boolean,
   ): Promise<void> {
-    const reasonPreview = reason?.substring(0, 100);
-    this.log(
-      `[CLOSE] WebSocket close event - code: ${code}, reason: ${reasonPreview}, wasClean: ${wasClean}`,
-    );
+    this.log.debug(`[CLOSE] code=${code} reason=${reason?.substring(0, 100)}`);
 
     try {
-      // Try to create ErebusClient from WebSocket
       const client = ErebusClient.fromWebSocket(ws);
       if (!client) {
-        this.log("[CLOSE] No/invalid grant; skipping cleanup", "warn");
+        this.log.warn("[CLOSE] No valid grant; skipping cleanup");
         return;
       }
 
-      this.log(
-        `[CLOSE] Unsubscribing client from all topics - clientId: ${client.clientId}, ` +
-          `channel: ${client.channel}, topicCount: ${client.topics.length}`,
-      );
-
       const subscriptionTopics = client.topics.map((t) => t.topic);
-
-      // Appened subscriptionTopics from durable object storage
-      const subscriptionTopicsFromStorage =
-        await this.subscriptionManager.getActiveTopics(
-          client.projectId,
-          client.channel,
-        );
-      const allSubscriptionTopics = [
-        ...subscriptionTopics,
-        ...subscriptionTopicsFromStorage,
-      ];
+      const activeTopics = await this.subscriptionManager.getActiveTopics(
+        client.projectId,
+        client.channel,
+      );
+      const allTopics = [...new Set([...subscriptionTopics, ...activeTopics])];
 
       await this.subscriptionManager.bulkUnsubscribe(
         client.clientId,
         client.projectId,
         client.channel,
-        allSubscriptionTopics,
+        allTopics,
       );
 
-      this.log("[CLOSE] Successfully unsubscribed from all topics");
+      this.log.debug("[CLOSE] Cleanup completed");
     } catch (error) {
-      this.log(`[CLOSE] Error during cleanup: ${error}`, "error");
+      this.log.error(`[CLOSE] Cleanup error: ${error}`);
     } finally {
-      // Still need to close the raw WebSocket for cleanup
       try {
         if (ws.readyState === WebSocket.READY_STATE_OPEN) {
           ws.close(code, reason);
-          this.logDebug(`[CLOSE] Raw WebSocket closed`);
         }
-      } catch (error) {
-        this.log(`[CLOSE] Error closing raw WebSocket: ${error}`, "warn");
+      } catch {
+        // Ignore close errors
       }
     }
+  }
+
+  /**
+   * DO alarm handler — runs TTL cleanup for message buffer.
+   */
+  async alarm(): Promise<void> {
+    this.log.debug("[ALARM] Running TTL cleanup");
+    await this.messageBuffer.runTtlCleanup();
   }
 
   /**
@@ -222,7 +207,6 @@ export class ChannelV1
       tIngress,
       webhookUrl,
     };
-
     await this.messageBroadcaster.publishMessage(params);
   }
 
@@ -234,15 +218,7 @@ export class ChannelV1
   }
 
   /**
-   * Send presence update to all connected clients when subscription status changes.
-   * Uses existing MessageBroadcaster infrastructure for efficient fire-and-forget delivery.
-   *
-   * @param clientId - ID of the client whose presence changed
-   * @param topic - Topic that the client subscribed/unsubscribed to
-   * @param projectId - Project ID for the channel
-   * @param channelName - Channel name
-   * @param action - Whether client subscribed (online) or unsubscribed (offline)
-   * @param selfClient - Optional self client for enriched presence updates
+   * Send presence update to all connected clients.
    */
   public async sendPresenceUpdate(
     clientId: string,
@@ -252,58 +228,37 @@ export class ChannelV1
     action: "subscribe" | "unsubscribe",
     selfClient?: ErebusClient,
   ): Promise<void> {
-    this.logDebug(
-      `[PRESENCE_UPDATE] Sending presence update for client: ${clientId}, topic: ${topic}, action: ${action}`,
-    );
-
     try {
-      // Get fresh subscribers for the topic right before broadcasting
       const subscribers = await this.subscriptionManager.getSubscribers(
         projectId,
         channelName,
         topic,
       );
 
-      // Create presence update packet
       const presencePacket = PresencePacket.parse({
         packetType: "presence",
         clients: [
           {
-            clientId: clientId,
-            topic: topic,
+            clientId,
+            topic,
             status: action === "subscribe" ? "online" : "offline",
           },
         ],
       });
 
-      // Use MessageBroadcaster's optimized presence broadcasting
       await this.messageBroadcaster.broadcastPresence(
         presencePacket,
         selfClient,
         subscribers,
       );
-
-      this.logDebug(
-        `[PRESENCE_UPDATE] Presence update broadcast completed for client: ${clientId}, subscribers: ${subscribers.length}`,
-      );
     } catch (error) {
-      this.log(
-        `[PRESENCE_UPDATE] Error sending presence update: ${error}`,
-        "error",
-      );
-      // Don't fail the subscription/unsubscription for presence update errors
+      this.log.error(`[PRESENCE_UPDATE] Error: ${error}`);
+      // Don't fail subscription for presence errors
     }
   }
 
   /**
-   * MessageBroadcastCoordinator implementation: Coordinate message broadcasting across all shards.
-   *
-   * This method handles the complete message broadcasting pipeline:
-   * - Generates sequence numbers and retrieves shard information
-   * - Creates complete message metadata with timing instrumentation
-   * - Broadcasts locally and to remote shards
-   * - Manages background persistence operations
-   * - Returns sequence and server message ID for ACK responses
+   * MessageBroadcastCoordinator: Coordinate broadcasting across all shards.
    */
   async broadcastToAllShardsAndUpdateState(
     payload: MessageBody,
@@ -318,51 +273,32 @@ export class ChannelV1
   ): Promise<BroadcastResult> {
     const broadcastStartTime = monoNow();
 
-    this.logDebug(
-      `[BROADCAST] Starting broadcast - senderId: ${senderClientId}, topic: ${topic}`,
-    );
-
-    // Get sequence number, available shards, and subscribers in parallel
-    const seqStartTime = monoNow();
     const [seq, shards, subscriberClientIds] = await Promise.all([
       this.sequenceManager.generateSequence(projectId, channelName, topic),
       this.shardManager.getAvailableShards(),
       this.subscriptionManager.getSubscribers(projectId, channelName, topic),
     ]);
-    const seqDuration = monoNow() - seqStartTime;
 
-    this.logDebug(
-      `[BROADCAST] Generated sequence: ${seq}, available shards: ${shards.length}, ` +
-        `subscribers: ${subscriberClientIds.length}, seq duration: ${seqDuration.toFixed(2)}ms`,
-    );
-
-    // Generate server message ID for ACK responses
     const serverMsgId = crypto.randomUUID();
 
-    // Create complete message with timing instrumentation
     const wallClockIngressTime = Date.now() - (monoNow() - tIngress);
     const filledPayload: MessageBody = {
       ...payload,
       senderId: senderClientId,
-      topic: topic,
-      sentAt: new Date(wallClockIngressTime), // Wall clock time for human readability
-      seq: seq,
-      id: serverMsgId, // Use server message ID as the message ID
-      // Timing instrumentation for performance analysis
+      topic,
+      sentAt: new Date(wallClockIngressTime),
+      seq,
+      id: serverMsgId,
       t_ingress: tIngress,
       t_enqueued: tEnqueued,
-      t_broadcast_begin: 0, // Set just before broadcast
-      t_ws_write_end: 0, // Set after local broadcast
-      t_broadcast_end: 0, // Set after all broadcasts
+      t_broadcast_begin: 0,
+      t_ws_write_end: 0,
+      t_broadcast_end: 0,
     };
 
-    // Mark broadcast begin time
-    const tBroadcastBegin = monoNow();
-    filledPayload.t_broadcast_begin = tBroadcastBegin;
+    filledPayload.t_broadcast_begin = monoNow();
 
-    this.logDebug("[BROADCAST] Payload filled with metadata");
-
-    // Start local publishing immediately (prioritized for lower latency)
+    // Local publish (prioritized for lower latency)
     const localPublishPromise = this.publishMessage(
       filledPayload,
       senderClientId,
@@ -376,11 +312,9 @@ export class ChannelV1
       webhookUrl,
     );
 
-    // Prepare remote shard broadcasts
+    // Remote shard broadcasts
     const remotePublishPromises: Promise<void>[] = [];
     if (shards.length > 0) {
-      this.logDebug("[BROADCAST] Preparing remote shard publishes");
-
       for (const shard of shards) {
         const channelStub = this.env.CHANNEL.getByName(shard);
         remotePublishPromises.push(
@@ -400,72 +334,48 @@ export class ChannelV1
       }
     }
 
-    // Wait for local publish first (prioritized)
     await localPublishPromise;
 
-    // Remote publishes run in background
     if (remotePublishPromises.length > 0) {
       await Promise.all(remotePublishPromises).catch((error) => {
-        this.logDebug(`[BROADCAST] Remote shard publish error: ${error}`);
+        this.log.warn(`[BROADCAST] Remote shard error: ${error}`);
       });
     }
 
-    const broadcastDuration = monoNow() - broadcastStartTime;
-    this.logDebug(
-      `[BROADCAST] Broadcast completed - duration: ${broadcastDuration.toFixed(2)}ms`,
+    this.log.debug(
+      `[BROADCAST] Completed in ${(monoNow() - broadcastStartTime).toFixed(2)}ms`,
     );
 
-    // Return sequence and server message ID for ACK responses
-    return {
-      seq,
-      serverMsgId,
-    };
+    return { seq, serverMsgId };
   }
 
   /**
-   * Override service name for consistent logging.
-   */
-  protected getServiceName(): string {
-    return "[CHANNEL_V1]";
-  }
-
-  /**
-   * Pause the channel
+   * Pause the channel. Invalidates cache.
    */
   async pause(): Promise<void> {
-    await this.putStorageValue("paused", true);
+    await putStorageValue(this.ctx, "paused", true);
+    this.pausedCache = true;
   }
 
   /**
-   * Resume the channel
+   * Resume the channel. Invalidates cache.
    */
   async resume(): Promise<void> {
-    await this.deleteStorageValue("paused");
+    await deleteStorageValue(this.ctx, "paused");
+    this.pausedCache = false;
   }
 
   /**
-   * Check if the channel is paused
+   * Check if the channel is paused. Cached in memory.
    */
   async isPaused(): Promise<boolean> {
-    return (await this.getStorageValue("paused")) ?? false;
+    if (this.pausedCache !== null) return this.pausedCache;
+    this.pausedCache = (await getStorageValue(this.ctx, "paused")) ?? false;
+    return this.pausedCache;
   }
 
   /**
-   * Public API: Retrieve historical messages for a topic with cursor-based pagination.
-   *
-   * This method provides HTTP API access to the message buffer with:
-   * - Cursor-based pagination using ULID sequences
-   * - Bidirectional navigation (forward/backward)
-   * - Automatic next cursor calculation
-   * - TTL enforcement and lazy cleanup
-   *
-   * @param projectId - Project identifier (from grant)
-   * @param channelName - Channel name (from grant)
-   * @param topic - Topic name to fetch history for
-   * @param cursor - ULID sequence to paginate from (null for first page)
-   * @param limit - Maximum messages to return (default 50, max 1000)
-   * @param direction - Pagination direction: "backward" (newest→oldest) or "forward" (oldest→newest)
-   * @returns Promise resolving to paginated message results
+   * Public API: Retrieve historical messages with cursor-based pagination.
    */
   async getTopicHistory(
     projectId: string,
@@ -475,17 +385,11 @@ export class ChannelV1
     limit: number,
     direction: "forward" | "backward",
   ): Promise<{ items: MessageBody[]; nextCursor: string | null }> {
-    this.log(
-      `[GET_TOPIC_HISTORY] Fetching history - topic: ${topic}, cursor: ${cursor}, limit: ${limit}, direction: ${direction}`,
-    );
-
-    // Validate and normalize limit
     const normalizedLimit = Math.min(Math.max(1, limit), 1000);
 
     let items: MessageBody[];
 
     if (direction === "forward") {
-      // Forward: oldest → newest (messages after cursor)
       items = await this.messageBuffer.getMessagesAfter({
         projectId,
         channelName,
@@ -494,7 +398,6 @@ export class ChannelV1
         limit: normalizedLimit,
       });
     } else {
-      // Backward (default): newest → oldest (messages before cursor)
       items = await this.messageBuffer.getMessagesBefore({
         projectId,
         channelName,
@@ -504,20 +407,11 @@ export class ChannelV1
       });
     }
 
-    // Calculate next cursor from last message in results
-    // If we got fewer messages than the limit, we've reached the end
     const nextCursor =
       items.length === normalizedLimit && items.length > 0
         ? items[items.length - 1].seq
         : null;
 
-    this.log(
-      `[GET_TOPIC_HISTORY] Retrieved ${items.length} messages, nextCursor: ${nextCursor}`,
-    );
-
-    return {
-      items,
-      nextCursor,
-    };
+    return { items, nextCursor };
   }
 }

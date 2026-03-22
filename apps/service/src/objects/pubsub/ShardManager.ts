@@ -1,206 +1,154 @@
-import { BaseService } from "./BaseService";
+import type { ServiceContext } from "./types";
+import {
+  type Logger,
+  createLogger,
+  getStorageValue,
+  putStorageValue,
+  deleteStorageValue,
+} from "./service-utils";
 
 /**
  * Manages shard coordination and location-aware routing for distributed channels.
  *
- * This service handles:
- * - Storing and retrieving available shards for cross-region broadcasting
- * - Location-aware filtering to avoid self-broadcasting
- * - Shard deduplication and consistency checks
- * - Optimization to skip unnecessary storage writes
- *
- * Shards represent different channel instances across regions/locations that need
- * to coordinate for global message broadcasting.
+ * Key design decisions for Durable Objects single-threaded actor model:
+ * - In-memory cache for location hint and shards (change infrequently)
+ * - Invalidation on explicit set operations
+ * - Null-safe location filtering
  */
-export class ShardManager extends BaseService {
-  /** Storage key for available shards list */
-  private static readonly AVAILABLE_SHARDS_KEY = "avalibleShards"; // Keep original typo for compatibility
+export class ShardManager {
+  private readonly ctx: DurableObjectState;
+  private readonly log: Logger;
 
-  /** Storage key for location hint */
+  /** Storage key for available shards list (preserving original typo for compatibility) */
+  private static readonly AVAILABLE_SHARDS_KEY = "avalibleShards";
   private static readonly LOCATION_HINT_KEY = "locationHint";
+
+  /** In-memory caches */
+  private cachedShards: string[] | null = null;
+  private cachedLocation: string | null | undefined = undefined; // undefined = not loaded
+
+  constructor(serviceContext: ServiceContext) {
+    this.ctx = serviceContext.ctx;
+    this.log = createLogger("[SHARD_MANAGER]", serviceContext.env);
+  }
 
   /**
    * Get all available shards for cross-region message broadcasting.
-   *
-   * @returns Promise resolving to array of shard identifiers
    */
   async getAvailableShards(): Promise<string[]> {
-    this.logDebug(`[GET_SHARDS] Getting available shards`);
+    if (this.cachedShards !== null) return this.cachedShards;
 
     const shards =
-      (await this.getStorageValue<string[]>(
+      (await getStorageValue<string[]>(
+        this.ctx,
         ShardManager.AVAILABLE_SHARDS_KEY,
         [],
       )) || [];
 
-    this.logDebug(`[GET_SHARDS] Found ${shards.length} available shards`);
+    this.cachedShards = shards;
+    this.log.debug(`[GET_SHARDS] Found ${shards.length} available shards`);
     return shards;
   }
 
   /**
-   * Set available shards in local storage with location-aware filtering and deduplication.
-   *
-   * This method:
-   * - Retrieves the current location hint to avoid self-referencing
-   * - Deduplicates the shard list
-   * - Filters out the current location from the shard list
-   * - Optimizes by skipping writes if shards haven't changed
-   * - Maintains consistency with concurrent updates
-   *
-   * @param shards - Array of shard identifiers to store
-   * @returns Promise that resolves when shards are stored
+   * Set available shards with location-aware filtering and deduplication.
    */
   async setShardsInLocalStorage(shards: string[]): Promise<void> {
-    this.logDebug(
-      `[SET_SHARDS] Setting shards in local storage - count: ${shards.length}`,
-    );
+    this.log.debug(`[SET_SHARDS] Setting shards, count: ${shards.length}`);
 
-    // Get current location to filter out self-references
-    const myLocation = await this.getStorageValue<string>(
-      ShardManager.LOCATION_HINT_KEY,
-    );
-    this.logDebug(`[SET_SHARDS] My location hint: ${myLocation}`);
+    const myLocation = await this.getLocationHint();
 
-    // Deduplicate and filter out self-location
+    // Deduplicate and filter out self-location (null-safe)
     const uniqueShards = Array.from(new Set(shards)).filter(
-      (shard) => shard !== myLocation,
+      (shard) => !myLocation || shard !== myLocation,
     );
 
-    this.logDebug(
-      `[SET_SHARDS] Unique shards after filtering: ${uniqueShards.length}`,
-    );
-
-    // Check if update is needed (optimization to avoid unnecessary writes)
-    const existingShards =
-      (await this.getStorageValue<string[]>(
-        ShardManager.AVAILABLE_SHARDS_KEY,
-        [],
-      )) || [];
-
+    // Check if update is needed
+    const existingShards = await this.getAvailableShards();
     if (this.areShardsEqual(existingShards, uniqueShards)) {
-      this.logDebug(`[SET_SHARDS] Shards already stored, skipping update`);
+      this.log.debug(`[SET_SHARDS] Shards unchanged, skipping write`);
       return;
     }
 
-    // Store the updated shard list
-    await this.putStorageValue(ShardManager.AVAILABLE_SHARDS_KEY, uniqueShards);
-    this.logDebug(
-      `[SET_SHARDS] Shards stored successfully (count: ${uniqueShards.length})`,
+    await putStorageValue(
+      this.ctx,
+      ShardManager.AVAILABLE_SHARDS_KEY,
+      uniqueShards,
     );
+    this.cachedShards = uniqueShards;
+    this.log.debug(`[SET_SHARDS] Stored ${uniqueShards.length} shards`);
   }
 
   /**
    * Get the location hint for this channel instance.
-   *
-   * @returns Promise resolving to the location hint or null if not set
    */
   async getLocationHint(): Promise<string | null> {
-    const location = await this.getStorageValue<string>(
+    if (this.cachedLocation !== undefined) return this.cachedLocation;
+
+    const location = await getStorageValue<string>(
+      this.ctx,
       ShardManager.LOCATION_HINT_KEY,
     );
-    this.logDebug(`[GET_LOCATION] Location hint: ${location}`);
-    return location || null;
+    this.cachedLocation = location || null;
+    return this.cachedLocation;
   }
 
   /**
    * Set the location hint for this channel instance.
-   * This is typically called during WebSocket connection establishment.
-   *
-   * @param locationHint - The location identifier for this instance
-   * @returns Promise that resolves when location is stored
    */
   async setLocationHint(locationHint: string): Promise<void> {
-    this.logDebug(`[SET_LOCATION] Setting location hint: ${locationHint}`);
-
-    await this.putStorageValue(ShardManager.LOCATION_HINT_KEY, locationHint);
-    this.logDebug(`[SET_LOCATION] Location hint stored successfully`);
+    this.log.debug(`[SET_LOCATION] Setting location hint: ${locationHint}`);
+    await putStorageValue(
+      this.ctx,
+      ShardManager.LOCATION_HINT_KEY,
+      locationHint,
+    );
+    this.cachedLocation = locationHint;
   }
 
   /**
    * Add a single shard to the available shards list.
-   * Useful for dynamic shard discovery and registration.
-   *
-   * @param shardId - Shard identifier to add
-   * @returns Promise that resolves when shard is added
    */
   async addShard(shardId: string): Promise<void> {
-    this.logDebug(`[ADD_SHARD] Adding shard: ${shardId}`);
-
     const currentShards = await this.getAvailableShards();
-
-    // Only add if not already present
     if (!currentShards.includes(shardId)) {
-      const updatedShards = [...currentShards, shardId];
-      await this.setShardsInLocalStorage(updatedShards);
-      this.logDebug(`[ADD_SHARD] Shard added successfully`);
-    } else {
-      this.logDebug(`[ADD_SHARD] Shard already exists, skipping`);
+      await this.setShardsInLocalStorage([...currentShards, shardId]);
     }
   }
 
   /**
    * Remove a shard from the available shards list.
-   * Useful for shard deregistration and failure handling.
-   *
-   * @param shardId - Shard identifier to remove
-   * @returns Promise that resolves when shard is removed
    */
   async removeShard(shardId: string): Promise<void> {
-    this.logDebug(`[REMOVE_SHARD] Removing shard: ${shardId}`);
-
     const currentShards = await this.getAvailableShards();
-    const filteredShards = currentShards.filter((shard) => shard !== shardId);
-
-    if (filteredShards.length !== currentShards.length) {
-      await this.setShardsInLocalStorage(filteredShards);
-      this.logDebug(`[REMOVE_SHARD] Shard removed successfully`);
-    } else {
-      this.logDebug(`[REMOVE_SHARD] Shard not found, no action taken`);
+    const filtered = currentShards.filter((s) => s !== shardId);
+    if (filtered.length !== currentShards.length) {
+      await this.setShardsInLocalStorage(filtered);
     }
   }
 
   /**
    * Get shards filtered by location (excluding current location).
-   * This is the primary method used for cross-region broadcasting.
-   *
-   * @returns Promise resolving to array of remote shard identifiers
    */
   async getRemoteShards(): Promise<string[]> {
-    this.logDebug(`[GET_REMOTE_SHARDS] Getting remote shards`);
-
     const [allShards, myLocation] = await Promise.all([
       this.getAvailableShards(),
       this.getLocationHint(),
     ]);
-
-    const remoteShards = allShards.filter((shard) => shard !== myLocation);
-    this.logDebug(
-      `[GET_REMOTE_SHARDS] Found ${remoteShards.length} remote shards ` +
-        `(total: ${allShards.length}, my location: ${myLocation})`,
-    );
-
-    return remoteShards;
+    return myLocation
+      ? allShards.filter((shard) => shard !== myLocation)
+      : allShards;
   }
 
   /**
    * Check if this instance should broadcast to other shards.
-   *
-   * @returns Promise resolving to true if there are remote shards to broadcast to
    */
   async shouldBroadcastToShards(): Promise<boolean> {
-    const remoteShards = await this.getRemoteShards();
-    const shouldBroadcast = remoteShards.length > 0;
-
-    this.logDebug(
-      `[SHOULD_BROADCAST] Should broadcast to shards: ${shouldBroadcast}`,
-    );
-    return shouldBroadcast;
+    return (await this.getRemoteShards()).length > 0;
   }
 
   /**
    * Get comprehensive shard information for diagnostics.
-   *
-   * @returns Promise resolving to shard status information
    */
   async getShardStatus(): Promise<{
     myLocation: string | null;
@@ -214,67 +162,30 @@ export class ShardManager extends BaseService {
       this.getAvailableShards(),
       this.getRemoteShards(),
     ]);
-
-    const status = {
+    return {
       myLocation,
       allShards,
       remoteShards,
       totalShards: allShards.length,
       shouldBroadcast: remoteShards.length > 0,
     };
-
-    this.logDebug(`[SHARD_STATUS] ${JSON.stringify(status)}`);
-    return status;
   }
 
   /**
-   * Clear all shard information (useful for testing and reset scenarios).
-   *
-   * @returns Promise that resolves when all shard data is cleared
+   * Clear all shard information.
    */
   async clearShards(): Promise<void> {
-    this.logDebug(`[CLEAR_SHARDS] Clearing all shard information`);
-
     await Promise.all([
-      this.deleteStorageValue(ShardManager.AVAILABLE_SHARDS_KEY),
-      this.deleteStorageValue(ShardManager.LOCATION_HINT_KEY),
+      deleteStorageValue(this.ctx, ShardManager.AVAILABLE_SHARDS_KEY),
+      deleteStorageValue(this.ctx, ShardManager.LOCATION_HINT_KEY),
     ]);
-
-    this.logDebug(`[CLEAR_SHARDS] All shard information cleared`);
+    this.cachedShards = null;
+    this.cachedLocation = undefined;
   }
 
-  /**
-   * Compare two shard arrays for equality (order-independent).
-   *
-   * @param shards1 - First shard array
-   * @param shards2 - Second shard array
-   * @returns True if arrays contain the same shards
-   */
-  private areShardsEqual(shards1: string[], shards2: string[]): boolean {
-    if (shards1.length !== shards2.length) {
-      return false;
-    }
-
-    const set1 = new Set(shards1);
-    const set2 = new Set(shards2);
-
-    if (set1.size !== set2.size) {
-      return false;
-    }
-
-    for (const shard of set1) {
-      if (!set2.has(shard)) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  /**
-   * Override service name for consistent logging.
-   */
-  protected getServiceName(): string {
-    return "[SHARD_MANAGER]";
+  private areShardsEqual(a: string[], b: string[]): boolean {
+    if (a.length !== b.length) return false;
+    const setA = new Set(a);
+    return b.every((s) => setA.has(s));
   }
 }

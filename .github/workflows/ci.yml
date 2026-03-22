@@ -1,0 +1,79 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.19"
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.19"
+      - run: bun install --frozen-lockfile
+      - run: bun run check-types
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.19"
+      - run: bun install --frozen-lockfile
+      - run: bun run build
+
+  test-sdk:
+    name: Test SDK
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.19"
+      - run: bun install --frozen-lockfile
+      - name: Build SDK
+        run: cd packages/erebus-sdk && bun run build
+      - name: Run Node tests
+        run: cd packages/erebus-sdk && bun run test
+      - name: Run React/jsdom tests
+        run: cd packages/erebus-sdk && bun run test:react
+
+  test-service:
+    name: Test Service
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.2.19"
+      - run: bun install --frozen-lockfile
+      - name: Build SDK (service dependency)
+        run: cd packages/erebus-sdk && bun run build
+      - name: Generate Cloudflare types
+        run: cd apps/service && bun run cf-typegen
+      - name: Run service tests
+        run: cd apps/service && bun run test

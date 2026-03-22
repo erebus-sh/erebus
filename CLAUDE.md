@@ -76,42 +76,49 @@ cd apps/service && bun run test
 ## Code Conventions
 
 ### Imports
+
 - Path alias `@/` maps to app/package root (configured per tsconfig)
 - Use `@/` for all non-relative imports within an app
 - Relative imports only within the same directory subtree
 - Barrel files (index.ts) used strategically for public API surfaces
 
 ### File naming
+
 - **kebab-case** for component files and routes: `create-project-dialog.tsx`, `[user-slug]/`
 - **PascalCase** for class files: `ErebusClient.ts`, `MessageBroadcaster.ts`
 - **camelCase** for utility files: `useNavStackStore.ts`
 - Test files use `.test.ts` suffix
 
 ### Exports
+
 - Named exports preferred for utilities, classes, and types
 - `export default function` for React page/component files
 - Type-only exports: `export type { SomeType }`
 - Barrel files organize exports with comment section headers
 
 ### Error handling
+
 - Custom error classes extending Error: `NotConnectedError`, `BackpressureError`, `AuthError`
 - `ConvexError` for database operation errors
 - try/catch with `instanceof` checks for error type discrimination
 - `logError()` utility for structured error logging
 
 ### API patterns
+
 - Hono.js for routing in apps/service and SDK server
 - Zod validation via `zValidator()` middleware
 - Response shape: `{ ok: true, reqId }` or `{ error: string, reqId }` with appropriate HTTP status
 - Grant JWT tokens for channel authentication
 
 ### React patterns
+
 - Server components by default, `"use client"` directive only when needed
 - Convex hooks: `useMutation()`, `useQuery()` with `api.*` references
 - Zustand for client-side state management
 - Props typed inline: `({ projects }: { projects: Doc<"projects">[] })`
 
 ### Convex patterns
+
 - Schema in `convex/schema.ts`, tables split into `convex/tables/`
 - Mutations: `mutation({ args: { ... }, handler: async (ctx, args) => { ... } })`
 - Queries: `query({ args: { ... }, handler: async (ctx, args) => { ... } })`
@@ -120,7 +127,14 @@ cd apps/service && bun run test
 - Audit logging via `audit()` utility
 
 ### Service patterns (Cloudflare Workers)
+
 - Class-based Durable Objects: `ChannelV1` with SQLite storage
+- **Composition over inheritance**: Managers use `ServiceContext` + standalone utility functions (not class hierarchy)
+- Utility modules: `service-utils.ts` (storage, logging, queue), `ack-utils.ts` (ACK factories)
+- **In-memory caching**: SubscriptionManager, SequenceManager, ShardManager cache hot data with lazy hydration from storage
+- **No unnecessary transactions**: Single-threaded DO model provides exclusion; transactions only for multi-key atomic writes
+- **DO alarm-based TTL cleanup**: MessageBuffer schedules alarms instead of inline pruning
+- **Pre-serialized broadcasts**: Messages serialized once, Set-based subscriber lookups (O(1))
 - Static factory methods: `fromWebSocket()`, `withGrant()`
 - Getters for computed properties on classes
 - Region-local ULIDs for monotonic ordering
@@ -128,6 +142,7 @@ cd apps/service && bun run test
 ## Git Conventions
 
 ### Commit style (conventional commits)
+
 - Format: `type(scope): lowercase description`
 - Types: `feat`, `fix`, `refactor`, `chore`, `docs`, `config`, `test`
 - Scope is optional but encouraged (e.g., `feat(sdk):`, `fix(roadmap):`, `chore(web):`)
@@ -139,6 +154,7 @@ cd apps/service && bun run test
   - `docs(web): add environment variable documentation`
 
 ### Atomic commits — MANDATORY
+
 - **NEVER combine multiple unrelated changes into a single commit.**
 - Each commit must be small, focused, and address exactly ONE concern.
 - Multiple smaller commits are ALWAYS preferred over one large commit.
@@ -146,6 +162,7 @@ cd apps/service && bun run test
 - When asked to commit, create separate commits per logical change — do not batch.
 
 ### Pull requests
+
 - PRs are ALWAYS squash-merged — the PR title becomes the final commit message.
 - PR title MUST follow the same conventional commit format: `type(scope): description`
 - The PR body/description provides the detail, not the title.
@@ -158,6 +175,8 @@ cd apps/service && bun run test
 - `apps/web/convex/auth.config.ts` — Authentication configuration
 - `apps/service/src/env.ts` — Cloudflare Worker environment interface
 - `apps/service/src/objects/pubsub/` — Core pub/sub Durable Object implementation
+- `apps/service/src/objects/pubsub/service-utils.ts` — Shared storage, logging, queue utilities
+- `apps/service/src/objects/pubsub/ack-utils.ts` — ACK packet factory functions
 - `packages/erebus-sdk/src/client/core/` — SDK client core (main public API)
 - `packages/erebus-sdk/build.config.ts` — SDK build configuration (tsdown)
 - `packages/typescript-config/` — Shared tsconfig base files
@@ -176,6 +195,7 @@ cd apps/service && bun run test
 ## Environment Variables
 
 See `.env.example` files in each app directory for required variables:
+
 - `apps/web/.env.example` — Convex, PostHog, Polar, JWT keys
 - `apps/service/.env.example` — Redis, webhooks, API keys, JWT public key
 - `workers/roadmap/.env.example` — GitHub token

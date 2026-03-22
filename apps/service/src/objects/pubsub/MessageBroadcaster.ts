@@ -1,71 +1,57 @@
-import { MessageBody } from "@repo/schemas/messageBody";
-import { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
-import {
-  PacketEnvelope,
-  PresencePacketType,
-} from "@repo/schemas/packetEnvelope";
+import type { MessageBody } from "@repo/schemas/messageBody";
+import type { FireWebhookSchema } from "@repo/schemas/webhooks/fireWebhook";
+import type { PresencePacketType } from "@repo/schemas/packetEnvelope";
 import { monoNow } from "@/lib/monotonic";
 import {
-  SocketSendResult,
-  MessageMetrics,
-  BroadcastConfig,
+  type SocketSendResult,
+  type MessageMetrics,
+  type BroadcastConfig,
   DEFAULT_BROADCAST_CONFIG,
-  PublishMessageParams,
-  ServiceContext,
+  type PublishMessageParams,
+  type ServiceContext,
 } from "./types";
-import { BaseService } from "./BaseService";
-import { MessageBuffer } from "./MessageBuffer";
-import { ErebusClient } from "./ErebusClient";
+import {
+  type Logger,
+  createLogger,
+  getErebusClients,
+  enqueueUsageEvent,
+} from "./service-utils";
+import type { MessageBuffer } from "./MessageBuffer";
+import type { ErebusClient } from "./ErebusClient";
 import { generateHmac } from "@repo/shared/utils/hmac";
 import { createRpcClient } from "@erebus-sh/sdk/server";
+
 /**
- * Manages message broadcasting to WebSocket connections with advanced performance optimizations.
+ * Manages message broadcasting to WebSocket connections.
  *
- * This service handles:
- * - Broadcasting messages to all subscribed WebSocket connections
- * - Backpressure management to prevent socket buffer overflow
- * - Yielding control to prevent event loop blocking
- * - Duplicate delivery prevention
- * - Grant-based access control per topic
- * - Performance metrics and instrumentation
- * - Batch processing for optimal throughput
+ * Key design decisions for Durable Objects single-threaded actor model:
+ * - Pre-serialize messages once, send to all (avoids per-client JSON.stringify)
+ * - Set-based subscriber lookup for O(1) instead of O(n) array includes
+ * - Background task errors logged at WARN/ERROR level (not silently swallowed)
+ * - Pre-serialize both presence packet variants to avoid double serialization
  */
-export class MessageBroadcaster extends BaseService {
+export class MessageBroadcaster {
+  private readonly ctx: DurableObjectState;
+  private readonly env: ServiceContext["env"];
+  private readonly log: Logger;
   private readonly config: BroadcastConfig;
+  private readonly messageBuffer: MessageBuffer;
 
-  /** Shared TextEncoder for efficient message serialization */
-  private static readonly TEXT_ENCODER = new TextEncoder();
-
-  /**
-   * Initialize the MessageBroadcaster with service dependencies and configuration.
-   *
-   * @param serviceContext - Service context containing DO state and environment
-   * @param messageBuffer - Message buffer service for persistence operations
-   * @param config - Broadcasting configuration (optional, uses defaults)
-   */
   constructor(
     serviceContext: ServiceContext,
-    private readonly messageBuffer: MessageBuffer,
+    messageBuffer: MessageBuffer,
     config: Partial<BroadcastConfig> = {},
   ) {
-    super(serviceContext);
+    this.ctx = serviceContext.ctx;
+    this.env = serviceContext.env;
+    this.log = createLogger("[MESSAGE_BROADCASTER]", serviceContext.env);
     this.config = { ...DEFAULT_BROADCAST_CONFIG, ...config };
+    this.messageBuffer = messageBuffer;
   }
 
   /**
-   * Publish a message to all subscribed WebSocket connections with advanced optimizations.
-   *
-   * This method:
-   * - Pre-serializes messages once for all recipients
-   * - Processes sockets in batches to prevent event loop blocking
-   * - Handles backpressure by monitoring buffered amounts
-   * - Prevents duplicate deliveries using client ID tracking
-   * - Enforces topic-based access control
-   * - Provides detailed performance metrics
-   * - Manages background operations for persistence
-   *
-   * @param params - Publishing parameters
-   * @returns Promise that resolves when publishing is complete
+   * Publish a message to all subscribed WebSocket connections.
+   * Pre-serializes the message once for all recipients.
    */
   async publishMessage(params: PublishMessageParams): Promise<void> {
     const {
@@ -82,18 +68,17 @@ export class MessageBroadcaster extends BaseService {
 
     const publishStartTime = monoNow();
 
-    this.logDebug(
-      `[PUBLISH_MESSAGE] Starting message publish - senderId: ${senderClientId}, ` +
-        `topic: ${topic}, seq: ${seq}, subscribersCount: ${subscriberClientIds.length}`,
+    // Pre-serialize message body ONCE for all recipients
+    const serialized = JSON.stringify(messageBody);
+
+    // Convert to Set for O(1) lookups (was O(n) array.includes)
+    const subscriberSet = new Set(subscriberClientIds);
+
+    const clients = getErebusClients(this.ctx);
+    this.log.debug(
+      `[PUBLISH] topic=${topic} seq=${seq} subscribers=${subscriberSet.size} connections=${clients.length}`,
     );
 
-    // Get all active ErebusClient connections
-    const clients = this.getErebusClients();
-    this.logDebug(
-      `[PUBLISH_MESSAGE] Total ErebusClient connections: ${clients.length}`,
-    );
-
-    // Initialize metrics
     const metrics: MessageMetrics = {
       sentCount: 0,
       skippedCount: 0,
@@ -102,36 +87,30 @@ export class MessageBroadcaster extends BaseService {
       highBackpressureCount: 0,
     };
 
-    // Track which client IDs have received the message to prevent duplicates
     const sentToClients = new Set<string>();
 
-    // Process clients in batches to prevent event loop blocking
+    // Process clients in batches
     await this.processClientBatches(
       clients,
-      messageBody,
+      serialized,
       senderClientId,
-      subscriberClientIds,
+      subscriberSet,
       topic,
       sentToClients,
       metrics,
     );
 
-    // Update message timing metadata
+    // Update timing metadata
     const tWsWriteEnd = monoNow();
     messageBody.t_ws_write_end = tWsWriteEnd;
     messageBody.t_broadcast_end = tWsWriteEnd;
 
-    const publishDuration = tWsWriteEnd - publishStartTime;
-
-    this.logDebug(
-      `[PUBLISH_MESSAGE] Publish summary - sent: ${metrics.sentCount}, ` +
-        `skipped: ${metrics.skippedCount}, duplicates: ${metrics.duplicateCount}, ` +
-        `errors: ${metrics.errorCount}, ` +
-        `high_backpressure: ${metrics.highBackpressureCount}, ` +
-        `duration: ${publishDuration.toFixed(2)}ms`,
+    this.log.debug(
+      `[PUBLISH] sent=${metrics.sentCount} skipped=${metrics.skippedCount} ` +
+        `duration=${(tWsWriteEnd - publishStartTime).toFixed(2)}ms`,
     );
 
-    // Run background operations asynchronously
+    // Run background operations
     await this.runBackgroundTasks(
       messageBody,
       projectId,
@@ -145,21 +124,14 @@ export class MessageBroadcaster extends BaseService {
   }
 
   /**
-   * Process ErebusClient connections in batches with yielding for performance.
-   *
-   * @param clients - Array of ErebusClient connections
-   * @param messageBody - Message body to send
-   * @param senderClientId - ID of the message sender
-   * @param subscriberClientIds - Array of subscriber client IDs
-   * @param topic - Topic being published to
-   * @param sentToClients - Set tracking clients that have received the message
-   * @param metrics - Metrics object to update
+   * Process ErebusClient connections in batches.
+   * Uses pre-serialized message string and Set-based subscriber lookup.
    */
   private async processClientBatches(
     clients: ErebusClient[],
-    messageBody: MessageBody,
+    serialized: string,
     senderClientId: string,
-    subscriberClientIds: string[],
+    subscriberSet: Set<string>,
     topic: string,
     sentToClients: Set<string>,
     metrics: MessageMetrics,
@@ -169,175 +141,116 @@ export class MessageBroadcaster extends BaseService {
     for (let i = 0; i < clients.length; i += batchSize) {
       const batch = clients.slice(i, i + batchSize);
 
-      // Process current batch in parallel
-      const batchPromises = batch.map((client) =>
-        this.processSingleClient(
-          client,
-          messageBody,
-          senderClientId,
-          subscriberClientIds,
-          topic,
-          sentToClients,
+      const batchResults = await Promise.all(
+        batch.map((client) =>
+          this.processSingleClient(
+            client,
+            serialized,
+            senderClientId,
+            subscriberSet,
+            topic,
+            sentToClients,
+          ),
         ),
       );
 
-      // Wait for current batch to complete
-      const batchResults = await Promise.all(batchPromises);
-
-      // Update metrics from batch results
       this.updateMetricsFromResults(metrics, batchResults);
     }
   }
 
   /**
-   * Process a single ErebusClient connection with comprehensive error handling.
-   *
-   * @param client - ErebusClient to process
-   * @param messageBody - Message body to send
-   * @param senderClientId - ID of the message sender
-   * @param subscriberClientIds - Array of subscriber client IDs
-   * @param topic - Topic being published to
-   * @param sentToClients - Set tracking clients that have received the message
-   * @returns Promise resolving to send result
+   * Process a single client connection.
+   * Uses pre-serialized message string and Set for O(1) subscriber check.
    */
   private async processSingleClient(
     client: ErebusClient,
-    messageBody: MessageBody,
+    serialized: string,
     senderClientId: string,
-    subscriberClientIds: string[],
+    subscriberSet: Set<string>,
     topic: string,
     sentToClients: Set<string>,
   ): Promise<SocketSendResult> {
     try {
       const recipientClientId = client.clientId;
 
-      // Prevent duplicate deliveries
       if (sentToClients.has(recipientClientId)) {
         return { result: "duplicate", reason: "duplicate_client" };
       }
 
-      // Check topic access permissions using ErebusClient helpers
       if (client.hasHuhAccess(topic)) {
-        // Special "Huh" scope - send informational message
-        return await this.sendHuhMessage(client, sentToClients);
+        return this.sendHuhMessage(client, sentToClients);
       } else if (client.hasReadAccess(topic)) {
-        // Regular read access - send the actual message
-        return await this.sendMessage(
+        return this.sendMessage(
           client,
-          messageBody,
+          serialized,
           senderClientId,
-          subscriberClientIds,
+          subscriberSet,
           sentToClients,
         );
       } else {
-        this.logDebug(
-          `[PROCESS_CLIENT] Client ${client.clientId} lacks read scope for topic: ${topic}`,
-        );
         return { result: "skipped", reason: "no_read_scope" };
       }
     } catch (error) {
-      this.logDebug(`[PROCESS_CLIENT] Failed to process client: ${error}`);
       return { result: "error", reason: "exception", error };
     }
   }
 
   /**
-   * Send a "Huh" informational message for curiosity-driven access.
-   *
-   * @param client - ErebusClient to send to
-   * @param sentToClients - Set to update with delivered client
-   * @returns Promise resolving to send result
+   * Send a "Huh" informational message.
    */
-  private async sendHuhMessage(
+  private sendHuhMessage(
     client: ErebusClient,
     sentToClients: Set<string>,
-  ): Promise<SocketSendResult> {
+  ): SocketSendResult {
     if (!client.isOpen) {
       return { result: "skipped", reason: "socket_not_open" };
     }
 
-    const huhMessage = {
+    client.sendJSON({
       type: "info",
       message:
         "Curious wanderer! Embark on your quest for knowledge at https://docs.erebus.sh/",
-    };
-
-    client.sendJSON(huhMessage);
+    });
     sentToClients.add(client.clientId);
-
     return { result: "sent", reason: "huh_scope" };
   }
 
   /**
-   * Send the actual message with backpressure handling and access control.
-   *
-   * @param client - ErebusClient to send to
-   * @param messageBody - Message body to send
-   * @param senderClientId - ID of the message sender
-   * @param subscriberClientIds - Array of subscriber client IDs
-   * @param sentToClients - Set to update with delivered client
-   * @returns Promise resolving to send result
+   * Send message with backpressure handling.
+   * Uses pre-serialized string and Set for O(1) subscriber check.
    */
-  private async sendMessage(
+  private sendMessage(
     client: ErebusClient,
-    messageBody: MessageBody,
+    serialized: string,
     senderClientId: string,
-    subscriberClientIds: string[],
+    subscriberSet: Set<string>,
     sentToClients: Set<string>,
-  ): Promise<SocketSendResult> {
+  ): SocketSendResult {
     const recipientClientId = client.clientId;
 
-    // Only send to subscribers (not the sender)
+    // Skip sender and non-subscribers (O(1) Set lookup)
     if (
       senderClientId === recipientClientId ||
-      !subscriberClientIds.includes(recipientClientId)
+      !subscriberSet.has(recipientClientId)
     ) {
       return { result: "skipped", reason: "sender_or_not_subscribed" };
     }
 
-    // Check client state
     if (!client.isOpen) {
       return { result: "skipped", reason: "socket_not_open" };
     }
 
-    // Handle backpressure
-    const backpressureResult = await this.handleBackpressure(client);
-    if (backpressureResult) {
-      return backpressureResult;
-    }
-
-    // Send the message (optimized with pre-serialized bytes)
-    client.sendJSON(messageBody);
-    sentToClients.add(recipientClientId);
-
-    return { result: "sent", reason: "normal_send" };
-  }
-
-  /**
-   * Handle WebSocket backpressure to prevent buffer overflow.
-   *
-   * @param client - ErebusClient to check
-   * @returns Promise resolving to skip result if backpressure is too high, null otherwise
-   */
-  private async handleBackpressure(
-    client: ErebusClient,
-  ): Promise<SocketSendResult | null> {
-    const bufferedAmount = client.bufferedAmount;
-
-    if (bufferedAmount > this.config.backpressureThresholdHigh) {
-      // Socket is severely backed up, skip this send
+    // Backpressure check
+    if (client.bufferedAmount > this.config.backpressureThresholdHigh) {
       return { result: "skipped", reason: "high_backpressure" };
     }
 
-    return null;
+    // Send pre-serialized string directly (no per-client JSON.stringify)
+    client.send(serialized);
+    sentToClients.add(recipientClientId);
+    return { result: "sent", reason: "normal_send" };
   }
 
-  /**
-   * Update metrics from batch processing results.
-   *
-   * @param metrics - Metrics object to update
-   * @param results - Array of socket send results
-   */
   private updateMetricsFromResults(
     metrics: MessageMetrics,
     results: SocketSendResult[],
@@ -364,14 +277,8 @@ export class MessageBroadcaster extends BaseService {
   }
 
   /**
-   * Run background tasks asynchronously without blocking.
-   *
-   * @param messageBody - Message to persist
-   * @param projectId - Project identifier
-   * @param channelName - Channel name
-   * @param topic - Topic name
-   * @param seq - Message sequence
-   * @param subscriberClientIds - Array of subscriber client IDs
+   * Run background tasks.
+   * Errors are logged at WARN level (not DEBUG — that was silently swallowing failures).
    */
   private async runBackgroundTasks(
     messageBody: MessageBody,
@@ -384,18 +291,22 @@ export class MessageBroadcaster extends BaseService {
     webhookUrl: string,
   ): Promise<void> {
     await Promise.all([
-      // Buffer the message for persistence
-      this.bufferMessage(messageBody, projectId, channelName, topic, seq),
-      // Update last-seen sequences for all subscribers
-      this.updateLastSeenBulk(
-        subscriberClientIds,
+      this.messageBuffer.bufferMessage(
+        messageBody,
         projectId,
         channelName,
         topic,
         seq,
       ),
-      // Enqueue usage tracking for webhooks
-      this.enqueueUsageEvent(
+      this.messageBuffer.updateLastSeenBulk({
+        clientIds: subscriberClientIds,
+        projectId,
+        channelName,
+        topic,
+        seq,
+      }),
+      enqueueUsageEvent(
+        this.env,
         "websocket.message",
         projectId,
         keyId,
@@ -403,197 +314,115 @@ export class MessageBroadcaster extends BaseService {
       ),
       this.fireWebhook(webhookUrl, keyId, messageBody),
     ]).catch((error) => {
-      this.logDebug(`[BACKGROUND_TASKS] Background task error: ${error}`);
+      this.log.warn(`[BACKGROUND_TASKS] Background task error: ${error}`);
     });
   }
 
   /**
-   * Fire a webhook request to the project's webhook URL so they can receive and process the message.
-   * The webhook allows projects to store messages in their own database or perform custom processing.
-   *
-   * @param webhookUrl Webhook URL to fire
-   * @param keyId Key ID for the HMAC
-   * @param messageBody Message body to fire
+   * Fire a webhook notification.
    */
   private async fireWebhook(
     webhookUrl: string,
     keyId: string,
     messageBody: MessageBody,
   ): Promise<void> {
-    const hmac = await generateHmac(JSON.stringify(messageBody), keyId);
-    const payload: FireWebhookSchema = {
-      messageBody: [messageBody],
-      hmac,
-    };
+    try {
+      const hmac = await generateHmac(JSON.stringify(messageBody), keyId);
+      const payload: FireWebhookSchema = {
+        messageBody: [messageBody],
+        hmac,
+      };
 
-    const url = new URL(webhookUrl);
+      const url = new URL(webhookUrl);
+      const client = createRpcClient(url.origin);
+      const response = await client.api.erebus.pubsub["fire-webhook"].$post({
+        json: payload,
+      });
 
-    const client = createRpcClient(url.origin);
-    const response = await client.api.erebus.pubsub["fire-webhook"].$post({
-      json: payload,
-    });
-    if (!response.ok) {
-      this.logDebug(
-        `[FIRE_WEBHOOK] Failed to fire webhook: ${response.statusText}`,
-      );
-    } else {
-      this.logDebug(`[FIRE_WEBHOOK] Successfully fired webhook`);
+      if (!response.ok) {
+        this.log.warn(`[FIRE_WEBHOOK] Failed: ${response.statusText}`);
+      }
+    } catch (error) {
+      this.log.warn(`[FIRE_WEBHOOK] Error: ${error}`);
     }
   }
 
   /**
-   * Background operations using injected MessageBuffer service.
-   */
-  private async bufferMessage(
-    messageBody: MessageBody,
-    projectId: string,
-    channelName: string,
-    topic: string,
-    seq: string,
-  ): Promise<void> {
-    await this.messageBuffer.bufferMessage(
-      messageBody,
-      projectId,
-      channelName,
-      topic,
-      seq,
-    );
-  }
-
-  private async updateLastSeenBulk(
-    clientIds: string[],
-    projectId: string,
-    channelName: string,
-    topic: string,
-    seq: string,
-  ): Promise<void> {
-    await this.messageBuffer.updateLastSeenBulk({
-      clientIds,
-      projectId,
-      channelName,
-      topic,
-      seq,
-    });
-  }
-
-  /**
-   * Broadcast presence packets to all connected ErebusClient connections.
-   * This is a fire-and-forget operation with no ACKs or complex processing.
-   *
-   * @param presencePacket - The presence packet to broadcast
-   * @param selfClient - Optional self client to send enriched packet to
-   * @param subscribers - Optional list of subscribers to restrict broadcast to
+   * Broadcast presence packets to all connected clients.
+   * Pre-serializes both packet variants to avoid double serialization.
+   * Uses Set for O(1) subscriber membership check.
    */
   async broadcastPresence(
     presencePacket: PresencePacketType,
     selfClient?: ErebusClient,
     subscribers?: string[],
   ): Promise<void> {
-    this.logDebug(
-      `[PRESENCE_BROADCAST] Broadcasting presence packet for ${presencePacket.clients.length} client(s), ` +
-        `topic: ${presencePacket.clients[0]?.topic}, status: ${presencePacket.clients[0]?.status}`,
+    this.log.debug(
+      `[PRESENCE] Broadcasting for ${presencePacket.clients.length} client(s)`,
     );
 
-    // Get all active ErebusClient connections
-    const clients = this.getErebusClients();
-    this.logDebug(
-      `[PRESENCE_BROADCAST] Total ErebusClient connections: ${clients.length}`,
-    );
+    const clients = getErebusClients(this.ctx);
 
-    // Prepare two variants:
-    // - generic packet for other subscribers (only the new client info)
-    // - enriched packet for the sender/self including the full subscribers list
-    const genericPacketSerialized = JSON.stringify(presencePacket);
+    // Pre-serialize BOTH variants once (fix double serialization)
+    const genericSerialized = JSON.stringify(presencePacket);
 
-    // For the self-client, we want to send the full list of all subscribers
-    const selfPacketSerialized: PresencePacketType | null =
-      subscribers && subscribers.length > 0
-        ? {
+    const selfSerialized: string | null =
+      selfClient && subscribers && subscribers.length > 0
+        ? JSON.stringify({
             packetType: "presence",
             clients: subscribers.map((subscriber) => ({
               clientId: subscriber,
               topic: presencePacket.clients[0].topic,
               status: presencePacket.clients[0].status,
             })),
-          }
+          })
         : null;
 
-    // Track broadcast metrics
-    let sentCount = 0;
-    let errorCount = 0;
+    // Convert subscribers to Set for O(1) lookup
+    const subscriberSet = subscribers ? new Set(subscribers) : null;
 
-    // Process clients in batches for better performance
-    const batchSize = 50; // Smaller batch size for presence updates
+    let sentCount = 0;
+
+    const batchSize = 50;
     for (let i = 0; i < clients.length; i += batchSize) {
       const batch = clients.slice(i, i + batchSize);
 
-      // Process current batch in parallel
-      const batchPromises = batch.map(async (client) => {
-        try {
-          // Check client state
-          if (!client.isOpen) {
-            return false;
-          }
+      const results = await Promise.all(
+        batch.map(async (client) => {
+          try {
+            if (!client.isOpen) return false;
 
-          // Restrict broadcast to the provided subscribers (room members)
-          if (subscribers && subscribers.length > 0) {
-            if (!subscribers.includes(client.clientId)) {
+            // Filter to subscribers only
+            if (subscriberSet && !subscriberSet.has(client.clientId)) {
               return false;
             }
-          }
 
-          // Handle backpressure if needed
-          const backpressureResult = await this.handleBackpressure(client);
-          if (backpressureResult) {
+            // Backpressure check
+            if (client.bufferedAmount > this.config.backpressureThresholdHigh) {
+              return false;
+            }
+
+            // Send appropriate pre-serialized packet
+            if (
+              selfClient &&
+              selfClient.clientId === client.clientId &&
+              selfSerialized
+            ) {
+              client.send(selfSerialized);
+            } else {
+              client.send(genericSerialized);
+            }
+            return true;
+          } catch (error) {
+            this.log.warn(`[PRESENCE] Failed to send to client: ${error}`);
             return false;
           }
-          this.logDebug(
-            `[PRESENCE_BROADCAST] Sending presence packet to client: ${client.clientId}`,
-          );
+        }),
+      );
 
-          // Send the appropriate presence packet
-          if (
-            selfClient &&
-            selfClient.clientId === client.clientId &&
-            selfPacketSerialized
-          ) {
-            // Send batched packet with all subscribers to self-client
-            selfClient.sendJSON(selfPacketSerialized);
-          } else {
-            // Send the original packet (new subscriber only) to other clients
-            client.send(genericPacketSerialized);
-          }
-          return true;
-        } catch (error) {
-          this.logDebug(
-            `[PRESENCE_BROADCAST] Failed to send to client: ${error}`,
-          );
-          return false;
-        }
-      });
-
-      // Wait for current batch to complete
-      const batchResults = await Promise.all(batchPromises);
-
-      // Update metrics
-      batchResults.forEach((sent) => {
-        if (sent) {
-          sentCount++;
-        } else {
-          errorCount++;
-        }
-      });
+      sentCount += results.filter(Boolean).length;
     }
 
-    this.logDebug(
-      `[PRESENCE_BROADCAST] Presence broadcast completed - sent: ${sentCount}, errors: ${errorCount}`,
-    );
-  }
-
-  /**
-   * Override service name for consistent logging.
-   */
-  protected getServiceName(): string {
-    return "[MESSAGE_BROADCASTER]";
+    this.log.debug(`[PRESENCE] Sent to ${sentCount} clients`);
   }
 }

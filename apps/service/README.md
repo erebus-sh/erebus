@@ -18,21 +18,37 @@ src/
   env.ts            → Environment variable interface (Env)
   objects/
     pubsub/         → Core pub/sub Durable Object implementation
-      channel.ts    → ChannelV1 Durable Object class
-      ErebusClient.ts → Client connection handler
-      MessageBroadcaster.ts → Message fan-out logic
-      SequenceManager.ts    → ULID-based ordering
+      channel.ts    → ChannelV1 Durable Object (orchestrator)
+      ErebusClient.ts         → WebSocket wrapper with grant context
+      ErebusPubSubService.ts  → Abstract DO base (WebSocket lifecycle)
+      MessageHandler.ts       → Packet parsing and routing
+      MessageBroadcaster.ts   → Fan-out with pre-serialization
+      MessageBuffer.ts        → Persistence with alarm-based TTL cleanup
+      SubscriptionManager.ts  → In-memory cached subscriptions
+      SequenceManager.ts      → ULID generation with caching
+      ShardManager.ts         → Cross-region coordination
+      service-utils.ts        → Storage, logging, queue utilities
+      ack-utils.ts            → ACK packet factory functions
   analytics/        → Usage tracking
 tests/
   pubsub.test.ts    → Integration tests (Cloudflare Workers pool)
   env.d.ts          → Test environment types
 ```
 
+### Architecture
+
+The service uses **composition over inheritance**. Manager classes receive a `ServiceContext` and use standalone utility functions from `service-utils.ts` instead of extending a base class. This eliminates the previous 3-level class hierarchy and ~600 lines of duplicated code.
+
+**In-memory caching**: SubscriptionManager, SequenceManager, and ShardManager cache hot data in memory with lazy hydration from storage after hibernation wakes. This eliminates redundant storage reads on every subscribe/publish operation.
+
+**DO alarm-based cleanup**: MessageBuffer schedules Durable Object alarms for TTL cleanup instead of pruning on every write or during reads.
+
 ### Key concepts
 
 - **ChannelV1**: A Durable Object class with SQLite storage that manages a single pub/sub channel. Handles WebSocket connections, message ordering, history, and presence.
 - **Grant JWTs**: Clients authenticate via short-lived JWTs signed by the web app and verified by the service using the shared public key.
 - **Region-local ULIDs**: Monotonic, sortable message IDs generated per-region without a central bottleneck.
+- **Single-threaded actor model**: No unnecessary transactions — the DO's single-threaded nature provides mutual exclusion. Transactions only used for multi-key atomic writes.
 
 ## Development
 
@@ -53,22 +69,22 @@ See [.env.example](./.env.example) for the full list. For local development, Clo
 cp .env.example .dev.vars
 ```
 
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `PUBLIC_KEY_JWK` | Yes | EC P-256 JWK for verifying grant tokens |
-| `ROOT_API_KEY` | Yes | Admin API key |
-| `UPSTASH_REDIS_REST_URL` | Yes | Upstash Redis REST endpoint |
-| `UPSTASH_REDIS_REST_TOKEN` | Yes | Upstash Redis REST token |
-| `WEBHOOK_BASE_URL` | Yes | Base URL for webhook delivery |
-| `WEBHOOK_SECRET` | Yes | HMAC secret for webhooks |
+| Variable                   | Required | Description                             |
+| -------------------------- | -------- | --------------------------------------- |
+| `PUBLIC_KEY_JWK`           | Yes      | EC P-256 JWK for verifying grant tokens |
+| `ROOT_API_KEY`             | Yes      | Admin API key                           |
+| `UPSTASH_REDIS_REST_URL`   | Yes      | Upstash Redis REST endpoint             |
+| `UPSTASH_REDIS_REST_TOKEN` | Yes      | Upstash Redis REST token                |
+| `WEBHOOK_BASE_URL`         | Yes      | Base URL for webhook delivery           |
+| `WEBHOOK_SECRET`           | Yes      | HMAC secret for webhooks                |
 
 ## Scripts
 
-| Script | Description |
-|--------|-------------|
-| `dev` | Generate types + start wrangler dev (port 8787) |
-| `build` | Build SDK dependency then wrangler build |
-| `test` | Run Vitest with Cloudflare Workers pool |
-| `deploy` | Deploy to Cloudflare production |
-| `preview` | Deploy to Cloudflare preview environment |
-| `cf-typegen` | Generate TypeScript types from wrangler.jsonc |
+| Script       | Description                                     |
+| ------------ | ----------------------------------------------- |
+| `dev`        | Generate types + start wrangler dev (port 8787) |
+| `build`      | Build SDK dependency then wrangler build        |
+| `test`       | Run Vitest with Cloudflare Workers pool         |
+| `deploy`     | Deploy to Cloudflare production                 |
+| `preview`    | Deploy to Cloudflare preview environment        |
+| `cf-typegen` | Generate TypeScript types from wrangler.jsonc   |
