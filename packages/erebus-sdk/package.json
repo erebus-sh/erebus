@@ -1,6 +1,6 @@
 {
   "name": "@erebus-sh/sdk",
-  "version": "0.0.179",
+  "version": "0.0.180",
   "type": "module",
   "repository": "github:erebus-sh/erebus",
   "main": "./dist/index.cjs",
@@ -47,9 +47,7 @@
     "prettier": "3.6.2",
     "tsdown": "^0.14.2",
     "typescript-eslint": "^8.44.1",
-    "vitest": "^3.2.4",
-    "@repo/schemas": "workspace:*",
-    "@repo/shared": "workspace:*"
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "typescript": "^5.9.2"
