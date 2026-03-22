@@ -147,10 +147,10 @@ export async function generateBlogMetadata(props: {
           title: blogConstants.blogTitle,
           description: blogConstants.blogDescription,
           openGraph: {
-            url: blogConstants.urls.blogBase,
+            url: blogConstants.blogBase,
           },
           alternates: {
-            canonical: blogConstants.urls.blogBase,
+            canonical: blogConstants.blogBase,
           },
         },
         blogConstants,

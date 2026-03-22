@@ -26,7 +26,7 @@ interface BlogWrapperProps {
   configuration: BlogConfiguration;
   getCategoryBySlug: (slug: string) => {
     label: string;
-    icon?: React.ReactNode;
+    icon?: React.ComponentType<{ className?: string }>;
     description?: string;
   };
   getSeriesBySlug: (slug: string) => { label: string; description?: string };

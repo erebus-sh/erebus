@@ -12,6 +12,7 @@ import { Card } from "@/components/ui/card";
 import type { BlogConstants, BlogConfiguration } from "@/fumadocs-blog";
 import { PostCard } from "@/fumadocs-blog";
 import { Brain, Book as LucideBook, Megaphone, BookIcon } from "lucide-react";
+import type React from "react";
 
 // Blog text constants that can be customized
 
@@ -99,8 +100,14 @@ export function getBlogConfiguration(): BlogConfiguration {
 export const useBlogConfiguration = getBlogConfiguration;
 
 // Moved from lib/categories.ts
-export const getCategoryBySlug = (slug: string) => {
-  const categories = {
+interface SlugInfo {
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+  description?: string;
+}
+
+export const getCategoryBySlug = (slug: string): SlugInfo => {
+  const categories: Record<string, SlugInfo> = {
     idea: {
       label: "Idea",
       icon: Brain,
@@ -116,15 +123,15 @@ export const getCategoryBySlug = (slug: string) => {
   };
 
   return (
-    categories[slug as keyof typeof categories] || {
+    categories[slug] || {
       label: slug.toString().replace(/-/g, " ").toLowerCase(),
       icon: BookIcon,
     }
   );
 };
 
-export const getSeriesBySlug = (slug: string) => {
-  const series = {
+export const getSeriesBySlug = (slug: string): SlugInfo => {
+  const series: Record<string, SlugInfo> = {
     x: {
       label: "Series X",
       icon: LucideBook,
@@ -134,7 +141,7 @@ export const getSeriesBySlug = (slug: string) => {
   };
 
   return (
-    series[slug as keyof typeof series] || {
+    series[slug] || {
       label: slug.charAt(0).toUpperCase() + slug.slice(1),
       icon: LucideBook,
       description: `Articles in the ${

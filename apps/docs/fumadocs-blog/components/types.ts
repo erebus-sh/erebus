@@ -61,7 +61,8 @@ export interface BlogConfiguration extends Record<string, unknown> {
   Badge?: React.ComponentType<Record<string, unknown>>;
   Book?: React.ComponentType<Record<string, unknown>>;
   Card?: React.ComponentType<Record<string, unknown>>;
-  cn?: (...inputs: unknown[]) => string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  cn?: (...inputs: any[]) => string;
   backgroundPattern?: {
     enabled: boolean;
     component: React.ReactNode;

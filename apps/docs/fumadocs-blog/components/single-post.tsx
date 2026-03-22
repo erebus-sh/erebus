@@ -59,10 +59,10 @@ export function SinglePost({
           <div className="mb-4 text-gray-600 dark:text-gray-400 text-sm font-medium">
             <div className="flex flex-wrap gap-3">
               <span className="inline-flex items-center gap-1.5 capitalize">
-                {getCategoryBySlug(category).icon &&
-                  React.createElement(getCategoryBySlug(category).icon, {
-                    className: "h-4 w-4",
-                  })}
+                {(() => {
+                  const CategoryIcon = getCategoryBySlug(category).icon;
+                  return CategoryIcon ? React.createElement(CategoryIcon, { className: "h-4 w-4" }) : null;
+                })()}
                 <Link
                   href={
                     configuration?.config

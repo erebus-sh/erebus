@@ -31,7 +31,7 @@ export function SeriesList({
   const seriesPosts = posts
     .filter((post) => post.data.series === seriesSlug)
     .sort((a, b) => {
-      return a.data.seriesPart - b.data.seriesPart;
+      return (a.data.seriesPart ?? 0) - (b.data.seriesPart ?? 0);
     });
 
   return (

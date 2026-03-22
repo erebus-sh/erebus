@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import React from "react";
 
 interface BookProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   color?: string;
   textColor?: string;
   texture?: boolean;
