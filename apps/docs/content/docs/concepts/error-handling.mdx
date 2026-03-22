@@ -1,0 +1,133 @@
+---
+title: Error Handling
+description: Error codes, WebSocket close reasons, and troubleshooting
+---
+
+# Error Handling
+
+Erebus uses structured error codes across WebSocket connections, publish acknowledgements, and the client SDK. This page documents every error scenario you may encounter and how to resolve it.
+
+## WebSocket Close Codes
+
+When the server terminates a WebSocket connection, it sends a close frame with a code in the 4000-4999 range and a human-readable reason string.
+
+| Code | Name             | Description                                                                                                            |
+| ---- | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 4400 | Bad Request      | The client sent invalid JSON, a malformed protocol packet, or connected without providing a grant token.               |
+| 4401 | Unauthorized     | JWT verification failed. The grant token is expired, malformed, or does not include access to the requested topic.     |
+| 4403 | Forbidden        | The channel is paused. This occurs when the `EREBUS_ON_HOLD` flag is active, which disables all real-time connections. |
+| 4408 | Request Timeout  | The connection timed out. The client did not complete the handshake within the allowed window.                         |
+| 4413 | Version Mismatch | The client sent a protocol version that the server does not support. Update your SDK to the latest version.            |
+
+## Publish ACK Error Codes
+
+When you publish a message, the server responds with an ACK packet. If the publish fails, the ACK contains an error code string.
+
+| Code           | Description                                                                                      |
+| -------------- | ------------------------------------------------------------------------------------------------ |
+| `UNAUTHORIZED` | You do not have write access to the topic. Check your grant token scopes.                        |
+| `FORBIDDEN`    | You are not subscribed to the topic. You must subscribe to a topic before you can publish to it. |
+| `INVALID`      | The message payload is malformed. Ensure the payload is valid and within size limits.            |
+| `INTERNAL`     | A server-side error occurred while broadcasting the message. Retry after a brief delay.          |
+
+## Client-side Error Classes
+
+The SDK throws typed error classes that you can catch with `instanceof` checks.
+
+### NotConnectedError
+
+Thrown when you attempt to publish or subscribe before the client has established a WebSocket connection.
+
+```ts
+import { ErebusClient, NotConnectedError } from "@erebus-sh/sdk";
+
+const client = new ErebusClient({
+  /* ... */
+});
+
+try {
+  await client.publish("chat", { text: "hello" });
+} catch (err) {
+  if (err instanceof NotConnectedError) {
+    // Call client.connect() first
+  }
+}
+```
+
+### BackpressureError
+
+Thrown when the server is overwhelmed and cannot accept more messages. Back off and retry with exponential delay.
+
+```ts
+import { BackpressureError } from "@erebus-sh/sdk";
+
+try {
+  await client.publish("updates", data);
+} catch (err) {
+  if (err instanceof BackpressureError) {
+    // Slow down — wait before retrying
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+```
+
+### AuthError
+
+Thrown when the SDK fails to generate a grant token. This typically means your API key is invalid or the auth endpoint is unreachable.
+
+```ts
+import { AuthError } from "@erebus-sh/sdk";
+
+try {
+  const grant = await client.generateGrant(/* ... */);
+} catch (err) {
+  if (err instanceof AuthError) {
+    // Check your API key and authBaseUrl configuration
+  }
+}
+```
+
+## Troubleshooting
+
+### Connection closes immediately after connect
+
+The server accepted the WebSocket upgrade but closed the connection right away.
+
+**Possible causes:**
+
+- **Invalid grant token.** The JWT is expired, uses the wrong signing key, or was issued for a different channel. Generate a fresh grant and try again.
+- **Wrong channel name.** The channel identifier in your connect call does not match the one encoded in the grant token. Ensure they are identical.
+- **Protocol version mismatch.** You are running an outdated SDK version. Update `@erebus-sh/sdk` to the latest release.
+
+### Messages not arriving
+
+You are connected and subscribed, but messages from other clients are not showing up.
+
+**Possible causes:**
+
+- **Not subscribed to the topic.** Connecting to a channel does not automatically subscribe you to all topics. Call `subscribe()` on the specific topic you want to receive messages from.
+- **Grant lacks read access.** Your grant token must include `read` scope for the topic. Check the scopes when generating the grant.
+- **Network interruption.** The WebSocket may have silently disconnected. Listen for the `disconnect` event and reconnect.
+
+### Publish ACK returns FORBIDDEN
+
+You receive a `FORBIDDEN` error code in the publish acknowledgement.
+
+**Cause:** You must subscribe to a topic before you can publish to it. This is by design — Erebus requires subscription before publish to ensure you are an active participant in the topic.
+
+**Fix:** Call `subscribe()` on the topic before calling `publish()`.
+
+```ts
+await client.subscribe("chat");
+await client.publish("chat", { text: "hello" });
+```
+
+### Token generation fails
+
+Calls to generate a grant token throw an `AuthError`.
+
+**Possible causes:**
+
+- **Invalid API key format.** The API key must be the full key string issued from the Erebus dashboard. Check for trailing whitespace or truncation.
+- **Wrong `authBaseUrl`.** If you are self-hosting or using a staging environment, ensure `authBaseUrl` points to the correct endpoint. The default is the Erebus production API.
+- **Network issue.** The auth endpoint may be unreachable. Check your network connection and any firewall rules.
