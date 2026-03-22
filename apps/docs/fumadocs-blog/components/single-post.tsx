@@ -61,7 +61,11 @@ export function SinglePost({
               <span className="inline-flex items-center gap-1.5 capitalize">
                 {(() => {
                   const CategoryIcon = getCategoryBySlug(category).icon;
-                  return CategoryIcon ? React.createElement(CategoryIcon, { className: "h-4 w-4" }) : null;
+                  return CategoryIcon
+                    ? React.createElement(CategoryIcon, {
+                        className: "h-4 w-4",
+                      })
+                    : null;
                 })()}
                 <Link
                   href={

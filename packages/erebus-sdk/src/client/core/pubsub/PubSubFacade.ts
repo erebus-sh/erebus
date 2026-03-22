@@ -146,7 +146,10 @@ class ErebusPubSubSchemas<TSchemas extends SchemaMap> {
   /**
    * Unsubscribe from a topic.
    */
-  unsubscribe<K extends Topic<TSchemas>>(topicSchema: K, topicSub: string): void {
+  unsubscribe<K extends Topic<TSchemas>>(
+    topicSchema: K,
+    topicSub: string,
+  ): void {
     const topic = mergeTopic(topicSchema, topicSub);
     this.client.unsubscribe(topic);
   }
