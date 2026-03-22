@@ -191,35 +191,12 @@ console.log("✅ Successfully connected to Erebus!");
 
 ### Authentication Server Setup
 
-You'll need an authentication endpoint that returns JWT tokens. Here's a minimal Express.js example:
-
-```javascript
-// auth-server.js
-const express = require("express");
-const jwt = require("jsonwebtoken");
-const app = express();
-
-app.post("/auth/erebus", (req, res) => {
-  // Validate your user here
-  const token = jwt.sign(
-    {
-      sub: "user-123",
-      erebus_api_key: "your-api-key-here",
-    },
-    "your-jwt-secret",
-    { expiresIn: "1h" },
-  );
-
-  res.json({ token });
-});
-
-app.listen(3001);
-```
+You'll need an authentication endpoint that issues grant tokens for your clients. See [Authentication](/docs/concepts/authentication) for the full grant flow and server-side examples.
 
 <Callout title="Authentication Required" type="info">
-  Erebus requires JWT tokens for authentication. The token must include your API
-  key in the `erebus_api_key` field. See our [authentication
-  guide](/docs/sdk/core/getting-started-api#authentication) for detailed setup.
+  Erebus requires grant tokens for authentication. See our [authentication
+  guide](/docs/concepts/authentication) for detailed setup including server-side
+  token issuance.
 </Callout>
 
 ## Step 8: Monitor Your Application

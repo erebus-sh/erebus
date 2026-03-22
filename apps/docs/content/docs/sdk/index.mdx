@@ -1,12 +1,12 @@
 ---
 title: SDK Reference
-description: Type-safe client SDKs for Erebus (Core + React).
+description: Type-safe client SDKs for Erebus.
 ---
 
 # Erebus SDK
 
 The Erebus SDK gives you everything you need to build real-time apps on top of Erebus pub/sub.  
-It provides a type-safe and raw **Core Client** and a type-safe **React Client** with hooks for subscription, publishing, and presence.
+It provides a type-safe **Core Client** for subscription, publishing, and presence.
 
 ## Installation
 
@@ -19,7 +19,6 @@ It provides a type-safe and raw **Core Client** and a type-safe **React Client**
 Currently shipped as a single package:
 
 - `@erebus-sh/sdk/client` – low-level client APIs
-- `@erebus-sh/sdk/react` – React hooks on top of the core (**Experimental/Unstable**)
 - `@erebus-sh/sdk/server` – Server-side SDK for building Erebus servers
 - `@erebus-sh/sdk/service` – Helpers for server-side authorization and sessions
   But it's also available on:
@@ -89,7 +88,3 @@ await client.publishWithAck(
 ```
 
 > For a full end-to-end example (including a Bun-based auth server using `createGenericAdapter` and webhooks), see the [Core Client APIs](/docs/sdk/core/apis) page.
-
-# React Package (Experimental)
-
-The React package (`@erebus-sh/sdk/react`) is **experimental** and its API will change. It provides React hooks for subscription, publishing, and presence, built on top of the core client.

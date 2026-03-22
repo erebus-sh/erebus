@@ -25,9 +25,6 @@ The Erebus SDK is organized into focused packages:
 // Core client APIs
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
-// React hooks (experimental)
-import { ErebusProvider, useChannel } from "@erebus-sh/sdk/react";
-
 // Server-side adapters
 import { createGenericAdapter } from "@erebus-sh/sdk/server";
 
@@ -40,13 +37,12 @@ import type { MessageBody, PresencePacket } from "@erebus-sh/sdk";
 
 ### Package Exports
 
-| Import Path              | Description             | Stability       |
-| ------------------------ | ----------------------- | --------------- |
-| `@erebus-sh/sdk/client`  | Core client APIs        | ✅ Semi-Stable  |
-| `@erebus-sh/sdk/server`  | Server adapters         | ✅ Semi-Stable  |
-| `@erebus-sh/sdk/service` | Service utilities       | ✅ Semi-Stable  |
-| `@erebus-sh/sdk/react`   | React hooks             | ⚠️ Experimental |
-| `@erebus-sh/sdk`         | Barrel exports (legacy) | 🔄 Will change  |
+| Import Path              | Description             | Stability      |
+| ------------------------ | ----------------------- | -------------- |
+| `@erebus-sh/sdk/client`  | Core client APIs        | ✅ Semi-Stable |
+| `@erebus-sh/sdk/server`  | Server adapters         | ✅ Semi-Stable |
+| `@erebus-sh/sdk/service` | Service utilities       | ✅ Semi-Stable |
+| `@erebus-sh/sdk`         | Barrel exports (legacy) | 🔄 Will change |
 
 <Callout title="Stability" type="warning">
   All Erebus SDK packages are currently classified as{" "}
@@ -130,15 +126,6 @@ Start here for vanilla JavaScript/TypeScript, Node.js, or any JavaScript runtime
 - **[Core API Reference](/docs/sdk/core/apis)** - Complete API documentation
 
 The Core SDK guides include framework-specific examples for Express.js, Node.js servers, and more.
-
-### ⚛️ React SDK (Experimental)
-
-For React applications and Next.js:
-
-- **[React Quickstart](/docs/get-started/next.js/quickstart-example)** - Next.js integration with hooks
-- **[React Provider Setup](/docs/sdk/react/provider)** - Context provider configuration
-
-The React SDK guides include complete Next.js, Vite, and Create React App setup instructions.
 
 ### 📚 Advanced Topics
 
