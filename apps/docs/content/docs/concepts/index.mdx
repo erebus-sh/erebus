@@ -1,15 +1,23 @@
 ---
 title: Concepts
-description: Core concepts and patterns for Erebus
+description: Core concepts and architecture behind Erebus.
 ---
 
 # Concepts
 
-Welcome to the Erebus concepts hub. Explore the foundational ideas and patterns that power Erebus.
+Erebus runs on [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/) — single-threaded, stateful V8 isolates distributed across Cloudflare's network. Each channel maps to a Durable Object that owns its message ordering, subscriber state, and presence tracking. The TypeScript SDK connects to these objects over WebSockets and handles auth, reconnection, and delivery acknowledgments.
 
-## Pub/Sub
+## Core concepts
 
-- [Pub/Sub Channels](/docs/concepts/pubsub/channels)
-- [Quality of Service](/docs/concepts/pubsub/qos)
-- [Topics and Patterns](/docs/concepts/pubsub/patterns)
-- [Namespaces and Regions](/docs/concepts/pubsub/namespaces)
+- **[Channels](/docs/concepts/pubsub/channels)** — The core primitive. A channel is a Durable Object that routes messages between connected clients with guaranteed ULID ordering.
+
+- **[Topics and Patterns](/docs/concepts/pubsub/patterns)** — How messages are routed within a channel. Clients subscribe to specific topics to filter what they receive.
+
+- **[Quality of Service](/docs/concepts/pubsub/qos)** — MQTT-inspired delivery guarantees. QoS 1 provides at-least-once delivery with publisher and subscriber acknowledgments.
+
+- **[Namespaces and Regions](/docs/concepts/pubsub/namespaces)** — How Durable Object namespaces map to regions and what that means for latency and consistency.
+
+For presence tracking and message history APIs, see the [SDK Reference](/docs/sdk):
+
+- **[Presence](/docs/sdk/core/presence)** — Real-time join/leave events and online user tracking.
+- **[Message History](/docs/sdk/core/history)** — Cursor-based pagination for fetching past messages.
