@@ -1,11 +1,11 @@
 # Erebus Overview
 
-## ⚡ What is Erebus?
+## What is Erebus?
 Erebus is a **real-time infrastructure platform** that enables developers to build collaborative, event-driven applications with **edge-native performance**. It abstracts away the complexity of managing WebSockets, message brokers, and sequencing logic, so teams can focus on product logic rather than infra plumbing.
 
 ---
 
-## 🛠 Core Architecture
+## Core Architecture
 
 ### Cloudflare Edge Runtime
 - Powered by **Durable Objects** and **Workers**.
@@ -32,20 +32,78 @@ Convex is the **brain and storage layer** of Erebus:
 
 ---
 
-## 🎯 Why It Matters
-Modern apps need real-time features — chat, presence, multiplayer editing, live dashboards.
-Instead of stitching together Kafka, Redis, Postgres, and WebSocket servers, Erebus gives developers **one unified platform** with:
-- **Reliable real-time channels**
-- **History + rewind**
-- **Presence tracking**
-- **Built-in usage metering**
-- **API key management**
+## Stack & Tooling
+
+- **Runtime**: Bun 1.2.19 (Node >=18)
+- **Package manager**: bun (NEVER use npm, yarn, or pnpm)
+- **Language**: TypeScript 5.9.2 (strict mode)
+- **Monorepo**: Turborepo 2.5.6
+- **Web app**: Next.js + Convex (apps/web)
+- **Docs**: Next.js + Fumadocs (apps/docs)
+- **Edge service**: Cloudflare Workers + Hono (apps/service)
+- **SDK**: @erebus-sh/sdk — built with tsdown
+- **Testing**: Vitest
+- **Linting**: ESLint 9 (flat config)
+- **Formatting**: Prettier 3.6.2
 
 ---
 
-## 🌐 Positioning
+## Code Conventions
+
+### Imports
+- Use `@/` path alias for all non-relative imports within an app
+- Relative imports only within the same directory subtree
+- Barrel files (index.ts) for public API surfaces
+
+### File naming
+- **kebab-case** for components and routes: `create-project-dialog.tsx`
+- **PascalCase** for class files: `ErebusClient.ts`, `MessageBroadcaster.ts`
+- **camelCase** for utility/hook files: `useNavStackStore.ts`
+- Tests use `.test.ts` suffix
+
+### Exports
+- Named exports for utilities, classes, and types
+- `export default function` for React page/component files
+- `export type { }` for type-only exports
+
+### Error handling
+- Custom error classes extending Error (`NotConnectedError`, `AuthError`)
+- `ConvexError` for database errors
+- try/catch with `instanceof` discrimination
+
+### React patterns
+- Server components by default, `"use client"` only when needed
+- Convex hooks: `useMutation()`, `useQuery()` with `api.*`
+- Zustand for client state
+- Props typed inline
+
+### Convex patterns
+- Schema in `convex/schema.ts`, tables in `convex/tables/`
+- Auth guards: `getAuthenticatedUser()`, `getValidatedProjectWithOwnership()`
+- Index queries: `.withIndex("by_field", (q) => q.eq("field", value))`
+
+### API patterns (Hono)
+- Zod validation via `zValidator()` middleware
+- Response: `{ ok: true, reqId }` or `{ error: string, reqId }` with HTTP status
+- Grant JWT tokens for channel auth
+
+---
+
+## Do NOT
+
+- Do not use `npm`, `yarn`, or `pnpm` — only `bun`
+- Do not import workspace packages by path — use the workspace alias
+- Do not use `any` type — use `unknown` and narrow
+- Do not add dependencies without justification
+- Do not write raw SQL — use Convex or Drizzle APIs
+- Do not re-initialize singletons (Firebase Admin, Convex client)
+- Do not skip the SDK build before running service tests
+
+---
+
+## Positioning
 - **Indie developers**: Add presence or channels in minutes.
 
 ---
 
-💡 **In short:** Convex is the control plane and data backbone, Cloudflare is the distributed runtime muscle, and Redis is the sidekick accelerator. Together, Erebus delivers **real-time infra with first-class developer experience.**
+**In short:** Convex is the control plane and data backbone, Cloudflare is the distributed runtime muscle, and Redis is the sidekick accelerator. Together, Erebus delivers **real-time infra with first-class developer experience.**
