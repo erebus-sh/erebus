@@ -8,7 +8,9 @@ description: How to use API keys to interact with the Erebus platform - basic se
 API keys are used to authenticate requests to the Erebus platform. They provide secure access to your real-time infrastructure and enable you to build applications that connect to Erebus services.
 
 <Callout title="Advanced Features" type="info">
-This guide covers the basics of API keys. For comprehensive key management, security practices, and advanced features, see our [API Key Management Guide](/docs/platform/api-key-management).
+  This guide covers the basics of API keys. For comprehensive key management,
+  security practices, and advanced features, see our [API Key Management
+  Guide](/docs/platform/api-key-management).
 </Callout>
 
 ## What are API Keys?
@@ -38,7 +40,9 @@ API keys are the gateway to your project. They are used to authenticate requests
 8. **Store securely** in environment variables or secrets management
 
 <Callout title="Environment Types" type="note">
-Currently, there is no performance or literal difference between development and production environments. This separation exists for security best practices and key organization purposes only.
+  Currently, there is no performance or literal difference between development
+  and production environments. This separation exists for security best
+  practices and key organization purposes only.
 </Callout>
 
 ### Using API Keys in Your Code
@@ -50,10 +54,13 @@ Store API keys securely and use them to authenticate your Erebus connections:
 const apiKey = process.env.EREBUS_API_KEY;
 
 // Use in your authentication server
-const token = jwt.sign({
-  sub: 'user-123',
-  erebus_api_key: apiKey
-}, 'your-jwt-secret');
+const token = jwt.sign(
+  {
+    sub: "user-123",
+    erebus_api_key: apiKey,
+  },
+  "your-jwt-secret",
+);
 ```
 
 ## API Key Format
@@ -72,16 +79,19 @@ API keys have different states that control their functionality:
 ### Key States
 
 **Active**
+
 - ✅ Full functionality and access
 - Default state for newly created keys
 - Ready for production use
 
 **Disabled**
+
 - ⏸️ Temporarily suspended functionality
 - Can be re-enabled without creating a new key
 - Useful for debugging or maintenance
 
 **Revoked**
+
 - ❌ Permanently disabled and cannot be reactivated
 - Used when keys are compromised or no longer needed
 - Irreversible action with audit trail
@@ -89,22 +99,27 @@ API keys have different states that control their functionality:
 ### Basic Key Operations
 
 **Enable/Disable Keys**
+
 - Temporarily suspend key functionality without permanent removal
 - Useful during maintenance or debugging
 - Can be reversed at any time
 
 **Revoke Keys**
+
 - Permanently disable compromised or unused keys
 - Cannot be undone - requires creating new keys
 - All revocation actions are logged in audit trails
 
 **Update Key Information**
+
 - Change descriptive labels and metadata
 - Update key settings and configuration
 - Track changes through audit logs
 
 <Callout title="Advanced Key Management" type="info">
-For detailed information about key states, security best practices, rotation strategies, and advanced features, see our comprehensive [API Key Management Guide](/docs/platform/api-key-management).
+  For detailed information about key states, security best practices, rotation
+  strategies, and advanced features, see our comprehensive [API Key Management
+  Guide](/docs/platform/api-key-management).
 </Callout>
 
 ## Security Best Practices
@@ -137,11 +152,13 @@ Ready to start using API keys? Follow these next steps:
 ### Common Issues
 
 **Authentication Failures**
+
 - Verify the API key is active (not disabled or revoked)
 - Check that the complete key is being used
 - Ensure your JWT includes the `erebus_api_key` field
 
 **Key Access Issues**
+
 - Confirm you have access to the correct project
 - Check that the key hasn't been revoked
 - Verify the key is being used in the correct environment

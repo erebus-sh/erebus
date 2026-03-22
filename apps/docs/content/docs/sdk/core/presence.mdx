@@ -14,21 +14,24 @@ Real-time presence tracking allows you to monitor user activity and build awaren
 Register a presence handler for online/offline events.
 
 **Parameters:**
+
 - `topic: string` - Topic to track presence on
 - `handler: (presence: PresencePacket) => void` - Presence callback
 
 **Presence Format:**
+
 ```ts
 interface PresencePacket {
-  clientId: string;                 // Client that changed status
-  topic: string;                    // Topic name
-  status: "online" | "offline";     // Presence status
-  timestamp: number;                // Event timestamp
-  subscribers?: string[];           // Optional: list of current subscribers
+  clientId: string; // Client that changed status
+  topic: string; // Topic name
+  status: "online" | "offline"; // Presence status
+  timestamp: number; // Event timestamp
+  subscribers?: string[]; // Optional: list of current subscribers
 }
 ```
 
 **Example:**
+
 ```ts
 await client.onPresence("chat:lobby", (presence) => {
   console.log(`${presence.clientId} is ${presence.status}`);
@@ -90,13 +93,13 @@ await client.onPresence("chat:room-123", (presence) => {
 class UserPresenceManager {
   private onlineUsers = new Set<string>();
   private userInfo = new Map<string, { name: string; avatar?: string }>();
-  
+
   constructor(topic: string) {
     client.onPresence(topic, (presence) => {
       this.handlePresence(presence);
     });
   }
-  
+
   private handlePresence(presence: PresencePacket) {
     if (presence.status === "online") {
       this.onlineUsers.add(presence.clientId);
@@ -105,17 +108,17 @@ class UserPresenceManager {
       this.onlineUsers.delete(presence.clientId);
       this.onUserLeave(presence.clientId);
     }
-    
+
     this.updateUI();
   }
-  
+
   private onUserJoin(clientId: string) {
     // Fetch user info if not cached
     if (!this.userInfo.has(clientId)) {
       this.fetchUserInfo(clientId);
     }
   }
-  
+
   private onUserLeave(clientId: string) {
     // Optional: Clean up user info after delay
     setTimeout(() => {
@@ -124,15 +127,15 @@ class UserPresenceManager {
       }
     }, 60000); // 1 minute
   }
-  
+
   private updateUI() {
     const count = this.onlineUsers.size;
     document.getElementById("user-count")!.textContent = `${count} online`;
-    
+
     // Update user list
     const userList = document.getElementById("user-list")!;
     userList.innerHTML = "";
-    
+
     for (const clientId of this.onlineUsers) {
       const userInfo = this.userInfo.get(clientId);
       const userElement = document.createElement("div");
@@ -140,15 +143,15 @@ class UserPresenceManager {
       userList.appendChild(userElement);
     }
   }
-  
+
   getOnlineUsers(): string[] {
     return Array.from(this.onlineUsers);
   }
-  
+
   isUserOnline(clientId: string): boolean {
     return this.onlineUsers.has(clientId);
   }
-  
+
   private async fetchUserInfo(clientId: string) {
     // Implement user info fetching logic
     // This would typically call your API
@@ -162,29 +165,29 @@ class UserPresenceManager {
 class TypingIndicator {
   private typingUsers = new Map<string, NodeJS.Timeout>();
   private typingTimeoutMs = 3000; // 3 seconds
-  
+
   constructor(private topic: string) {
     // Subscribe to typing events
     client.subscribe(`${topic}:typing`, (msg) => {
       this.handleTypingEvent(msg.senderId, msg.payload === "start");
     });
   }
-  
+
   startTyping() {
     // Broadcast typing start
     client.publish(`${this.topic}:typing`, "start");
-    
+
     // Auto-stop typing after timeout
     setTimeout(() => {
       this.stopTyping();
     }, this.typingTimeoutMs);
   }
-  
+
   stopTyping() {
     // Broadcast typing stop
     client.publish(`${this.topic}:typing`, "stop");
   }
-  
+
   private handleTypingEvent(clientId: string, isTyping: boolean) {
     if (isTyping) {
       // Clear existing timeout
@@ -192,13 +195,13 @@ class TypingIndicator {
       if (existingTimeout) {
         clearTimeout(existingTimeout);
       }
-      
+
       // Set new timeout
       const timeout = setTimeout(() => {
         this.typingUsers.delete(clientId);
         this.updateTypingIndicator();
       }, this.typingTimeoutMs);
-      
+
       this.typingUsers.set(clientId, timeout);
     } else {
       // Remove user from typing list
@@ -208,14 +211,14 @@ class TypingIndicator {
         this.typingUsers.delete(clientId);
       }
     }
-    
+
     this.updateTypingIndicator();
   }
-  
+
   private updateTypingIndicator() {
     const typingList = Array.from(this.typingUsers.keys());
     const indicator = document.getElementById("typing-indicator")!;
-    
+
     if (typingList.length === 0) {
       indicator.textContent = "";
     } else if (typingList.length === 1) {
@@ -226,7 +229,7 @@ class TypingIndicator {
       indicator.textContent = `${typingList.length} people are typing...`;
     }
   }
-  
+
   getTypingUsers(): string[] {
     return Array.from(this.typingUsers.keys());
   }
@@ -239,21 +242,21 @@ class TypingIndicator {
 class ActivityTracker {
   private lastActivity = new Map<string, number>();
   private activityThreshold = 5 * 60 * 1000; // 5 minutes
-  
+
   constructor(topic: string) {
     client.onPresence(topic, (presence) => {
       this.updateActivity(presence.clientId, presence.status === "online");
     });
-    
+
     // Subscribe to activity pings
     client.subscribe(`${topic}:activity`, (msg) => {
       this.updateActivity(msg.senderId, true);
     });
-    
+
     // Periodically check for inactive users
     setInterval(() => this.checkInactivity(), 60000); // Every minute
   }
-  
+
   private updateActivity(clientId: string, isActive: boolean) {
     if (isActive) {
       this.lastActivity.set(clientId, Date.now());
@@ -262,46 +265,47 @@ class ActivityTracker {
     }
     this.updateActivityStatus();
   }
-  
+
   private checkInactivity() {
     const now = Date.now();
     const inactiveUsers: string[] = [];
-    
+
     for (const [clientId, lastSeen] of this.lastActivity) {
       if (now - lastSeen > this.activityThreshold) {
         inactiveUsers.push(clientId);
       }
     }
-    
+
     // Mark inactive users
     for (const clientId of inactiveUsers) {
       this.updateActivity(clientId, false);
     }
   }
-  
+
   private updateActivityStatus() {
     const now = Date.now();
     const activeUsers: string[] = [];
     const idleUsers: string[] = [];
-    
+
     for (const [clientId, lastSeen] of this.lastActivity) {
       const timeSinceActivity = now - lastSeen;
-      
-      if (timeSinceActivity < 60000) { // Less than 1 minute
+
+      if (timeSinceActivity < 60000) {
+        // Less than 1 minute
         activeUsers.push(clientId);
       } else if (timeSinceActivity < this.activityThreshold) {
         idleUsers.push(clientId);
       }
     }
-    
+
     this.renderActivityStatus(activeUsers, idleUsers);
   }
-  
+
   private renderActivityStatus(active: string[], idle: string[]) {
     // Update UI to show active/idle status
     // Green dot for active, yellow for idle, gray for offline
   }
-  
+
   sendActivityPing() {
     // Call this on user interactions (mouse move, keypress, etc.)
     client.publish(`${this.topic}:activity`, "ping");
@@ -313,33 +317,39 @@ class ActivityTracker {
 
 ```ts
 class MultiTopicPresence {
-  private presenceHandlers = new Map<string, Set<(presence: PresencePacket) => void>>();
+  private presenceHandlers = new Map<
+    string,
+    Set<(presence: PresencePacket) => void>
+  >();
   private topicUsers = new Map<string, Set<string>>();
-  
-  async trackPresence(topic: string, handler: (presence: PresencePacket) => void) {
+
+  async trackPresence(
+    topic: string,
+    handler: (presence: PresencePacket) => void,
+  ) {
     // Add handler to topic
     if (!this.presenceHandlers.has(topic)) {
       this.presenceHandlers.set(topic, new Set());
       this.topicUsers.set(topic, new Set());
-      
+
       // Set up presence tracking for this topic
       await client.onPresence(topic, (presence) => {
         this.handlePresence(topic, presence);
       });
     }
-    
+
     this.presenceHandlers.get(topic)!.add(handler);
   }
-  
+
   private handlePresence(topic: string, presence: PresencePacket) {
     const users = this.topicUsers.get(topic)!;
-    
+
     if (presence.status === "online") {
       users.add(presence.clientId);
     } else {
       users.delete(presence.clientId);
     }
-    
+
     // Call all handlers for this topic
     const handlers = this.presenceHandlers.get(topic)!;
     for (const handler of handlers) {
@@ -350,32 +360,32 @@ class MultiTopicPresence {
       }
     }
   }
-  
+
   getTopicUsers(topic: string): string[] {
     return Array.from(this.topicUsers.get(topic) || []);
   }
-  
+
   getUserTopics(clientId: string): string[] {
     const topics: string[] = [];
-    
+
     for (const [topic, users] of this.topicUsers) {
       if (users.has(clientId)) {
         topics.push(topic);
       }
     }
-    
+
     return topics;
   }
-  
+
   getTotalActiveUsers(): number {
     const allUsers = new Set<string>();
-    
+
     for (const users of this.topicUsers.values()) {
       for (const user of users) {
         allUsers.add(user);
       }
     }
-    
+
     return allUsers.size;
   }
 }
@@ -388,7 +398,7 @@ class MultiTopicPresence {
 ### React Hook for Presence
 
 ```tsx
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface PresenceState {
   onlineUsers: string[];
@@ -400,33 +410,33 @@ export function usePresence(topic: string): PresenceState {
   const [state, setState] = useState<PresenceState>({
     onlineUsers: [],
     userCount: 0,
-    isLoading: true
+    isLoading: true,
   });
-  
+
   useEffect(() => {
     const onlineUsers = new Set<string>();
-    
+
     const handlePresence = (presence: PresencePacket) => {
       if (presence.status === "online") {
         onlineUsers.add(presence.clientId);
       } else {
         onlineUsers.delete(presence.clientId);
       }
-      
+
       setState({
         onlineUsers: Array.from(onlineUsers),
         userCount: onlineUsers.size,
-        isLoading: false
+        isLoading: false,
       });
     };
-    
+
     client.onPresence(topic, handlePresence);
-    
+
     return () => {
       client.offPresence(topic, handlePresence);
     };
   }, [topic]);
-  
+
   return state;
 }
 ```
@@ -434,43 +444,43 @@ export function usePresence(topic: string): PresenceState {
 ### Vue Composition for Presence
 
 ```ts
-import { ref, onMounted, onUnmounted } from 'vue';
+import { ref, onMounted, onUnmounted } from "vue";
 
 export function usePresence(topic: string) {
   const onlineUsers = ref<string[]>([]);
   const userCount = ref(0);
   const isLoading = ref(true);
-  
+
   let presenceHandler: (presence: PresencePacket) => void;
-  
+
   onMounted(async () => {
     const users = new Set<string>();
-    
+
     presenceHandler = (presence) => {
       if (presence.status === "online") {
         users.add(presence.clientId);
       } else {
         users.delete(presence.clientId);
       }
-      
+
       onlineUsers.value = Array.from(users);
       userCount.value = users.size;
       isLoading.value = false;
     };
-    
+
     await client.onPresence(topic, presenceHandler);
   });
-  
+
   onUnmounted(() => {
     if (presenceHandler) {
       client.offPresence(topic, presenceHandler);
     }
   });
-  
+
   return {
     onlineUsers,
     userCount,
-    isLoading
+    isLoading,
   };
 }
 ```
@@ -489,7 +499,7 @@ await client.onPresence("chat:room", (presence) => {
     // User wasn't in UI anyway, ignore
     return;
   }
-  
+
   updateUserPresence(presence.clientId, presence.status);
 });
 ```
@@ -500,24 +510,24 @@ await client.onPresence("chat:room", (presence) => {
 class PresenceBatcher {
   private pendingUpdates = new Map<string, PresencePacket>();
   private batchTimeout?: NodeJS.Timeout;
-  
+
   handlePresence(presence: PresencePacket) {
     this.pendingUpdates.set(presence.clientId, presence);
-    
+
     if (!this.batchTimeout) {
       this.batchTimeout = setTimeout(() => this.flush(), 100);
     }
   }
-  
+
   private flush() {
     const updates = Array.from(this.pendingUpdates.values());
     this.pendingUpdates.clear();
     this.batchTimeout = undefined;
-    
+
     // Apply all updates at once
     this.applyBatchedUpdates(updates);
   }
-  
+
   private applyBatchedUpdates(updates: PresencePacket[]) {
     // Update UI with all presence changes at once
   }
@@ -529,14 +539,14 @@ class PresenceBatcher {
 ```ts
 class PresenceManager {
   private presenceTimers = new Map<string, NodeJS.Timeout>();
-  
+
   handlePresence(presence: PresencePacket) {
     if (presence.status === "offline") {
       // Set timer to clean up user data
       const timer = setTimeout(() => {
         this.cleanupUser(presence.clientId);
       }, 60000); // Clean up after 1 minute
-      
+
       this.presenceTimers.set(presence.clientId, timer);
     } else {
       // Cancel cleanup timer if user comes back online
@@ -547,7 +557,7 @@ class PresenceManager {
       }
     }
   }
-  
+
   private cleanupUser(clientId: string) {
     // Remove user from UI and free memory
     this.presenceTimers.delete(clientId);

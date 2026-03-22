@@ -12,6 +12,7 @@ The Erebus platform is your complete real-time infrastructure solution built for
 The Erebus platform consists of several integrated components that work together to provide a seamless real-time infrastructure experience:
 
 ### Core Infrastructure
+
 - **Edge-First Architecture**: Built on Cloudflare Durable Objects for global distribution
 - **WebSocket Infrastructure**: High-performance real-time messaging with guaranteed ordering
 - **Serverless by Design**: Pay only for what you use with automatic scaling to zero
@@ -19,27 +20,31 @@ The Erebus platform consists of several integrated components that work together
 ### Platform Features
 
 #### Project Management
+
 - **Multi-Project Organization**: Organize your applications into separate projects (up to 50 projects per account)
 - **Regional Deployment**: Choose between Global (auto-region) and EU-specific deployment
 - **Project Settings**: Configure webhooks, naming, and other project-specific options
 
 #### API Key Management
+
 - **Environment Separation**: Separate development and production API keys for security
 - **Key States**: Active, disabled, and revoked states for granular access control
 - **Security Features**: Built-in key rotation and usage monitoring
 
 #### Real-Time Analytics
+
 - **Connection Metrics**: Track WebSocket connections, subscriptions, and message volume
 - **Time-Range Analysis**: View metrics by hour or day with flexible date ranges
 - **Performance Monitoring**: Identify peak usage and optimize accordingly
 
 #### Audit Logging
+
 - **Complete Activity Tracking**: Every API key creation, project change, and setting modification is logged
 - **Recent History**: Access to the 100 most recent audit events per project
 
 ## Architecture Overview
 
-*[Screenshot placeholder: Architecture diagram showing Cloudflare Durable Objects distribution]*
+_[Screenshot placeholder: Architecture diagram showing Cloudflare Durable Objects distribution]_
 
 ### Built on Cloudflare Durable Objects
 
@@ -61,16 +66,19 @@ Erebus leverages Cloudflare's Durable Objects technology to provide:
 ## Platform Capabilities
 
 ### Real-Time Messaging
+
 - **Pub/Sub Channels**: Publish and subscribe to named channels with guaranteed message ordering
 - **Quality of Service**: QoS 1 support with acknowledgments for reliable delivery
 - **Message History**: Access to recent message history for catching up on missed events
 
 ### Presence System
+
 - **Automatic Tracking**: Know who's online in each channel without additional setup
 - **Real-Time Updates**: Instant presence notifications when users join or leave
 - **Metadata Support**: Attach custom data to presence events
 
 ### Developer Experience
+
 - **TypeScript-First**: Full type safety with comprehensive TypeScript support
 - **Framework Agnostic**: Works with React, Vue, Node.js, and any JavaScript runtime
 - **Rich SDKs**: Purpose-built SDKs for different use cases and frameworks
@@ -78,15 +86,18 @@ Erebus leverages Cloudflare's Durable Objects technology to provide:
 ## Platform Limits and Quotas
 
 ### Project Limits
+
 - **Maximum Projects**: 50 projects per account
 - **API Keys**: Unlimited API keys per project
 - **Regions**: Global (auto-region) and EU available
 
 ### Audit Logs
+
 - **Retention**: 100 most recent audit events per project
 - **Real-Time**: Audit events appear immediately after actions
 
 ### Performance
+
 - **Concurrent Connections**: No hard limits (scales with your usage plan)
 - **Message Rate**: Optimized for high-throughput applications
 - **Channel Limits**: No restrictions on channel names or count
@@ -94,36 +105,44 @@ Erebus leverages Cloudflare's Durable Objects technology to provide:
 ## Use Cases
 
 ### Chat and Messaging Applications
-*[Screenshot placeholder: Sample chat application dashboard]*
+
+_[Screenshot placeholder: Sample chat application dashboard]_
 
 Perfect for building chat rooms, direct messaging, and comment systems with:
+
 - Message ordering guarantees
 - Online user presence
 - Message history and catch-up
 - Typing indicators and read receipts
 
 ### Live Collaboration
-*[Screenshot placeholder: Collaborative editing interface]*
+
+_[Screenshot placeholder: Collaborative editing interface]_
 
 Enable real-time collaboration features like:
+
 - Document co-editing
 - Cursor tracking
 - Operational transforms
 - Conflict resolution
 
 ### Real-Time Notifications
-*[Screenshot placeholder: Notification management panel]*
+
+_[Screenshot placeholder: Notification management panel]_
 
 Build notification systems with:
+
 - Targeted user delivery
 - Delivery confirmations
 - Push notification integration
 - Priority-based routing
 
 ### Live Analytics and Monitoring
-*[Screenshot placeholder: Analytics dashboard]*
+
+_[Screenshot placeholder: Analytics dashboard]_
 
 Stream real-time data for:
+
 - Live dashboards
 - Metric aggregation
 - Event tracking

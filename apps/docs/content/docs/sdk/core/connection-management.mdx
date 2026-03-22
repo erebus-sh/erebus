@@ -24,6 +24,7 @@ client.joinChannel("chat-room");
 Establishes WebSocket connection. Automatically fetches grant tokens from `authBaseUrl`.
 
 **Parameters:**
+
 - `timeout?: number` - Connection timeout in milliseconds (default: 30000)
 
 ```ts
@@ -84,7 +85,7 @@ if (client.isWritable) {
 // Check connection state periodically
 setInterval(() => {
   console.log(`Connection: ${client.isConnected ? "✅" : "❌"}`);
-  console.log(`Readable: ${client.isReadable ? "✅" : "❌"}`);  
+  console.log(`Readable: ${client.isReadable ? "✅" : "❌"}`);
   console.log(`Writable: ${client.isWritable ? "✅" : "❌"}`);
 }, 5000);
 ```
@@ -98,9 +99,9 @@ setInterval(() => {
 The client maintains connection state that you can monitor:
 
 ```ts
-console.log(client.isConnected);  // boolean - WebSocket connected
-console.log(client.isReadable);   // boolean - Can receive messages
-console.log(client.isWritable);   // boolean - Can send messages
+console.log(client.isConnected); // boolean - WebSocket connected
+console.log(client.isReadable); // boolean - Can receive messages
+console.log(client.isWritable); // boolean - Can send messages
 ```
 
 ### Automatic Reconnection
@@ -128,7 +129,7 @@ try {
 
 ```ts
 // Graceful shutdown
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   client.close();
   process.exit(0);
 });
@@ -161,6 +162,7 @@ try {
 ### Error Types and Handling
 
 #### Connection Errors
+
 ```ts
 try {
   await client.connect();
@@ -176,6 +178,7 @@ try {
 ```
 
 #### Publishing Errors
+
 ```ts
 try {
   await client.publish("topic", "message");
@@ -189,6 +192,7 @@ try {
 ```
 
 #### History API Errors
+
 ```ts
 try {
   const history = await client.getHistory("topic");
@@ -202,6 +206,7 @@ try {
 ```
 
 #### ACK and Subscription Errors
+
 ```ts
 // Handle ACK errors
 client.publishWithAck("topic", "message", (ack) => {
@@ -221,6 +226,7 @@ client.subscribeWithCallback("topic", handler, (response) => {
 ### Error Recovery Patterns
 
 #### Retry with Backoff
+
 ```ts
 async function connectWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -231,15 +237,16 @@ async function connectWithRetry(maxRetries = 3) {
     } catch (error) {
       console.log(`Retry ${i + 1}/${maxRetries}`);
       if (i === maxRetries - 1) throw error;
-      
+
       // Exponential backoff
-      await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+      await new Promise((r) => setTimeout(r, 1000 * Math.pow(2, i)));
     }
   }
 }
 ```
 
 #### Graceful Degradation
+
 ```ts
 // Continue without history if HTTP API unavailable
 let historySupported = true;
@@ -260,14 +267,14 @@ if (!historySupported) {
 
 ### Common Error Messages
 
-| Error Message | Cause | Solution |
-|---------------|-------|----------|
-| `"Channel must be set before connecting"` | No channel set | Call `joinChannel()` first |
-| `"HTTP base URL required for history API"` | Missing HTTP config | Add `httpBaseUrl` to client options |
-| `"Connection timeout"` | Server unreachable | Check `wsBaseUrl` and network |
-| `"Not connected"` | Publishing without connection | Wait for connection or handle gracefully |
-| `"Invalid topic"` | Empty/invalid topic name | Use non-empty string topics |
-| `"ACK callback required"` | Missing callback in `publishWithAck` | Provide ACK callback function |
+| Error Message                              | Cause                                | Solution                                 |
+| ------------------------------------------ | ------------------------------------ | ---------------------------------------- |
+| `"Channel must be set before connecting"`  | No channel set                       | Call `joinChannel()` first               |
+| `"HTTP base URL required for history API"` | Missing HTTP config                  | Add `httpBaseUrl` to client options      |
+| `"Connection timeout"`                     | Server unreachable                   | Check `wsBaseUrl` and network            |
+| `"Not connected"`                          | Publishing without connection        | Wait for connection or handle gracefully |
+| `"Invalid topic"`                          | Empty/invalid topic name             | Use non-empty string topics              |
+| `"ACK callback required"`                  | Missing callback in `publishWithAck` | Provide ACK callback function            |
 
 ---
 
@@ -290,7 +297,7 @@ async function connectWithRetry(maxRetries = 3) {
       return;
     } catch (error) {
       console.log(`Retry ${i + 1}/${maxRetries}`);
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
   }
   throw new Error("Failed to connect after retries");
@@ -312,11 +319,11 @@ process.on("SIGINT", () => {
 class ConnectionMonitor {
   private client: ErebusPubSubClient;
   private healthCheckInterval?: NodeJS.Timeout;
-  
+
   constructor(client: ErebusPubSubClient) {
     this.client = client;
   }
-  
+
   startMonitoring() {
     this.healthCheckInterval = setInterval(() => {
       if (!this.client.isConnected) {
@@ -325,13 +332,13 @@ class ConnectionMonitor {
       }
     }, 5000);
   }
-  
+
   stopMonitoring() {
     if (this.healthCheckInterval) {
       clearInterval(this.healthCheckInterval);
     }
   }
-  
+
   private onConnectionLost() {
     // Implement custom reconnection logic
     // Show user notification
@@ -347,13 +354,13 @@ const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
   authBaseUrl: process.env.EREBUS_AUTH_URL!,
   wsBaseUrl: process.env.EREBUS_WS_URL,
-  heartbeatMs: 30000,      // Longer heartbeat for production
-  connectionTimeoutMs: 10000,  // Connection timeout
-  debug: process.env.NODE_ENV === 'development',
+  heartbeatMs: 30000, // Longer heartbeat for production
+  connectionTimeoutMs: 10000, // Connection timeout
+  debug: process.env.NODE_ENV === "development",
   log: (level, msg, meta) => {
     // Use your logging framework
     logger[level](msg, meta);
-  }
+  },
 });
 ```
 
@@ -366,23 +373,23 @@ const client = ErebusClient.createClient({
 ```ts
 class ErebusConnectionPool {
   private connections = new Map<string, ErebusPubSubClient>();
-  
+
   async getConnection(channel: string): Promise<ErebusPubSubClient> {
     if (!this.connections.has(channel)) {
       const client = ErebusClient.createClient({
         client: ErebusClientState.PubSub,
         authBaseUrl: process.env.EREBUS_AUTH_URL!,
       });
-      
+
       client.joinChannel(channel);
       await client.connect();
-      
+
       this.connections.set(channel, client);
     }
-    
+
     return this.connections.get(channel)!;
   }
-  
+
   async closeAll() {
     for (const client of this.connections.values()) {
       client.close();
@@ -398,17 +405,18 @@ class ErebusConnectionPool {
 class ErebusCircuitBreaker {
   private failures = 0;
   private lastFailure = 0;
-  private state: 'closed' | 'open' | 'half-open' = 'closed';
-  
+  private state: "closed" | "open" | "half-open" = "closed";
+
   async execute<T>(operation: () => Promise<T>): Promise<T> {
-    if (this.state === 'open') {
-      if (Date.now() - this.lastFailure > 60000) { // 1 minute
-        this.state = 'half-open';
+    if (this.state === "open") {
+      if (Date.now() - this.lastFailure > 60000) {
+        // 1 minute
+        this.state = "half-open";
       } else {
-        throw new Error('Circuit breaker is OPEN');
+        throw new Error("Circuit breaker is OPEN");
       }
     }
-    
+
     try {
       const result = await operation();
       this.onSuccess();
@@ -418,18 +426,18 @@ class ErebusCircuitBreaker {
       throw error;
     }
   }
-  
+
   private onSuccess() {
     this.failures = 0;
-    this.state = 'closed';
+    this.state = "closed";
   }
-  
+
   private onFailure() {
     this.failures++;
     this.lastFailure = Date.now();
-    
+
     if (this.failures >= 3) {
-      this.state = 'open';
+      this.state = "open";
     }
   }
 }

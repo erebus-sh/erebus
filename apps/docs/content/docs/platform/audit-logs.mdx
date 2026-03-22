@@ -18,11 +18,12 @@ Audit logs are automatically generated records that capture all meaningful activ
 - **Whether** it succeeded or failed (status tracking)
 - **Why** it was done (descriptive context)
 
-*[Screenshot placeholder: Audit logs interface showing recent activity]*
+_[Screenshot placeholder: Audit logs interface showing recent activity]_
 
 ## Tracked Activities
 
 ### API Key Management
+
 All API key operations are automatically logged:
 
 - **Key Creation**: New API key generation with environment type
@@ -31,6 +32,7 @@ All API key operations are automatically logged:
 - **Key Deletion**: Permanent key removal (when permitted)
 
 ### Project Management
+
 Project-level changes are comprehensively tracked:
 
 - **Project Creation**: New project initialization
@@ -39,6 +41,7 @@ Project-level changes are comprehensively tracked:
 - **Project Deletion**: Project removal attempts and restrictions
 
 ### System Events
+
 Important system-level activities:
 
 - **Configuration Changes**: Platform setting modifications
@@ -52,17 +55,20 @@ Each audit log entry contains the following information:
 ### Core Fields
 
 **Actor Information**
+
 - **User ID**: Unique identifier of the person who performed the action
 - **User Name**: Display name of the actor
 - **User Image**: Profile image for visual identification in the interface
 
 **Action Details**
+
 - **Action Type**: `create`, `update`, or `delete`
 - **Action Description**: Human-readable summary of what was done
 - **Entity Type**: The type of resource affected (e.g., "api_key", "project")
 - **Entity ID**: Unique identifier of the affected resource
 
 **Timing and Status**
+
 - **Timestamp**: Precise date and time when the action occurred
 - **Status**: Boolean indicating success (`true`) or failure (`false`)
 - **Description**: Detailed human-readable explanation of the event
@@ -88,7 +94,7 @@ Each audit log entry contains the following information:
 
 ### Platform Dashboard
 
-*[Screenshot placeholder: Navigation to audit logs section]*
+_[Screenshot placeholder: Navigation to audit logs section]_
 
 1. **Navigate to Your Project**: Select the project you want to audit
 2. **Open Audit Logs**: Click "Audit Logs" in the project sidebar
@@ -96,7 +102,7 @@ Each audit log entry contains the following information:
 
 ### Audit Log Interface
 
-*[Screenshot placeholder: Audit logs list with filters and search]*
+_[Screenshot placeholder: Audit logs list with filters and search]_
 
 The audit log interface provides:
 
@@ -108,9 +114,10 @@ The audit log interface provides:
 
 ### Empty State
 
-*[Screenshot placeholder: Empty audit logs state]*
+_[Screenshot placeholder: Empty audit logs state]_
 
 When no audit events exist yet:
+
 - Clean interface explaining what will be tracked
 - Links to documentation for understanding audit logs
 - Guidance on actions that will generate audit events
@@ -124,7 +131,9 @@ When no audit events exist yet:
 - **Storage**: Events are permanently retained until displaced by newer events
 
 <Callout title="Retention Policy" type="info">
-The system currently retains the 100 most recent audit events per project. Older events are automatically removed as new events are added. Time-based retention policies may be introduced in future updates.
+  The system currently retains the 100 most recent audit events per project.
+  Older events are automatically removed as new events are added. Time-based
+  retention policies may be introduced in future updates.
 </Callout>
 
 ### Event Ordering
@@ -140,16 +149,19 @@ The system currently retains the 100 most recent audit events per project. Older
 Audit logs enable comprehensive security oversight:
 
 **Unauthorized Access Detection**
+
 - Monitor for unexpected API key creation or modification
 - Track unusual project setting changes
 - Identify suspicious authentication patterns
 
 **Access Pattern Analysis**
+
 - Review who is accessing which projects and when
 - Identify unusual activity patterns or timing
 - Monitor for privilege escalation attempts
 
 **Change Management**
+
 - Track all configuration changes with full attribution
 - Maintain accountability for system modifications
 - Enable rollback planning with complete change history
@@ -159,11 +171,13 @@ Audit logs enable comprehensive security oversight:
 ### Regular Review
 
 **Establish Review Schedules**
+
 - **Daily**: Quick scan for any unusual activity
 - **Weekly**: Detailed review of all changes and access patterns
 - **Monthly**: Comprehensive audit of all activities and trends
 
 **Key Indicators to Monitor**
+
 - Failed authentication attempts
 - API key modifications outside business hours
 - Unexpected project configuration changes
@@ -172,12 +186,14 @@ Audit logs enable comprehensive security oversight:
 ### Security Workflows
 
 **Incident Response**
+
 1. **Initial Detection**: Use audit logs to identify security events
 2. **Impact Assessment**: Review all related audit entries
 3. **Timeline Construction**: Build chronological sequence of events
 4. **Attribution**: Identify all actors involved in the incident
 
 **Preventive Measures**
+
 - Regular audit of API key usage and permissions
 - Monitoring for dormant keys that should be revoked
 - Verification of project access patterns
@@ -187,11 +203,13 @@ Audit logs enable comprehensive security oversight:
 While Erebus doesn't currently provide audit log export, you can:
 
 **Manual Documentation**
+
 - Screenshot important audit events for records
 - Document significant changes in your security log
 - Maintain correlation with external security events
 
 **Future Integrations**
+
 - API access for programmatic audit log retrieval (planned)
 - SIEM integration capabilities (under consideration)
 - Automated alerting for suspicious patterns (roadmap item)
@@ -200,33 +218,38 @@ While Erebus doesn't currently provide audit log export, you can:
 
 ### API Key Events
 
-*[Screenshot placeholder: API key audit events with descriptions]*
+_[Screenshot placeholder: API key audit events with descriptions]_
 
 **"Generated new API key"**
+
 - **Trigger**: User creates a new API key via the dashboard
 - **Important Data**: Environment type (dev/prod), key label
 - **Security Note**: Monitor for unexpected key generation
 
 **"Revoked API key"**
+
 - **Trigger**: User permanently revokes an API key
 - **Important Data**: Which key was revoked and why
 - **Security Note**: Verify revocation was intentional
 
 **"Updated API key status"**
+
 - **Trigger**: User enables or disables an API key
 - **Important Data**: Status change direction (active/disabled)
 - **Security Note**: Monitor for unauthorized status changes
 
 ### Project Events
 
-*[Screenshot placeholder: Project audit events with descriptions]*
+_[Screenshot placeholder: Project audit events with descriptions]_
 
 **"Created new project"**
+
 - **Trigger**: User creates a project via the dashboard
 - **Important Data**: Project name and region selection
 - **Security Note**: Monitor for unexpected project creation
 
 **"Updated project settings"**
+
 - **Trigger**: User modifies project configuration
 - **Important Data**: Which settings were changed
 - **Security Note**: Verify webhook URL changes are legitimate
@@ -236,11 +259,13 @@ While Erebus doesn't currently provide audit log export, you can:
 ### Missing Events
 
 **Events Not Appearing**
+
 - **Immediate Check**: Refresh the audit logs page
 - **Timing**: Some events may have a few seconds delay
 - **Permissions**: Verify you have access to the project
 
 **Historical Events Missing**
+
 - **Retention Limit**: Only 100 most recent events are kept
 - **Project Scope**: Events are project-specific
 - **Time Range**: Check if you're looking at the correct project
@@ -248,11 +273,13 @@ While Erebus doesn't currently provide audit log export, you can:
 ### Understanding Event Details
 
 **Cryptic Descriptions**
+
 - **Context**: Refer to the action type and entity type for clarity
 - **Timestamps**: Use timestamps to correlate with your actions
 - **Status**: Check success/failure status for troubleshooting
 
 **Multiple Similar Events**
+
 - **Batch Operations**: Some actions may generate multiple audit events
 - **Retry Logic**: Failed actions may create multiple entries
 - **User Actions**: Rapid successive actions will all be logged
@@ -260,11 +287,13 @@ While Erebus doesn't currently provide audit log export, you can:
 ## Getting Help
 
 ### Documentation Resources
+
 - **[Getting Started Guide](/docs/platform/getting-started)** - Basic platform usage
 - **[API Key Management](/docs/platform/api-key-management)** - Key security practices
 - **[Project Management](/docs/platform/project-management)** - Project configuration
 
 ### Direct Support
+
 - **Email**: [support@erebus.sh](mailto:support@erebus.sh) for audit log questions
 - **Response Time**: Direct support for security and compliance issues
 - **Documentation**: Comprehensive guides and troubleshooting help

@@ -14,17 +14,16 @@ It provides a type-safe and raw **Core Client** and a type-safe **React Client**
 @erebus-sh/sdk
 ```
 
-
-
 # Packages
+
 Currently shipped as a single package:
+
 - `@erebus-sh/sdk/client` – low-level client APIs
 - `@erebus-sh/sdk/react` – React hooks on top of the core (**Experimental/Unstable**)
 - `@erebus-sh/sdk/server` – Server-side SDK for building Erebus servers
 - `@erebus-sh/sdk/service` – Helpers for server-side authorization and sessions
-But it's also available on:
+  But it's also available on:
 - `@erebus-sh/sdk` – All packages in one exported in a barrel file (will change in the future)
-
 
 # Core APIs
 
@@ -33,7 +32,7 @@ The Core Client provides stable, type-safe APIs for interacting with Erebus pub/
 ## Core Features
 
 - **Real-time messaging**: Publish and subscribe to topics with guaranteed message ordering
-- **Presence tracking**: Automatic presence events when clients join/leave topics  
+- **Presence tracking**: Automatic presence events when clients join/leave topics
 - **Message history**: Fetch historical messages with cursor-based pagination
 - **Type safety**: Full TypeScript support with schema validation facade
 - **Connection management**: Automatic reconnection with exponential backoff
@@ -50,44 +49,46 @@ The Core Client provides stable, type-safe APIs for interacting with Erebus pub/
 ## Documentation Sections
 
 - **[Complete API Reference](/docs/sdk/core/apis)** - All methods, types, and examples
-- **[Message History](/docs/sdk/core/history)** - Pagination, cursors, and advanced patterns  
+- **[Message History](/docs/sdk/core/history)** - Pagination, cursors, and advanced patterns
 - **[Schema Facade](/docs/sdk/core/schema-facade)** - Type-safe messaging with validation
 - **[Quick Reference](/docs/sdk/core/quick-reference)** - Common patterns and cheat sheet
 
 ## Quickstart: Connect, Subscribe, Publish
 
 ```ts
-import { ErebusClient, ErebusClientState } from '@erebus-sh/sdk'
+import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: 'http://localhost:4919',
-  wsBaseUrl: 'ws://localhost:8787',
-})
+  authBaseUrl: "http://localhost:4919",
+  wsBaseUrl: "ws://localhost:8787",
+});
 
-client.joinChannel('chats')
-await client.connect()
+client.joinChannel("chats");
+await client.connect();
 
-await client.subscribe('test_123', (msg) => {
-  console.log('Received:', msg.payload, 'from', msg.senderId)
-})
+await client.subscribe("test_123", (msg) => {
+  console.log("Received:", msg.payload, "from", msg.senderId);
+});
 
-await client.onPresence('test_123', (presence) => {
-  console.log('Presence:', presence)
-})
+await client.onPresence("test_123", (presence) => {
+  console.log("Presence:", presence);
+});
 
 await client.publishWithAck(
-  'test_123',
-  'Hello Erebus 👋',
+  "test_123",
+  "Hello Erebus 👋",
   (ack) => {
-    console.log('Message acknowledged:', ack.success ? 'Success' : `Failed: ${ack.error?.message}`)
+    console.log(
+      "Message acknowledged:",
+      ack.success ? "Success" : `Failed: ${ack.error?.message}`,
+    );
   },
-  3000
-)
+  3000,
+);
 ```
 
 > For a full end-to-end example (including a Bun-based auth server using `createGenericAdapter` and webhooks), see the [Core Client APIs](/docs/sdk/core/apis) page.
-
 
 # React Package (Experimental)
 

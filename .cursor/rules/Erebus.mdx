@@ -1,6 +1,7 @@
 # Erebus Overview
 
 ## What is Erebus?
+
 Erebus is a **real-time infrastructure platform** that enables developers to build collaborative, event-driven applications with **edge-native performance**. It abstracts away the complexity of managing WebSockets, message brokers, and sequencing logic, so teams can focus on product logic rather than infra plumbing.
 
 ---
@@ -8,25 +9,31 @@ Erebus is a **real-time infrastructure platform** that enables developers to bui
 ## Core Architecture
 
 ### Cloudflare Edge Runtime
+
 - Powered by **Durable Objects** and **Workers**.
 - Provides low-latency connections and fault-tolerant coordination across regions.
 
 ### Convex (Primary Database)
+
 Convex is the **brain and storage layer** of Erebus:
+
 - **Projects & API keys** (authentication, provisioning, quotas).
 - **Usage analytics** (event counts, subscription metrics, billing).
 - **Persistent storage** (history, pagination, beyond ephemeral streams).
 - **Configuration state** (namespaces, presence, client access control).
 
 ### Upstash Redis (Supporting Role)
+
 - Handles **ephemeral data**, **rate-limiting**, and **caching**.
 - Not the main database — acts as an accelerator and guardrail.
 
 ### Ordering & Sequencing
+
 - **Region-local ULIDs** ensure **monotonic, sortable IDs**.
 - Guarantees ordering per region, and approximate ordering globally without a central bottleneck.
 
 ### Developer SDK
+
 - **TypeScript-first** SDK.
 - HTTP endpoints for publishing, rewinding history, and querying state.
 
@@ -51,38 +58,45 @@ Convex is the **brain and storage layer** of Erebus:
 ## Code Conventions
 
 ### Imports
+
 - Use `@/` path alias for all non-relative imports within an app
 - Relative imports only within the same directory subtree
 - Barrel files (index.ts) for public API surfaces
 
 ### File naming
+
 - **kebab-case** for components and routes: `create-project-dialog.tsx`
 - **PascalCase** for class files: `ErebusClient.ts`, `MessageBroadcaster.ts`
 - **camelCase** for utility/hook files: `useNavStackStore.ts`
 - Tests use `.test.ts` suffix
 
 ### Exports
+
 - Named exports for utilities, classes, and types
 - `export default function` for React page/component files
 - `export type { }` for type-only exports
 
 ### Error handling
+
 - Custom error classes extending Error (`NotConnectedError`, `AuthError`)
 - `ConvexError` for database errors
 - try/catch with `instanceof` discrimination
 
 ### React patterns
+
 - Server components by default, `"use client"` only when needed
 - Convex hooks: `useMutation()`, `useQuery()` with `api.*`
 - Zustand for client state
 - Props typed inline
 
 ### Convex patterns
+
 - Schema in `convex/schema.ts`, tables in `convex/tables/`
 - Auth guards: `getAuthenticatedUser()`, `getValidatedProjectWithOwnership()`
 - Index queries: `.withIndex("by_field", (q) => q.eq("field", value))`
 
 ### API patterns (Hono)
+
 - Zod validation via `zValidator()` middleware
 - Response: `{ ok: true, reqId }` or `{ error: string, reqId }` with HTTP status
 - Grant JWT tokens for channel auth
@@ -102,6 +116,7 @@ Convex is the **brain and storage layer** of Erebus:
 ---
 
 ## Positioning
+
 - **Indie developers**: Add presence or channels in minutes.
 
 ---

@@ -21,12 +21,13 @@ API keys serve multiple critical functions:
 ### Key Architecture
 
 Each API key is associated with:
+
 - **Single Project**: Keys are project-scoped for security isolation
 - **Environment Type**: Development or production classification
 - **Status State**: Active, disabled, or revoked status control
 - **Metadata**: Labels, creation dates, and usage tracking
 
-*[Screenshot placeholder: API keys dashboard showing key list with status indicators]*
+_[Screenshot placeholder: API keys dashboard showing key list with status indicators]_
 
 ## API Key States
 
@@ -35,47 +36,55 @@ Each API key is associated with:
 API keys have three distinct states that control their functionality:
 
 **Active State**
+
 - **Full Functionality**: Complete access to all authorized operations
 - **Normal Operation**: Default state for newly created keys
 - **Production Ready**: Suitable for live applications
 - **Status Indicator**: Green status in dashboard
 
 **Disabled State**
+
 - **Temporary Suspension**: Key functionality is suspended but not permanently revoked
 - **Reversible**: Can be re-enabled without generating a new key
 - **Settings Locked**: Cannot modify key settings while disabled
 - **Status Indicator**: Yellow/orange status in dashboard
 
 **Revoked State**
+
 - **Permanent Deactivation**: Key is permanently disabled and cannot be reactivated
 - **Security Action**: Typically used when keys are compromised or no longer needed
 - **Irreversible**: Revoked keys cannot be restored
 - **Status Indicator**: Red status with timestamp
 
-*[Screenshot placeholder: API key card showing different states and action buttons]*
+_[Screenshot placeholder: API key card showing different states and action buttons]_
 
 ### State Transitions
 
 **Active → Disabled**
+
 - **Use Case**: Temporary suspension for maintenance or debugging
 - **Action**: Click "Disable" button on active key
 - **Reversibility**: Can be re-enabled at any time
 - **Audit Log**: State change is logged with timestamp and actor
 
 **Disabled → Active**
+
 - **Use Case**: Re-enable temporarily disabled key
 - **Action**: Click "Enable" button on disabled key
 - **Requirements**: No restrictions for re-enabling
 - **Audit Log**: Re-enablement is tracked in audit logs
 
 **Any State → Revoked**
+
 - **Use Case**: Permanent deactivation for security or cleanup
 - **Action**: Click "Revoke" button and confirm destructive action
 - **Confirmation**: Multiple confirmation steps required
 - **Audit Log**: Revocation is permanently logged with reason
 
 <Callout title="Key State Best Practices" type="info">
-Use the disabled state for temporary suspensions (debugging, maintenance) and the revoked state only for permanent deactivation when keys are compromised or definitively no longer needed.
+  Use the disabled state for temporary suspensions (debugging, maintenance) and
+  the revoked state only for permanent deactivation when keys are compromised or
+  definitively no longer needed.
 </Callout>
 
 ## Environment Types
@@ -83,17 +92,19 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 ### Development vs Production
 
 **Development Keys (`dv-er-*`)**
+
 - **Purpose**: Testing, development, and staging environments
 - **Security Level**: Lower security requirements, frequent regeneration acceptable
 - **Monitoring**: Less stringent monitoring requirements
 
 **Production Keys (`sk-er-*`)**
+
 - **Purpose**: Live applications serving real users
 - **Security Level**: Highest security standards, careful lifecycle management
 - **Monitoring**: Comprehensive monitoring and alerting required
 
-
 **Key Lifecycle Management**
+
 - **Development**: Regenerate keys frequently during development
 - **Staging**: Use production-type keys with development security practices
 - **Production**: Implement formal change management for key operations
@@ -102,9 +113,10 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 
 ### Creating New API Keys
 
-*[Screenshot placeholder: Create API key dialog with environment selection]*
+_[Screenshot placeholder: Create API key dialog with environment selection]_
 
 **Step-by-Step Process**
+
 1. **Navigate to API Keys**: Go to your project's API Keys section
 2. **Click "Create new key"**: Opens the key creation dialog
 3. **Configure Key Details**:
@@ -114,6 +126,7 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 5. **Copy Immediately**: Copy the full key value (only visible once)
 
 **Key Label Best Practices**
+
 - Use descriptive names that indicate purpose and environment
 - Include service or component names for multi-service applications
 - Consider including dates or version numbers for tracking
@@ -122,12 +135,14 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 ### Key Configuration Options
 
 **Current Features**
+
 - **Label Management**: Update descriptive names anytime
 - **Status Control**: Enable, disable, or revoke keys
 - **Environment Type**: Set during creation (not changeable)
 - **Scope**: Full read-write access to project resources
 
 **Future Enhancements (Planned)**
+
 - **Resource Restrictions**: Limit access to specific channels or queues
 - **Permission Scoping**: Read-only or write-only key types
 - **Expiration Dates**: Automatic key expiration for security
@@ -138,12 +153,14 @@ Use the disabled state for temporary suspensions (debugging, maintenance) and th
 ### Key Security Best Practices
 
 **Storage and Handling**
+
 - **Environment Variables**: Store keys in environment variables, never in code
 - **Secrets Management**: Use dedicated secrets management systems in production
 - **Rotation Schedule**: Implement regular key rotation policies
 - **Access Control**: Limit who can view and manage API keys
 
 **Code Security**
+
 ```typescript
 // ✅ Good: Using environment variables
 const apiKey = process.env.EREBUS_API_KEY;
@@ -158,6 +175,7 @@ if (!apiKey) {
 ```
 
 **Network Security**
+
 - **HTTPS Only**: Always use encrypted connections
 - **Certificate Validation**: Verify SSL/TLS certificates
 - **Key Transmission**: Never transmit keys via insecure channels
@@ -166,18 +184,21 @@ if (!apiKey) {
 ### Key Rotation Strategies
 
 **Development Key Rotation**
+
 - **Frequency**: Weekly or bi-weekly rotation
 - **Process**: Generate new key → Update configuration → Revoke old key
 - **Testing**: Verify new key functionality before revoking old key
 - **Automation**: Consider automated rotation for development environments
 
 **Production Key Rotation**
+
 - **Frequency**: Monthly or quarterly rotation
 - **Process**: Coordinated deployment with zero-downtime strategy
 - **Monitoring**: Enhanced monitoring during rotation period
 - **Rollback Plan**: Keep old key active briefly for emergency rollback
 
 **Zero-Downtime Rotation Process**
+
 1. **Generate New Key**: Create replacement key without affecting current operations
 2. **Update Configuration**: Deploy new key to all services using blue-green or rolling deployment
 3. **Verify Functionality**: Confirm all services are using new key successfully
@@ -188,9 +209,10 @@ if (!apiKey) {
 
 ### Usage Tracking
 
-*[Screenshot placeholder: API key usage analytics showing connection metrics]*
+_[Screenshot placeholder: API key usage analytics showing connection metrics]_
 
 **Key Metrics**
+
 - **Connection Count**: Number of active connections using each key
 - **Message Volume**: Messages published/subscribed using each key
 - **Error Rates**: Authentication failures and connection errors
@@ -199,12 +221,14 @@ if (!apiKey) {
 ### Security Monitoring
 
 **Unusual Activity Detection**
+
 - **Geographic Anomalies**: Keys used from unexpected locations
 - **Usage Spikes**: Sudden increases in key usage patterns
 - **Time Patterns**: Usage outside normal operational hours
 - **Error Clustering**: High failure rates indicating potential attacks
 
 **Audit Integration**
+
 - **Key Operations**: All key management actions are logged
 - **Usage Attribution**: Connection and message activities tracked per key
 - **Security Events**: Failed authentications and suspicious patterns
@@ -215,6 +239,7 @@ if (!apiKey) {
 ### Multi-Key Strategies
 
 **Service-Based Organization**
+
 ```
 Project: my-marketplace-app
 ├── sk-er-user-service-prod      (User authentication & profiles)
@@ -224,6 +249,7 @@ Project: my-marketplace-app
 ```
 
 **Environment-Based Organization**
+
 ```
 Project: my-app
 ├── dv-er-integration-tests      (Automated testing)
@@ -238,12 +264,14 @@ Project: my-app
 While Erebus doesn't currently provide API access for key management, you can implement processes for:
 
 **Documentation and Tracking**
+
 - Maintain inventory of all API keys and their purposes
 - Document key rotation schedules and procedures
 - Track key age and usage patterns for rotation planning
 - Coordinate key lifecycle with deployment processes
 
 **Integration Strategies**
+
 - **CI/CD Integration**: Include key rotation in deployment pipelines
 - **Monitoring Integration**: Alert on key usage anomalies
 - **Secret Management**: Integrate with enterprise secret management systems
@@ -254,12 +282,14 @@ While Erebus doesn't currently provide API access for key management, you can im
 ### Common Issues
 
 **Authentication Failures**
+
 - **Key Status**: Verify key is in active state
 - **Key Format**: Ensure complete key is being used (no truncation)
 - **Environment Match**: Confirm key environment matches usage context
 - **Network Issues**: Check for connectivity problems
 
 **Security Concerns**
+
 - **Compromised Keys**: Immediate revocation and replacement required
 - **Unusual Usage**: Investigate unexpected usage patterns
 - **Access Control**: Verify proper key access and handling procedures
@@ -268,13 +298,14 @@ While Erebus doesn't currently provide API access for key management, you can im
 ### Diagnostic Steps
 
 **Connectivity Testing**
+
 ```typescript
 // Test API key connectivity
 async function testApiKey(apiKey: string) {
   try {
     const client = ErebusClient.createClient({
       client: ErebusClientState.PubSub,
-      authBaseUrl: "your-auth-endpoint"
+      authBaseUrl: "your-auth-endpoint",
     });
 
     await client.connect();
@@ -288,6 +319,7 @@ async function testApiKey(apiKey: string) {
 ```
 
 **Usage Verification**
+
 1. **Check Audit Logs**: Review recent key activities for anomalies
 2. **Monitor Dashboard**: Use platform analytics to verify expected usage
 3. **Test Connections**: Perform controlled connection tests
@@ -299,6 +331,7 @@ async function testApiKey(apiKey: string) {
 
 **Project Migration**
 When moving between projects:
+
 1. **Create New Keys**: Generate keys in the target project
 2. **Update Applications**: Deploy applications with new keys
 3. **Verify Functionality**: Confirm all services work with new keys
@@ -306,6 +339,7 @@ When moving between projects:
 
 **Environment Promotion**
 Moving from development to production:
+
 1. **Generate Production Keys**: Create production-class keys
 2. **Update Configuration**: Change application configuration
 3. **Monitor Deployment**: Watch for any issues during transition
@@ -314,6 +348,7 @@ Moving from development to production:
 ### Future-Proofing
 
 **Preparing for Platform Updates**
+
 - **Key Format Changes**: Monitor for announcements about key format updates
 - **Feature Enhancements**: Prepare for additional key management features
 - **API Access**: Plan for programmatic key management capabilities
@@ -322,12 +357,14 @@ Moving from development to production:
 ## Getting Help
 
 ### Documentation Resources
+
 - **[Getting Started Guide](/docs/platform/getting-started)** - Basic key setup and usage
 - **[API Keys Basics](/docs/platform/api-keys)** - Fundamental key concepts
 - **[Security Best Practices](/docs/platform/security)** - Comprehensive security guide
 - **[Audit Logs](/docs/platform/audit-logs)** - Key activity monitoring
 
 ### Support Channels
+
 - **Email Support**: [hey@v0id.me](mailto:hey@v0id.me) for key management assistance
 - **Security Issues**: Priority support for security-related key concerns
 - **Integration Help**: Assistance with key integration and automation

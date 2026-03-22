@@ -19,7 +19,7 @@ A project in Erebus represents a single real-time application or service. Each p
 - **Separate Audit Logs**: Security and activity logging per project
 - **Custom Configuration**: Project-specific settings and integrations
 
-*[Screenshot placeholder: Projects dashboard showing multiple projects]*
+_[Screenshot placeholder: Projects dashboard showing multiple projects]_
 
 ### Project Limits
 
@@ -32,7 +32,7 @@ A project in Erebus represents a single real-time application or service. Each p
 
 ### Project Creation Process
 
-*[Screenshot placeholder: Create project dialog with form fields]*
+_[Screenshot placeholder: Create project dialog with form fields]_
 
 1. **Navigate to Projects**: Go to your account dashboard
 2. **Click "Create new project"**: Opens the project creation dialog
@@ -44,30 +44,35 @@ A project in Erebus represents a single real-time application or service. Each p
 ### Region Selection
 
 **Global Region (Recommended)**
+
 - Automatically routes users to the nearest Cloudflare edge location
 - Optimal performance for worldwide applications
 - Uses intelligent geo-routing for minimal latency
 - Best choice for most applications
 
 **EU Region (Coming Soon)**
+
 - Fixed deployment in European Union data centers
 - Compliance with EU data sovereignty requirements
 - Suitable for GDPR-strict applications
 - Fixed regional deployment
 
 <Callout title="Regional Deployment" type="info">
-Once a project is created, its region cannot be changed. Choose carefully based on your application's compliance and performance requirements.
+  Once a project is created, its region cannot be changed. Choose carefully
+  based on your application's compliance and performance requirements.
 </Callout>
 
 ### Project Naming
 
 **Naming Guidelines**
+
 - **Length**: 3-100 characters
 - **Characters**: Letters, numbers, spaces, and common punctuation
 - **Uniqueness**: Project names must be unique within your account
 - **Flexibility**: Names can be changed anytime via project settings
 
 **Best Practices**
+
 - Use descriptive names that identify the application purpose
 - Include environment indicators if managing multiple stages
 - Consider version numbers for iterative development
@@ -77,35 +82,40 @@ Once a project is created, its region cannot be changed. Choose carefully based 
 
 ### Navigation Overview
 
-*[Screenshot placeholder: Project dashboard with sidebar navigation]*
+_[Screenshot placeholder: Project dashboard with sidebar navigation]_
 
 Each project provides a comprehensive dashboard with dedicated sections:
 
 **Dashboard**
+
 - Real-time analytics overview
 - Connection metrics and message volume
 - Quick access to recent activity
 - Performance at a glance
 
 **Usage**
+
 - Detailed analytics with time-range selection
 - Historical data and trends
 - Peak usage identification
 - Usage optimization insights
 
 **API Keys**
+
 - Manage authentication credentials
 - Environment-based organization
 - Key status and permissions
 - Security controls
 
 **Audit Logs**
+
 - Complete activity tracking
 - Security and compliance monitoring
 - Change attribution and timing
 - Event history and patterns
 
 **Settings**
+
 - Project configuration
 - Webhook integrations
 - Name and metadata management
@@ -113,17 +123,19 @@ Each project provides a comprehensive dashboard with dedicated sections:
 
 ### Dashboard Analytics
 
-*[Screenshot placeholder: Analytics dashboard with metrics cards]*
+_[Screenshot placeholder: Analytics dashboard with metrics cards]_
 
 The project dashboard provides immediate insights:
 
 **Real-Time Metrics**
+
 - **Active Connections**: Current connected users
 - **Messages per Second**: Real-time message throughput
 - **Active Channels**: Number of channels with activity
 - **Subscription Count**: Total active subscriptions
 
 **Historical Overview**
+
 - **Connection trends**: Usage patterns over time
 - **Peak performance**: Highest usage periods
 - **Growth metrics**: Application scaling insights
@@ -133,15 +145,17 @@ The project dashboard provides immediate insights:
 
 ### Basic Configuration
 
-*[Screenshot placeholder: Project settings page with form fields]*
+_[Screenshot placeholder: Project settings page with form fields]_
 
 **Project Name Management**
+
 1. Navigate to "Settings" in your project
 2. Update the "Project Name" field
 3. Click "Update Project Name"
 4. Changes are applied immediately and logged in audit trails
 
 **Project Information Display**
+
 - **Project Slug**: Immutable URL-friendly identifier
 - **Creation Date**: When the project was established
 - **Current Status**: Active, archived, or maintenance
@@ -149,19 +163,21 @@ The project dashboard provides immediate insights:
 
 ### Webhook Configuration
 
-*[Screenshot placeholder: Webhook URL configuration interface]*
+_[Screenshot placeholder: Webhook URL configuration interface]_
 
 Webhooks enable you to forward real-time messages to your backend services for processing, storage, or integration with other systems.
 
 #### Webhook Setup
 
 **URL Requirements**
+
 - **Protocol**: Must use HTTPS for security
 - **Format**: Base URL only (e.g., `https://api.yourapp.com`)
 - **No Paths**: System automatically appends `/erebus/webhook`
 - **Validation**: Real-time URL format validation
 
 **Configuration Process**
+
 1. Enter your base HTTPS URL in the webhook field
 2. System validates URL format automatically
 3. Click "Update Webhook URL" to save
@@ -172,22 +188,27 @@ Webhooks enable you to forward real-time messages to your backend services for p
 The system enforces strict validation:
 
 **Valid Examples**
+
 - `https://api.myapp.com`
 - `https://webhooks.example.org`
 - `https://myservice.herokuapp.com`
 
 **Invalid Examples**
+
 - `http://api.myapp.com` (HTTP not allowed)
 - `https://api.myapp.com/erebus` (paths not allowed)
 - `api.myapp.com` (protocol missing)
 
 <Callout title="Webhook Security" type="warning">
-Webhook URLs must use HTTPS to ensure message security during transmission. The system automatically validates URLs and prevents configuration of insecure endpoints.
+  Webhook URLs must use HTTPS to ensure message security during transmission.
+  The system automatically validates URLs and prevents configuration of insecure
+  endpoints.
 </Callout>
 
 #### Message Forwarding
 
 **Forwarded Data Structure**
+
 ```json
 {
   "projectId": "proj_01HQXYZ456ABC789",
@@ -206,6 +227,7 @@ Webhook URLs must use HTTPS to ensure message security during transmission. The 
 ```
 
 **Delivery Guarantees**
+
 - **At-least-once delivery**: Messages are delivered reliably
 - **Retry logic**: Failed deliveries are automatically retried
 - **Timeout handling**: Configurable timeout for webhook endpoints
@@ -214,11 +236,13 @@ Webhook URLs must use HTTPS to ensure message security during transmission. The 
 ### Advanced Settings
 
 **Project Status Management**
+
 - **Active**: Normal operation with full functionality
 - **Archived**: Read-only access, no new connections allowed
 - **Maintenance**: Temporary operational restrictions
 
 **Performance Configuration**
+
 - **Connection limits**: Per-project connection quotas
 - **Rate limiting**: Message throughput controls
 - **Channel restrictions**: Namespace-based access controls
@@ -228,6 +252,7 @@ Webhook URLs must use HTTPS to ensure message security during transmission. The 
 ### Multi-Project Strategies
 
 **Environment Separation**
+
 ```
 my-app-development
 my-app-staging
@@ -235,6 +260,7 @@ my-app-production
 ```
 
 **Feature-Based Organization**
+
 ```
 chat-service
 notifications-service
@@ -242,6 +268,7 @@ analytics-service
 ```
 
 **Client-Based Projects**
+
 ```
 client-alpha-app
 client-beta-app
@@ -251,18 +278,21 @@ internal-tools
 ### Project Lifecycle
 
 **Development Phase**
+
 - Use development API keys
 - Configure webhook to staging endpoints
 - Enable comprehensive audit logging
 - Monitor usage patterns
 
 **Production Deployment**
+
 - Generate production API keys
 - Update webhook to production endpoints
 - Configure appropriate rate limits
 - Establish monitoring and alerting
 
 **Maintenance and Updates**
+
 - Use audit logs for change tracking
 - Coordinate API key rotation
 - Monitor performance impacts
@@ -272,17 +302,19 @@ internal-tools
 
 ### Deletion Restrictions
 
-*[Screenshot placeholder: Project deletion dialog with restrictions]*
+_[Screenshot placeholder: Project deletion dialog with restrictions]_
 
 Projects cannot be deleted if they contain:
 
 **Usage Data**
+
 - Historical analytics data
 - Message logs or history
 - Connection records
 - Performance metrics
 
 **Active Resources**
+
 - Active API keys
 - Webhook configurations
 - Active subscriptions
@@ -291,18 +323,22 @@ Projects cannot be deleted if they contain:
 ### Safe Deletion Process
 
 **Pre-Deletion Steps**
+
 1. **Revoke all API keys**: Ensure no active authentication
 2. **Disconnect all clients**: Terminate active connections
 3. **Clear webhooks**: Remove integration endpoints
 4. **Export data**: Download any required audit logs or analytics
 
 **Deletion Confirmation**
+
 - **Double confirmation**: Multiple confirmation steps required
 - **Impact warning**: Clear explanation of what will be lost
 - **Audit logging**: Deletion attempts are logged even if unsuccessful
 
 <Callout title="Data Retention" type="warning">
-Project deletion is permanent and irreversible. All associated data, including API keys, analytics, and audit logs, will be permanently lost. Ensure you have exported any required data before proceeding.
+  Project deletion is permanent and irreversible. All associated data, including
+  API keys, analytics, and audit logs, will be permanently lost. Ensure you have
+  exported any required data before proceeding.
 </Callout>
 
 ## Monitoring and Maintenance
@@ -310,6 +346,7 @@ Project deletion is permanent and irreversible. All associated data, including A
 ### Health Monitoring
 
 **Alerting Strategies**
+
 - Monitor audit logs for security events
 - Track usage patterns for capacity planning
 - Set up external monitoring for webhook endpoints
@@ -318,12 +355,14 @@ Project deletion is permanent and irreversible. All associated data, including A
 ### Regular Maintenance Tasks
 
 **Weekly Reviews**
+
 - **Audit log review**: Security and compliance monitoring
 - **API key audit**: Remove unused or compromised keys
 - **Usage analysis**: Identify optimization opportunities
 - **Webhook validation**: Ensure endpoints are responding correctly
 
 **Monthly Tasks**
+
 - **Performance analysis**: Deep dive into usage patterns
 - **Security review**: Comprehensive access and permission audit
 - **Configuration cleanup**: Remove unused settings and resources
@@ -334,12 +373,14 @@ Project deletion is permanent and irreversible. All associated data, including A
 ### Security
 
 **API Key Management**
+
 - Generate separate keys for development and production
 - Rotate keys regularly and revoke unused keys
 - Monitor key usage patterns in audit logs
 - Use environment-specific key labeling
 
 **Access Control**
+
 - Limit project access to necessary team members
 - Use audit logs to monitor administrative actions
 - Implement webhook endpoint security measures
@@ -348,12 +389,14 @@ Project deletion is permanent and irreversible. All associated data, including A
 ### Performance
 
 **Optimization Strategies**
+
 - Monitor connection patterns to optimize client behavior
 - Use analytics to identify peak usage periods
 - Configure webhooks efficiently to avoid bottlenecks
 - Plan capacity based on growth trends
 
 **Scaling Preparation**
+
 - Monitor usage trends for capacity planning
 - Prepare webhook endpoints for increased traffic
 - Consider regional deployment for global applications
@@ -362,11 +405,13 @@ Project deletion is permanent and irreversible. All associated data, including A
 ## Getting Help
 
 ### Documentation Resources
+
 - **[Getting Started Guide](/docs/platform/getting-started)** - Initial project setup
 - **[API Key Management](/docs/platform/api-key-management)** - Authentication best practices
 - **[Audit Logs](/docs/platform/audit-logs)** - Security and compliance tracking
 
 ### Support Channels
+
 - **Email Support**: [hey@v0id.me](mailto:hey@v0id.me) for project management questions
 - **Documentation**: Comprehensive guides for all platform features
 - **Community**: Updates and announcements at [x.com/v0id_user](https://x.com/v0id_user)

@@ -1,6 +1,6 @@
-@import 'tailwindcss';
-@import 'fumadocs-ui/css/neutral.css';
-@import 'fumadocs-ui/css/preset.css';
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
 @import "tw-animate-css";
 @import "../fumadocs-blog/styles/globals.css";
 
@@ -90,19 +90,19 @@
     }
   }
   @keyframes accordion-down {
-  from {
-    height: 0;
+    from {
+      height: 0;
     }
-  to {
-    height: var(--radix-accordion-content-height);
+    to {
+      height: var(--radix-accordion-content-height);
     }
   }
   @keyframes accordion-up {
-  from {
-    height: var(--radix-accordion-content-height);
+    from {
+      height: var(--radix-accordion-content-height);
     }
-  to {
-    height: 0;
+    to {
+      height: 0;
     }
   }
 }

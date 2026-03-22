@@ -10,6 +10,7 @@ This guide will walk you through everything you need to start building real-time
 ## Prerequisites
 
 Before getting started, make sure you have:
+
 - A GitHub account (required for authentication)
 - A modern web browser
 - Basic familiarity with JavaScript/TypeScript
@@ -17,7 +18,7 @@ Before getting started, make sure you have:
 
 ## Step 1: Sign In with GitHub
 
-*[Screenshot placeholder: Sign-in page with GitHub button]*
+_[Screenshot placeholder: Sign-in page with GitHub button]_
 
 1. Navigate to [erebus.sh](https://erebus.sh)
 2. Click "Sign in with GitHub"
@@ -28,7 +29,7 @@ The Erebus platform uses GitHub OAuth for secure authentication. This ensures we
 
 ## Step 2: Choose Your Plan
 
-*[Screenshot placeholder: Pricing page with plan selection]*
+_[Screenshot placeholder: Pricing page with plan selection]_
 
 After signing in, you'll need to select a subscription plan:
 
@@ -38,12 +39,13 @@ After signing in, you'll need to select a subscription plan:
 4. You'll be redirected to create your first project
 
 <Callout title="Free Tier Available" type="note">
-Most plans include generous free usage limits, perfect for development and small applications.
+  Most plans include generous free usage limits, perfect for development and
+  small applications.
 </Callout>
 
 ## Step 3: Create Your First Project
 
-*[Screenshot placeholder: Create project dialog with form fields]*
+_[Screenshot placeholder: Create project dialog with form fields]_
 
 Projects organize your real-time applications and provide isolated environments for different use cases.
 
@@ -59,18 +61,20 @@ Projects organize your real-time applications and provide isolated environments 
 ### Project Organization
 
 Each project provides:
+
 - Isolated API keys and authentication
 - Separate analytics and monitoring
 - Independent audit logs
 - Project-specific settings and webhooks
 
 <Callout title="Project Limits" type="info">
-You can create up to 50 projects per account. Each project can have unlimited API keys.
+  You can create up to 50 projects per account. Each project can have unlimited
+  API keys.
 </Callout>
 
 ## Step 4: Generate Your First API Key
 
-*[Screenshot placeholder: API Keys page with create dialog]*
+_[Screenshot placeholder: API Keys page with create dialog]_
 
 API keys authenticate your applications and control access to your real-time infrastructure.
 
@@ -84,12 +88,14 @@ API keys authenticate your applications and control access to your real-time inf
    - **Production**: For live applications
 
 <Callout title="Environment Types" type="note">
-Currently, development and production keys have the same capabilities. The separation exists for organization and security best practices.
+  Currently, development and production keys have the same capabilities. The
+  separation exists for organization and security best practices.
 </Callout>
 
 ### API Key Format
 
 Your API keys follow this format:
+
 - Production: `sk-er-[random-string]`
 - Development: `dv-er-[random-string]`
 
@@ -97,7 +103,7 @@ Your API keys follow this format:
 
 ## Step 5: Explore the Project Dashboard
 
-*[Screenshot placeholder: Project dashboard with navigation sidebar]*
+_[Screenshot placeholder: Project dashboard with navigation sidebar]_
 
 Your project dashboard provides access to all platform features:
 
@@ -113,6 +119,7 @@ Your project dashboard provides access to all platform features:
 ### Dashboard Metrics
 
 The main dashboard shows:
+
 - Total connections over time
 - Message volume and subscription counts
 - Peak usage statistics
@@ -120,7 +127,7 @@ The main dashboard shows:
 
 ## Step 6: Configure Project Settings
 
-*[Screenshot placeholder: Project settings page with webhook configuration]*
+_[Screenshot placeholder: Project settings page with webhook configuration]_
 
 ### Basic Settings
 
@@ -137,7 +144,8 @@ Webhooks allow you to forward messages to your backend services:
 3. Messages will be forwarded to `[webhook-url]/erebus/webhook`
 
 <Callout title="Webhook Requirements" type="warning">
-Webhook URLs must use HTTPS and be base URLs without paths. The system automatically appends `/erebus/webhook` to your configured URL.
+  Webhook URLs must use HTTPS and be base URLs without paths. The system
+  automatically appends `/erebus/webhook` to your configured URL.
 </Callout>
 
 ## Step 7: Make Your First Connection
@@ -158,7 +166,7 @@ import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 // Initialize the client
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "YOUR_AUTH_SERVER_URL" // Your backend auth endpoint
+  authBaseUrl: "YOUR_AUTH_SERVER_URL", // Your backend auth endpoint
 });
 
 // Join a channel (this creates the channel if it doesn't exist)
@@ -175,7 +183,7 @@ await client.subscribe("notifications", (message) => {
 // Publish a test message
 await client.publish("notifications", {
   type: "welcome",
-  message: "Hello from Erebus! 🚀"
+  message: "Hello from Erebus! 🚀",
 });
 
 console.log("✅ Successfully connected to Erebus!");
@@ -187,19 +195,19 @@ You'll need an authentication endpoint that returns JWT tokens. Here's a minimal
 
 ```javascript
 // auth-server.js
-const express = require('express');
-const jwt = require('jsonwebtoken');
+const express = require("express");
+const jwt = require("jsonwebtoken");
 const app = express();
 
-app.post('/auth/erebus', (req, res) => {
+app.post("/auth/erebus", (req, res) => {
   // Validate your user here
   const token = jwt.sign(
     {
-      sub: 'user-123',
-      erebus_api_key: 'your-api-key-here'
+      sub: "user-123",
+      erebus_api_key: "your-api-key-here",
     },
-    'your-jwt-secret',
-    { expiresIn: '1h' }
+    "your-jwt-secret",
+    { expiresIn: "1h" },
   );
 
   res.json({ token });
@@ -209,12 +217,14 @@ app.listen(3001);
 ```
 
 <Callout title="Authentication Required" type="info">
-Erebus requires JWT tokens for authentication. The token must include your API key in the `erebus_api_key` field. See our [authentication guide](/docs/sdk/core/getting-started-api#authentication) for detailed setup.
+  Erebus requires JWT tokens for authentication. The token must include your API
+  key in the `erebus_api_key` field. See our [authentication
+  guide](/docs/sdk/core/getting-started-api#authentication) for detailed setup.
 </Callout>
 
 ## Step 8: Monitor Your Application
 
-*[Screenshot placeholder: Dashboard showing live metrics]*
+_[Screenshot placeholder: Dashboard showing live metrics]_
 
 Once your application is connected:
 
@@ -260,16 +270,19 @@ Congratulations! You've successfully set up your first Erebus project. Here's wh
 ### Common Issues
 
 **Connection Fails**
+
 - Verify your API key is correct and active
 - Check that your auth server is returning valid JWT tokens
 - Ensure your JWT includes the `erebus_api_key` field
 
 **Messages Not Received**
+
 - Confirm you're subscribed to the correct channel
 - Verify the channel name matches exactly (case-sensitive)
 - Check the audit logs for any error events
 
 **Authentication Errors**
+
 - Validate your JWT token format and expiration
 - Ensure your API key hasn't been disabled or revoked
 - Check that the JWT secret matches your configuration

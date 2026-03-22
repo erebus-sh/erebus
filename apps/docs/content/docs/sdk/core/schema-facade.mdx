@@ -13,7 +13,7 @@ It ensures that every message you publish or subscribe to matches the shape defi
 ## How does it work?
 
 The facade **wraps your PubSub client** and binds it to a `SchemaMap`.  
-Each key in the schema represents a *channel type* (e.g. `news`, `chat`, `presence`), and defines the payload shape for that channel.  
+Each key in the schema represents a _channel type_ (e.g. `news`, `chat`, `presence`), and defines the payload shape for that channel.
 
 At runtime, you can create many dynamic topics (e.g. `sports`, `finance`) under the same schema key.  
 All topics under the same schema key share the same payload contract.
@@ -23,7 +23,11 @@ All topics under the same schema key share the same payload contract.
 ## Example
 
 ```ts
-import { ErebusPubSubSchemas, ErebusClient, ErebusClientState } from "@erebus-sh/sdk";
+import {
+  ErebusPubSubSchemas,
+  ErebusClient,
+  ErebusClientState,
+} from "@erebus-sh/sdk";
 import { z } from "zod";
 
 // 1. Define your schema
@@ -35,20 +39,15 @@ const schemas = {
   }),
 } as const;
 
-
 // 2. Create the client without the schema
 const clientUnTyped = ErebusClient.createClient({
-    client: ErebusClientState.PubSub,
-    authBaseUrl: "http://localhost:4919", // your auth domain
-    wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
+  client: ErebusClientState.PubSub,
+  authBaseUrl: "http://localhost:4919", // your auth domain
+  wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
 });
 
 // 3. Create the client with the schema
-const client = new ErebusPubSubSchemas(
-    clientUnTyped,
-    schemas,
-);
-
+const client = new ErebusPubSubSchemas(clientUnTyped, schemas);
 
 // 4. Use it with type safety
 client.publish("news", "sports", {
@@ -65,26 +64,25 @@ await client.subscribe("news", "finance", (article) => {
 ## Key points
 
 <Callout title="Good to know" type="note">
-The Schema Facade automatically combines the **schema key** and the **topic ID** into a full channel name.  
-For example, using `("news", "sports")` becomes the topic string `news_sports` behind the scenes.  
+  The Schema Facade automatically combines the **schema key** and the **topic
+  ID** into a full channel name. For example, using `("news", "sports")` becomes
+  the topic string `news_sports` behind the scenes.
 </Callout>
 
-* **Schema key/Topic Schema** → defines the payload shape (`news`, `chat`, etc.)
-* **Topic** → dynamic runtime identifier (`sports`, `finance`, `room:123`)
-* **Compile-time safety** → TypeScript enforces correct payloads per schema key
-* **Runtime validation** → Zod ensures payloads are valid before sending/after receiving
-
-
+- **Schema key/Topic Schema** → defines the payload shape (`news`, `chat`, etc.)
+- **Topic** → dynamic runtime identifier (`sports`, `finance`, `room:123`)
+- **Compile-time safety** → TypeScript enforces correct payloads per schema key
+- **Runtime validation** → Zod ensures payloads are valid before sending/after receiving
 
 ## Why use it?
 
 Without the facade, PubSub messages are just raw JSON strings.
 With the facade, you get:
 
-* Safer publishes (payload checked at compile time + runtime)
-* Safer subscriptions (payload automatically validated and typed)
-* Cleaner, self-documenting API
-* **Typed history API** (payloads validated when fetching history)
+- Safer publishes (payload checked at compile time + runtime)
+- Safer subscriptions (payload automatically validated and typed)
+- Cleaner, self-documenting API
+- **Typed history API** (payloads validated when fetching history)
 
 ---
 
@@ -111,13 +109,13 @@ const client = new ErebusPubSubSchemas(baseClient, schemas);
 // Fetch history with typing
 const history = await client.getHistory("news", "sports", {
   limit: 50,
-  direction: "backward"
+  direction: "backward",
 });
 
 // TypeScript knows the payload type!
-history.items.forEach(msg => {
-  console.log(msg.payload.title);     // ✅ string
-  console.log(msg.payload.body);      // ✅ string
+history.items.forEach((msg) => {
+  console.log(msg.payload.title); // ✅ string
+  console.log(msg.payload.body); // ✅ string
   console.log(msg.payload.timestamp); // ✅ number
 });
 ```
@@ -129,12 +127,12 @@ Create a typed paginator:
 ```ts
 const getNext = client.createHistoryIterator("news", "finance", {
   limit: 20,
-  direction: "backward"
+  direction: "backward",
 });
 
 const batch = await getNext();
 if (batch) {
-  batch.items.forEach(msg => {
+  batch.items.forEach((msg) => {
     // Fully typed payload
     console.log(`${msg.payload.title}: ${msg.payload.body}`);
   });
@@ -144,7 +142,11 @@ if (batch) {
 ### Full Example with History
 
 ```ts
-import { ErebusPubSubSchemas, ErebusClient, ErebusClientState } from "@erebus-sh/sdk";
+import {
+  ErebusPubSubSchemas,
+  ErebusClient,
+  ErebusClientState,
+} from "@erebus-sh/sdk";
 import { z } from "zod";
 
 // 1. Define schemas
@@ -183,11 +185,11 @@ client.publish("chat", "lobby", {
 
 // 6. Fetch history with typing
 const history = await client.getHistory("chat", "lobby", {
-  limit: 50
+  limit: 50,
 });
 
 console.log(`Loaded ${history.items.length} messages`);
-history.items.forEach(msg => {
+history.items.forEach((msg) => {
   // Payload is automatically validated and typed
   console.log(`[${msg.payload.username}] ${msg.payload.text}`);
 });
@@ -200,30 +202,32 @@ history.items.forEach(msg => {
 The facade validates payloads at **two points**:
 
 ### 1. On Publish (Before Sending)
+
 ```ts
 // ✅ Valid - passes type check and runtime validation
 client.publish("news", "sports", {
   title: "Team Wins",
   body: "Great game!",
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 
 // ❌ Compile error - missing required field
 client.publish("news", "sports", {
   title: "Team Wins",
   // body is missing
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 
 // ❌ Runtime error - wrong type
 client.publish("news", "sports", {
-  title: 123,  // should be string
+  title: 123, // should be string
   body: "Great game!",
-  timestamp: Date.now()
+  timestamp: Date.now(),
 });
 ```
 
 ### 2. On Receive (Subscribe & History)
+
 ```ts
 await client.subscribe("news", "sports", (msg) => {
   // If validation fails, message is rejected
@@ -233,7 +237,7 @@ await client.subscribe("news", "sports", (msg) => {
 
 const history = await client.getHistory("news", "sports");
 // All items have validated payloads
-history.items.forEach(msg => {
+history.items.forEach((msg) => {
   console.log(msg.payload.title); // Guaranteed to be string
 });
 ```
@@ -266,10 +270,10 @@ const client = new ErebusPubSubSchemas(baseClient, schemas);
 // Each schema has its own type
 client.publish("chat", "room-1", { text: "Hi", username: "Alice" });
 client.publish("presence", "room-1", { userId: "123", status: "online" });
-client.publish("notification", "alerts", { 
-  title: "New Message", 
-  message: "Alice says hi", 
-  priority: "high" 
+client.publish("notification", "alerts", {
+  title: "New Message",
+  message: "Alice says hi",
+  priority: "high",
 });
 ```
 
@@ -287,11 +291,12 @@ const schemasV1 = {
 const schemasV2 = {
   message: z.object({
     text: z.string(),
-    username: z.string().optional(),  // New field
+    username: z.string().optional(), // New field
     timestamp: z.number().optional(), // New field
   }),
 };
 ```
 
 # Full example
+
 [Full example code](https://github.com/erebus-sh/erebus/tree/master/examples/chat-ts-typed)

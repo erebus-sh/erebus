@@ -11,40 +11,46 @@ The Erebus Core SDK provides comprehensive APIs for real-time messaging, presenc
 
 Our API documentation is organized into focused sections for easier learning and reference:
 
-| Section | Coverage | When to Use |
-|---------|----------|-------------|
-| **[Getting Started](/docs/sdk/core/getting-started-api)** | Basic APIs + working examples | First-time SDK users |
-| **[Messaging](/docs/sdk/core/messaging)** | Publish/subscribe + history | Building real-time features |
-| **[Connection Management](/docs/sdk/core/connection-management)** | Lifecycle + error handling | Production apps |
-| **[Presence Tracking](/docs/sdk/core/presence)** | User awareness APIs | Social features |
-| **[Types Reference](/docs/sdk/core/types-reference)** | TypeScript definitions | Type-safe development |
+| Section                                                           | Coverage                      | When to Use                 |
+| ----------------------------------------------------------------- | ----------------------------- | --------------------------- |
+| **[Getting Started](/docs/sdk/core/getting-started-api)**         | Basic APIs + working examples | First-time SDK users        |
+| **[Messaging](/docs/sdk/core/messaging)**                         | Publish/subscribe + history   | Building real-time features |
+| **[Connection Management](/docs/sdk/core/connection-management)** | Lifecycle + error handling    | Production apps             |
+| **[Presence Tracking](/docs/sdk/core/presence)**                  | User awareness APIs           | Social features             |
+| **[Types Reference](/docs/sdk/core/types-reference)**             | TypeScript definitions        | Type-safe development       |
 
 ## 🚀 Quick Navigation
 
 ### New to Erebus?
+
 Start with **[Getting Started with APIs](/docs/sdk/core/getting-started-api)** for a practical walkthrough with working examples.
 
 ### Building Real-Time Features?
+
 Go to **[Messaging APIs](/docs/sdk/core/messaging)** for publish/subscribe patterns and message history.
 
 ### Need Robust Connections?
+
 Check **[Connection Management](/docs/sdk/core/connection-management)** for lifecycle management and error handling.
 
 ### Adding Social Features?
+
 Visit **[Presence Tracking](/docs/sdk/core/presence)** for user awareness and online status.
 
 ### Working with TypeScript?
+
 Reference **[Types Reference](/docs/sdk/core/types-reference)** for complete type definitions.
 
 ## 💡 Quick Examples
 
 ### Basic Usage
+
 ```ts
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "https://your-auth.com"
+  authBaseUrl: "https://your-auth.com",
 });
 
 client.joinChannel("my-app");
@@ -54,6 +60,7 @@ await client.publish("notifications", "Hello!");
 ```
 
 ### With Presence
+
 ```ts
 // Track user activity
 await client.onPresence("chat:room", (presence) => {
@@ -62,15 +69,17 @@ await client.onPresence("chat:room", (presence) => {
 ```
 
 ### With History
+
 ```ts
 // Catch up on missed messages
 const history = await client.getHistory("chat:room", {
   limit: 50,
-  direction: "backward"
+  direction: "backward",
 });
 ```
 
 ### With Type Safety
+
 ```ts
 import { ErebusPubSubSchemas } from "@erebus-sh/sdk/client";
 import { z } from "zod";
@@ -99,28 +108,33 @@ await typed.subscribe("chat", "room", (msg) => {
 The API documentation has been reorganized into focused sections for better navigation:
 
 ### 🏁 [Getting Started with APIs](/docs/sdk/core/getting-started-api)
+
 - **Complete working example** with auth server setup
 - **Step-by-step walkthrough** of core APIs
 - **Common use case patterns** for chat, notifications, collaboration
 
-### 📡 [Messaging APIs](/docs/sdk/core/messaging)  
+### 📡 [Messaging APIs](/docs/sdk/core/messaging)
+
 - **Publish/subscribe patterns** with examples
 - **Advanced subscription options** and callbacks
 - **Message history** with pagination and iterators
 
 ### 🔌 [Connection Management](/docs/sdk/core/connection-management)
+
 - **Connection lifecycle** and state monitoring
-- **Error handling patterns** and recovery strategies  
+- **Error handling patterns** and recovery strategies
 - **Production best practices** and monitoring
 
 ### 👥 [Presence Tracking](/docs/sdk/core/presence)
+
 - **User awareness APIs** for online/offline status
 - **Advanced presence patterns** for typing indicators
 - **Multi-topic presence management**
 
 ### 📋 [Types Reference](/docs/sdk/core/types-reference)
+
 - **Complete TypeScript definitions** for all APIs
-- **Interface documentation** with usage examples  
+- **Interface documentation** with usage examples
 - **Type guards and utility types**
 
 ---
@@ -128,6 +142,7 @@ The API documentation has been reorganized into focused sections for better navi
 ## 🎯 Quick API Examples
 
 ### Basic Publish/Subscribe
+
 ```ts
 // Simple messaging
 await client.subscribe("notifications", (msg) => {
@@ -138,16 +153,16 @@ await client.publish("notifications", "Hello World!");
 ```
 
 ### With Acknowledgments
+
 ```ts
 // Reliable delivery
-await client.publishWithAck(
-  "alerts",
-  "System maintenance starting",
-  (ack) => console.log("Delivered:", ack.success)
+await client.publishWithAck("alerts", "System maintenance starting", (ack) =>
+  console.log("Delivered:", ack.success),
 );
 ```
 
 ### With Presence
+
 ```ts
 // Track user activity
 await client.onPresence("chat:room", (presence) => {
@@ -156,6 +171,7 @@ await client.onPresence("chat:room", (presence) => {
 ```
 
 ### With History
+
 ```ts
 // Load message history
 const history = await client.getHistory("chat:room", { limit: 50 });
@@ -166,9 +182,9 @@ history.items.forEach(displayMessage);
 
 ## 🔗 Quick Links
 
-| Resource | Description |
-|----------|-------------|
-| **[Getting Started](/docs/sdk/core/getting-started-api)** | Complete walkthrough with examples |
-| **[Message History](/docs/sdk/core/history)** | Advanced pagination guide |
-| **[Schema Validation](/docs/sdk/core/schema-facade)** | Type-safe messaging |
-| **[Examples](https://github.com/erebus-sh/erebus/tree/master/examples)** | Working applications |
+| Resource                                                                 | Description                        |
+| ------------------------------------------------------------------------ | ---------------------------------- |
+| **[Getting Started](/docs/sdk/core/getting-started-api)**                | Complete walkthrough with examples |
+| **[Message History](/docs/sdk/core/history)**                            | Advanced pagination guide          |
+| **[Schema Validation](/docs/sdk/core/schema-facade)**                    | Type-safe messaging                |
+| **[Examples](https://github.com/erebus-sh/erebus/tree/master/examples)** | Working applications               |

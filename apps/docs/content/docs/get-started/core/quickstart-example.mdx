@@ -2,16 +2,19 @@
 title: Quickstart Example
 description: Guiding you through the process of using Erebus.
 ---
-import { Step, Steps } from 'fumadocs-ui/components/steps';
-import { Callout } from 'fumadocs-ui/components/callout';
 
+import { Step, Steps } from "fumadocs-ui/components/steps";
+import { Callout } from "fumadocs-ui/components/callout";
 
 # Quickstart: Publish & Subscribe with the Core SDK
+
 Getting started with Erebus takes just a few steps:
+
 - An API endpoint that creates tokens for your clients using your [API keys](/docs/platform/api-keys)
 
 <Callout title="Install" type="info">
-In this example for the API endpoint I will be using Bun.Serve, you can use any other server framework you prefer.
+  In this example for the API endpoint I will be using Bun.Serve, you can use
+  any other server framework you prefer.
 </Callout>
 
 ```package-install
@@ -26,12 +29,13 @@ If you’re running locally, also set the `wsBaseUrl`; otherwise it defaults to 
 import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
 const client = ErebusClient.createClient({
-  client: ErebusClientState.PubSub,
-  authBaseUrl: "http://localhost:4919",  // your auth domain
-  wsBaseUrl: "ws://localhost:8787",  // your ws domain (optional if you self-host locally)
+client: ErebusClientState.PubSub,
+authBaseUrl: "http://localhost:4919", // your auth domain
+wsBaseUrl: "ws://localhost:8787", // your ws domain (optional if you self-host locally)
 });
 ...
-```
+
+````
 </Step>
 
 <Step>
@@ -84,7 +88,8 @@ Bun.serve({
 
 console.log("✅ Auth server running at http://localhost:4919");
 
-```
+````
+
 </Step>
 
 <Step>
@@ -97,31 +102,33 @@ Refer to the [Channels](/docs/concepts/channels) section for more information.
 // ... Previous code ...
 
 async function main() {
-  const topic = "room1";
-  // Join a channel first
-  client.joinChannel("chats");
-  // Connect
-  await client.connect();
-  
-  // Subscribe to a channel
-  await client.subscribe(topic, (msg) => {
-    console.log("📩 Received:", msg.payload, "from", msg.senderId);
-  });
+const topic = "room1";
+// Join a channel first
+client.joinChannel("chats");
+// Connect
+await client.connect();
 
-  await client.onPresence(topic, (presence) => {
-    console.log("📩 Presence:", presence);
-  });
+// Subscribe to a channel
+await client.subscribe(topic, (msg) => {
+console.log("📩 Received:", msg.payload, "from", msg.senderId);
+});
 
-  // Publish a message
-  await client.publishWithAck(topic, "Hello Erebus 👋", (ack) => {
-    console.log("✅ Message acknowledged:", ack.success ? "Success" : "Failed");
-  }, 3000);
+await client.onPresence(topic, (presence) => {
+console.log("📩 Presence:", presence);
+});
+
+// Publish a message
+await client.publishWithAck(topic, "Hello Erebus 👋", (ack) => {
+console.log("✅ Message acknowledged:", ack.success ? "Success" : "Failed");
+}, 3000);
 }
 
 main().catch(console.error);
+
 ```
 </Step>
 
 </Steps>
 
 Full code example: [examples/chat-ts/index.ts](https://github.com/erebus-sh/erebus/blob/master/examples/chat-ts/index.ts)
+```

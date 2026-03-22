@@ -12,19 +12,25 @@ Welcome to Erebus! This guide helps you choose the right SDK and approach for yo
 Choose your path based on your project type:
 
 ### I'm building a React/Next.js app
+
 → **[React SDK Quickstart](/docs/get-started/next.js/quickstart-example)** (Experimental)
+
 - Hooks-based API: `useChannel`, `usePresence`
 - Declarative subscriptions with React patterns
 - Built-in state management
 
 ### I'm building any other app (Node.js, Vue, Vanilla JS, etc.)
+
 → **[Core SDK Quickstart](/docs/get-started/core/quickstart-example)** (Stable)
+
 - Framework-agnostic TypeScript/JavaScript SDK
 - Direct WebSocket connection management
 - Full control over connection lifecycle
 
 ### I want maximum type safety
+
 → **[Schema Facade Guide](/docs/sdk/core/schema-facade)**
+
 - Runtime validation with Zod schemas
 - Compile-time type checking
 - Prevents payload mismatches
@@ -48,12 +54,12 @@ graph TB
 
 ### Key Components
 
-| Component | Purpose | Your Responsibility |
-|-----------|---------|-------------------|
-| **Client SDK** | Real-time messaging | Import and configure |
-| **Auth Server** | Issue grant tokens | Implement authorization logic |
-| **Erebus Gateway** | Message routing | Nothing (managed service) |
-| **Channels/Topics** | Message organization | Design topic structure |
+| Component           | Purpose              | Your Responsibility           |
+| ------------------- | -------------------- | ----------------------------- |
+| **Client SDK**      | Real-time messaging  | Import and configure          |
+| **Auth Server**     | Issue grant tokens   | Implement authorization logic |
+| **Erebus Gateway**  | Message routing      | Nothing (managed service)     |
+| **Channels/Topics** | Message organization | Design topic structure        |
 
 ---
 
@@ -70,7 +76,7 @@ await client.subscribe("chat:room-123", (msg) => {
   addMessageToUI(msg.senderId, msg.payload);
 });
 
-// Track who's online  
+// Track who's online
 await client.onPresence("chat:room-123", (presence) => {
   updateUserList(presence.clientId, presence.status);
 });
@@ -94,7 +100,7 @@ await client.subscribe(`user-${currentUserId}`, (msg) => {
 await client.publishWithAck(
   `user-${targetUserId}`,
   JSON.stringify({ title: "New Message", body: "Alice sent you a message" }),
-  (ack) => console.log("Notification delivered:", ack.success)
+  (ack) => console.log("Notification delivered:", ack.success),
 );
 ```
 
@@ -109,7 +115,7 @@ const editSchema = z.object({
   type: z.enum(["insert", "delete", "format"]),
   position: z.number(),
   content: z.string(),
-  author: z.string()
+  author: z.string(),
 });
 
 const typedClient = new ErebusPubSubSchemas(client, { edit: editSchema });
@@ -124,7 +130,7 @@ typedClient.publish("edit", `doc-${documentId}`, {
   type: "insert",
   position: cursorPosition,
   content: "new text",
-  author: currentUserId
+  author: currentUserId,
 });
 ```
 
@@ -157,11 +163,13 @@ setInterval(() => {
 ### Development Setup
 
 1. **Install Erebus SDK**
+
    ```bash
    npm install @erebus-sh/sdk
    ```
 
 2. **Create environment configuration**
+
    ```bash title=".env.local"
    SECRET_API_KEY=your_api_key_here
    EREBUS_AUTH_URL=http://localhost:4919
@@ -197,15 +205,12 @@ setInterval(() => {
 
 ```yaml title="vercel.json"
 {
-  "functions": {
-    "app/api/erebus/[...all]/route.ts": {
-      "maxDuration": 30
-    }
-  },
-  "env": {
-    "SECRET_API_KEY": "@secret_api_key",
-    "EREBUS_AUTH_URL": "https://your-app.vercel.app"
-  }
+  "functions": { "app/api/erebus/[...all]/route.ts": { "maxDuration": 30 } },
+  "env":
+    {
+      "SECRET_API_KEY": "@secret_api_key",
+      "EREBUS_AUTH_URL": "https://your-app.vercel.app",
+    },
 }
 ```
 
@@ -257,21 +262,21 @@ env:
 
 ### When to Use Core SDK vs React SDK
 
-| Factor | Core SDK | React SDK |
-|--------|----------|-----------|
-| **Performance** | ✅ Maximum control | ⚠️ React overhead |
-| **Bundle Size** | ✅ Minimal | ⚠️ React dependencies |
-| **Developer Experience** | ⚠️ Manual state management | ✅ React patterns |
-| **Stability** | ✅ Stable API | ⚠️ Experimental |
-| **Framework** | ✅ Any framework | ❌ React only |
+| Factor                   | Core SDK                   | React SDK             |
+| ------------------------ | -------------------------- | --------------------- |
+| **Performance**          | ✅ Maximum control         | ⚠️ React overhead     |
+| **Bundle Size**          | ✅ Minimal                 | ⚠️ React dependencies |
+| **Developer Experience** | ⚠️ Manual state management | ✅ React patterns     |
+| **Stability**            | ✅ Stable API              | ⚠️ Experimental       |
+| **Framework**            | ✅ Any framework           | ❌ React only         |
 
 ### Message Volume Guidelines
 
-| Volume | Recommended Pattern | Notes |
-|--------|-------------------|-------|
-| Low (< 10/sec) | Direct publish/subscribe | Simple and straightforward |
-| Medium (10-100/sec) | Message batching | Reduce network overhead |
-| High (> 100/sec) | Buffering + debouncing | Consider rate limiting |
+| Volume              | Recommended Pattern      | Notes                      |
+| ------------------- | ------------------------ | -------------------------- |
+| Low (< 10/sec)      | Direct publish/subscribe | Simple and straightforward |
+| Medium (10-100/sec) | Message batching         | Reduce network overhead    |
+| High (> 100/sec)    | Buffering + debouncing   | Consider rate limiting     |
 
 ---
 
@@ -283,12 +288,12 @@ env:
 // Central event manager
 class EventManager {
   constructor(private client: ErebusPubSubClient) {}
-  
+
   // Emit events
   async emit(event: string, data: unknown) {
     await this.client.publish(`events:${event}`, JSON.stringify(data));
   }
-  
+
   // Listen for events
   async on(event: string, handler: (data: unknown) => void) {
     await this.client.subscribe(`events:${event}`, (msg) => {
@@ -311,16 +316,19 @@ async function makeRequest(requestId: string, data: unknown): Promise<unknown> {
         resolve(response.data);
       }
     };
-    
+
     client.subscribe(`response:${requestId}`, handler);
   });
-  
+
   // Send request
-  await client.publish(`request:service`, JSON.stringify({
-    requestId,
-    data
-  }));
-  
+  await client.publish(
+    `request:service`,
+    JSON.stringify({
+      requestId,
+      data,
+    }),
+  );
+
   return responsePromise;
 }
 ```
@@ -332,16 +340,19 @@ async function makeRequest(requestId: string, data: unknown): Promise<unknown> {
 async function notifyUsers(userIds: string[], notification: unknown) {
   // Option 1: Individual topics
   await Promise.all(
-    userIds.map(userId => 
-      client.publish(`user:${userId}`, JSON.stringify(notification))
-    )
+    userIds.map((userId) =>
+      client.publish(`user:${userId}`, JSON.stringify(notification)),
+    ),
   );
-  
+
   // Option 2: Broadcast topic with filtering
-  await client.publish("broadcast:notifications", JSON.stringify({
-    targetUsers: userIds,
-    ...notification
-  }));
+  await client.publish(
+    "broadcast:notifications",
+    JSON.stringify({
+      targetUsers: userIds,
+      ...notification,
+    }),
+  );
 }
 ```
 
@@ -350,17 +361,20 @@ async function notifyUsers(userIds: string[], notification: unknown) {
 ## 🚦 Getting Started Paths
 
 ### Path 1: Simple Integration (5 minutes)
+
 1. **[Install SDK](/docs/get-started/install)** - Basic installation
-2. **[Core Quickstart](/docs/get-started/core/quickstart-example)** - Working example  
+2. **[Core Quickstart](/docs/get-started/core/quickstart-example)** - Working example
 3. **[Deploy](/docs/deployment)** - Push to production
 
 ### Path 2: Type-Safe Development (15 minutes)
+
 1. **[Install SDK](/docs/get-started/install)** - Basic installation
 2. **[Schema Facade](/docs/sdk/core/schema-facade)** - Type-safe messaging
 3. **[Advanced Patterns](/docs/sdk/core/messaging)** - Production patterns
 
 ### Path 3: React Integration (3 minutes)
-1. **[Install SDK](/docs/get-started/install)** - Basic installation  
+
+1. **[Install SDK](/docs/get-started/install)** - Basic installation
 2. **[React Quickstart](/docs/get-started/next.js/quickstart-example)** - Next.js example
 3. **[Hooks Reference](/docs/sdk/react/hooks)** - Coming soon
 
@@ -368,10 +382,10 @@ async function notifyUsers(userIds: string[], notification: unknown) {
 
 ## 🔗 Quick Links
 
-| Resource | Description |
-|----------|-------------|
-| **[Complete API Reference](/docs/sdk/core/messaging)** | All methods and types |
-| **[Examples Repository](https://github.com/erebus-sh/erebus/tree/master/examples)** | Working code examples |
-| **[Schema Validation](/docs/sdk/core/schema-facade)** | Type-safe messaging |
-| **[Message History](/docs/sdk/core/history)** | Historical message retrieval |
-| **[Error Handling](/docs/sdk/core/connection-management#error-handling)** | Robust error patterns |
+| Resource                                                                            | Description                  |
+| ----------------------------------------------------------------------------------- | ---------------------------- |
+| **[Complete API Reference](/docs/sdk/core/messaging)**                              | All methods and types        |
+| **[Examples Repository](https://github.com/erebus-sh/erebus/tree/master/examples)** | Working code examples        |
+| **[Schema Validation](/docs/sdk/core/schema-facade)**                               | Type-safe messaging          |
+| **[Message History](/docs/sdk/core/history)**                                       | Historical message retrieval |
+| **[Error Handling](/docs/sdk/core/connection-management#error-handling)**           | Robust error patterns        |

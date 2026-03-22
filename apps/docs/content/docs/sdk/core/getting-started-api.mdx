@@ -51,7 +51,7 @@ Bun.serve({ port: 4919, fetch: app.fetch });
 
 async function main() {
   const topic = "chat:lobby";
-  
+
   client.joinChannel("chats");
   await client.connect();
 
@@ -69,14 +69,18 @@ async function main() {
   await client.publishWithAck(
     topic,
     "Hello Erebus 👋",
-    (ack) => console.log("✅ Ack:", ack.success ? "Success" : `Failed: ${ack.error?.message}`),
-    3000
+    (ack) =>
+      console.log(
+        "✅ Ack:",
+        ack.success ? "Success" : `Failed: ${ack.error?.message}`,
+      ),
+    3000,
   );
-  
+
   // Fetch message history
   const history = await client.getHistory(topic, {
     limit: 50,
-    direction: "backward"
+    direction: "backward",
   });
   console.log("📜 History:", history.items.length, "messages");
 }
@@ -95,6 +99,7 @@ Check the full example: [Chat TypeScript](https://github.com/erebus-sh/erebus/tr
 Creates and configures a PubSub client instance.
 
 **Parameters:**
+
 - `client: ErebusClientState.PubSub` - Client type selector
 - `authBaseUrl: string` - URL of your authentication server
 - `wsBaseUrl?: string` - WebSocket URL (defaults to `wss://gateway.erebus.sh`)
@@ -116,24 +121,28 @@ const client = ErebusClient.createClient({
 Every Erebus application follows this pattern:
 
 ### 1. Create Client
+
 ```ts
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "https://your-auth.com"
+  authBaseUrl: "https://your-auth.com",
 });
 ```
 
 ### 2. Join Channel
+
 ```ts
 client.joinChannel("my-app-channel");
 ```
 
 ### 3. Connect
+
 ```ts
 await client.connect();
 ```
 
 ### 4. Subscribe to Topics
+
 ```ts
 await client.subscribe("notifications", (msg) => {
   console.log("New notification:", msg.payload);
@@ -141,11 +150,13 @@ await client.subscribe("notifications", (msg) => {
 ```
 
 ### 5. Publish Messages
+
 ```ts
 await client.publish("notifications", "Hello World!");
 ```
 
 ### 6. Handle Presence (Optional)
+
 ```ts
 await client.onPresence("notifications", (presence) => {
   console.log(`${presence.clientId} is ${presence.status}`);
@@ -175,13 +186,13 @@ All messages follow the `MessageBody` format:
 
 ```ts
 interface MessageBody {
-  id: string;              // Unique message ID (ULID)
-  topic: string;           // Topic name
-  senderId: string;        // Sender's client ID
-  seq: string;             // Sequence number (ULID)
-  sentAt: Date;            // Server timestamp
-  payload: string;         // Your message content
-  clientMsgId?: string;    // Optional correlation ID
+  id: string; // Unique message ID (ULID)
+  topic: string; // Topic name
+  senderId: string; // Sender's client ID
+  seq: string; // Sequence number (ULID)
+  sentAt: Date; // Server timestamp
+  payload: string; // Your message content
+  clientMsgId?: string; // Optional correlation ID
 }
 ```
 
@@ -191,8 +202,8 @@ Monitor your connection status:
 
 ```ts
 console.log(client.isConnected); // boolean
-console.log(client.isReadable);  // boolean
-console.log(client.isWritable);  // boolean
+console.log(client.isReadable); // boolean
+console.log(client.isWritable); // boolean
 ```
 
 ---
@@ -200,6 +211,7 @@ console.log(client.isWritable);  // boolean
 ## Common Use Cases
 
 ### Chat Application
+
 ```ts
 // Subscribe to room messages
 await client.subscribe("room-123", (msg) => {
@@ -216,6 +228,7 @@ await client.onPresence("room-123", (presence) => {
 ```
 
 ### Real-time Notifications
+
 ```ts
 // Subscribe to user-specific notifications
 await client.subscribe(`user-${userId}`, (msg) => {
@@ -223,13 +236,17 @@ await client.subscribe(`user-${userId}`, (msg) => {
 });
 
 // Send notification
-await client.publish(`user-${targetUserId}`, JSON.stringify({
-  title: "New Message",
-  body: "You have a new message from Alice"
-}));
+await client.publish(
+  `user-${targetUserId}`,
+  JSON.stringify({
+    title: "New Message",
+    body: "You have a new message from Alice",
+  }),
+);
 ```
 
 ### Collaborative Editing
+
 ```ts
 // Subscribe to document changes
 await client.subscribe(`doc-${documentId}`, (msg) => {

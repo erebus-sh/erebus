@@ -14,6 +14,7 @@ Complete guide to real-time messaging with publish/subscribe patterns, advanced 
 Subscribe to messages on a topic with full acknowledgement support.
 
 **Parameters:**
+
 - `topic: string` - Topic name to subscribe to
 - `handler: (message: MessageBody) => void` - Message callback
 - `onAck?: SubscriptionCallback` - Optional subscription acknowledgement callback
@@ -21,19 +22,21 @@ Subscribe to messages on a topic with full acknowledgement support.
 - `options?: SubscribeOptions` - Optional configuration
 
 **Message Format:**
+
 ```ts
 interface MessageBody {
-  id: string;           // Unique message ID
-  topic: string;        // Topic name
-  senderId: string;     // Sender's client ID
-  seq: string;          // Sequence number (ULID)
-  sentAt: Date;         // Server timestamp
-  payload: string;      // Message content
+  id: string; // Unique message ID
+  topic: string; // Topic name
+  senderId: string; // Sender's client ID
+  seq: string; // Sequence number (ULID)
+  sentAt: Date; // Server timestamp
+  payload: string; // Message content
   clientMsgId?: string; // Optional client correlation ID
 }
 ```
 
 **SubscribeOptions:**
+
 ```ts
 interface SubscribeOptions {
   streamOldMessages?: boolean; // Deliver missed messages (default: false)
@@ -54,11 +57,9 @@ await client.subscribe("chat:lobby", (msg) => {
 });
 
 // With options
-await client.subscribe(
-  "chat:lobby", 
-  (msg) => console.log(msg),
-  { streamOldMessages: true }
-);
+await client.subscribe("chat:lobby", (msg) => console.log(msg), {
+  streamOldMessages: true,
+});
 
 // With acknowledgement callback
 await client.subscribe(
@@ -70,7 +71,7 @@ await client.subscribe(
     } else {
       console.error("Subscription failed:", response.error?.message);
     }
-  }
+  },
 );
 
 // Full control: acknowledgement, timeout, and options
@@ -83,7 +84,7 @@ await client.subscribe(
     }
   },
   5000, // 5 second timeout
-  { streamOldMessages: true }
+  { streamOldMessages: true },
 );
 ```
 
@@ -92,6 +93,7 @@ await client.subscribe(
 Unsubscribe from a topic.
 
 **Parameters:**
+
 - `topic: string` - Topic to unsubscribe from
 
 ```ts
@@ -106,7 +108,7 @@ client.unsubscribe(
       console.log("Unsubscribed successfully");
     }
   },
-  5000 // timeout in ms
+  5000, // timeout in ms
 );
 ```
 
@@ -115,6 +117,7 @@ client.unsubscribe(
 Publish a message without acknowledgement.
 
 **Parameters:**
+
 - `topic: string` - Topic to publish to
 - `payload: string` - Message content
 
@@ -129,12 +132,14 @@ const msgId = await client.publish("chat:lobby", "Hello!");
 Publish with server acknowledgement.
 
 **Parameters:**
+
 - `topic: string` - Topic to publish to
-- `payload: string` - Message content  
+- `payload: string` - Message content
 - `onAck: AckCallback` - Acknowledgement callback
 - `timeout?: number` - Timeout in milliseconds (default: 3000)
 
 **AckCallback Type:**
+
 ```ts
 type AckCallback = (response: AckResponse) => void;
 
@@ -152,6 +157,7 @@ type AckResponse = {
 ```
 
 **Example:**
+
 ```ts
 await client.publishWithAck(
   "chat:lobby",
@@ -163,7 +169,7 @@ await client.publishWithAck(
       console.error("Failed:", ack.error?.message);
     }
   },
-  5000
+  5000,
 );
 ```
 
@@ -179,7 +185,7 @@ Retrieve past messages from any topic with cursor-based pagination. Messages are
 // Fetch latest 50 messages
 const history = await client.getHistory("chat:lobby");
 
-history.items.forEach(msg => {
+history.items.forEach((msg) => {
   console.log(`[${msg.seq}] ${msg.senderId}: ${msg.payload}`);
 });
 
@@ -187,7 +193,7 @@ history.items.forEach(msg => {
 if (history.nextCursor) {
   const nextPage = await client.getHistory("chat:lobby", {
     cursor: history.nextCursor,
-    limit: 50
+    limit: 50,
   });
 }
 ```
@@ -201,7 +207,7 @@ const getNext = client.createHistoryIterator("chat:lobby", { limit: 50 });
 
 const page1 = await getNext(); // { items: [...], hasMore: true }
 const page2 = await getNext(); // { items: [...], hasMore: false }
-const done = await getNext();  // null (exhausted)
+const done = await getNext(); // null (exhausted)
 ```
 
 <div className="nx-mt-6 nx-rounded-lg nx-border nx-border-blue-200 nx-bg-blue-50 nx-p-4 dark:nx-border-blue-800 dark:nx-bg-blue-900/20">
@@ -219,7 +225,10 @@ const done = await getNext();  // null (exhausted)
         <li>Performance optimization tips</li>
       </ul>
       <p className="nx-mb-0 nx-mt-2 nx-text-sm">
-        <a href="/docs/sdk/core/history" className="nx-font-medium nx-text-blue-600 nx-underline dark:nx-text-blue-400">
+        <a
+          href="/docs/sdk/core/history"
+          className="nx-font-medium nx-text-blue-600 nx-underline dark:nx-text-blue-400"
+        >
           → Read the Message History Guide
         </a>
       </p>
@@ -234,12 +243,14 @@ const done = await getNext();  // null (exhausted)
 ### Message Acknowledgment Patterns
 
 #### Fire-and-Forget
+
 ```ts
 // Simple publish without confirmation
 await client.publish("notifications", "System update complete");
 ```
 
 #### Reliable Delivery
+
 ```ts
 // Publish with acknowledgment
 await client.publishWithAck(
@@ -253,19 +264,20 @@ await client.publishWithAck(
       console.error("Alert delivery failed:", ack.error?.message);
     }
   },
-  5000
+  5000,
 );
 ```
 
 #### Batch Publishing
+
 ```ts
 async function publishBatch(topic: string, messages: string[]) {
-  const promises = messages.map(msg => 
+  const promises = messages.map((msg) =>
     client.publishWithAck(topic, msg, (ack) => {
       console.log(`Message ${msg}: ${ack.success ? "✅" : "❌"}`);
-    })
+    }),
   );
-  
+
   await Promise.all(promises);
   console.log("All messages sent");
 }
@@ -274,13 +286,17 @@ async function publishBatch(topic: string, messages: string[]) {
 ### Subscription Patterns
 
 #### Topic Subscription with Cleanup
+
 ```ts
 const subscriptions = new Set<string>();
 
-async function subscribeWithCleanup(topic: string, handler: (msg: MessageBody) => void) {
+async function subscribeWithCleanup(
+  topic: string,
+  handler: (msg: MessageBody) => void,
+) {
   await client.subscribe(topic, handler);
   subscriptions.add(topic);
-  
+
   // Return unsubscribe function
   return () => {
     client.unsubscribe(topic);
@@ -298,6 +314,7 @@ function unsubscribeAll() {
 ```
 
 #### Pattern-Based Subscriptions
+
 ```ts
 // Subscribe to multiple related topics
 const roomTopics = ["room-123", "room-456", "room-789"];
@@ -310,24 +327,28 @@ for (const topic of roomTopics) {
 ```
 
 #### Subscription with Buffering
+
 ```ts
 class MessageBuffer {
   private buffer: MessageBody[] = [];
   private batchSize = 10;
   private flushInterval = 1000; // 1 second
-  
-  constructor(topic: string, private processBatch: (messages: MessageBody[]) => void) {
+
+  constructor(
+    topic: string,
+    private processBatch: (messages: MessageBody[]) => void,
+  ) {
     client.subscribe(topic, (msg) => this.addMessage(msg));
     setInterval(() => this.flush(), this.flushInterval);
   }
-  
+
   private addMessage(msg: MessageBody) {
     this.buffer.push(msg);
     if (this.buffer.length >= this.batchSize) {
       this.flush();
     }
   }
-  
+
   private flush() {
     if (this.buffer.length > 0) {
       this.processBatch([...this.buffer]);
@@ -337,10 +358,10 @@ class MessageBuffer {
 }
 ```
 
-
 ## Error Handling
 
 ### Publishing Errors
+
 ```ts
 try {
   await client.publish("topic", "message");
@@ -354,6 +375,7 @@ try {
 ```
 
 ### Subscription Errors
+
 ```ts
 // With callback for error handling
 await client.subscribe(
@@ -364,7 +386,7 @@ await client.subscribe(
       console.error("Subscription failed:", response.error?.message);
       // Implement retry logic
     }
-  }
+  },
 );
 
 // Or use try-catch
@@ -387,31 +409,29 @@ Batch multiple publishes to reduce overhead:
 class MessageBatcher {
   private queue: Array<{ topic: string; payload: string }> = [];
   private batchTimeout?: NodeJS.Timeout;
-  
+
   publish(topic: string, payload: string) {
     this.queue.push({ topic, payload });
-    
+
     if (this.queue.length >= 10) {
       this.flush();
     } else if (!this.batchTimeout) {
       this.batchTimeout = setTimeout(() => this.flush(), 100);
     }
   }
-  
+
   private async flush() {
     if (this.batchTimeout) {
       clearTimeout(this.batchTimeout);
       this.batchTimeout = undefined;
     }
-    
+
     const batch = [...this.queue];
     this.queue.length = 0;
-    
+
     // Send all messages in parallel
     await Promise.all(
-      batch.map(({ topic, payload }) => 
-        client.publish(topic, payload)
-      )
+      batch.map(({ topic, payload }) => client.publish(topic, payload)),
     );
   }
 }

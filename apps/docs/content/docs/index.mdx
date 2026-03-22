@@ -4,19 +4,21 @@ description: Start with Erebus, a focused beta for real-time at the edge.
 ---
 
 # Welcome to Erebus (Beta)
+
 <Callout title="Beta version" type="warning">
-Erebus is in beta. The SDK APIs might change and are not guaranteed to be backward compatible with every update.  
-You are welcome to try Erebus in side projects and share feedback.  
-If the docs do not cover what you need, help can be provided directly. Reach out at [x.com/v0id_user](https://x.com/v0id_user).
+  Erebus is in beta. The SDK APIs might change and are not guaranteed to be
+  backward compatible with every update. You are welcome to try Erebus in side
+  projects and share feedback. If the docs do not cover what you need, help can
+  be provided directly. Reach out at [x.com/v0id_user](https://x.com/v0id_user).
 </Callout>
 
 Erebus is an early-stage real-time infrastructure platform. At this stage you get one core primitive with two behaviors built in:
 
-- **Pub/Sub Channels** — publish and subscribe to ordered messages using ULID sequences so delivery order is guaranteed.  
-- **Presence** — presence events are part of channels. When clients connect and subscribe to a room, presence state is updated automatically and fired out to everyone in that channel.  
-- **Acknowledgments** — an MQTT-style ack system with QoS 1 support. Every message is delivered at least once and acknowledged by subscribers.  
+- **Pub/Sub Channels** — publish and subscribe to ordered messages using ULID sequences so delivery order is guaranteed.
+- **Presence** — presence events are part of channels. When clients connect and subscribe to a room, presence state is updated automatically and fired out to everyone in that channel.
+- **Acknowledgments** — an MQTT-style ack system with QoS 1 support. Every message is delivered at least once and acknowledged by subscribers.
 
-That is the foundation. One channel gives you both messaging and awareness of who is in the room.  
+That is the foundation. One channel gives you both messaging and awareness of who is in the room.
 
 When you connect, you are placed in the nearest point of presence (PoP). Everyone in that region shares the same local channel object, so ordering and presence are consistent without global lag.
 
@@ -24,11 +26,11 @@ When you connect, you are placed in the nearest point of presence (PoP). Everyon
 
 ## How Erebus infrastructure works
 
-Erebus is built on top of [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/).  
+Erebus is built on top of [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/).
 
-In short, Durable Objects are distributed V8 isolates that can run across Cloudflare’s global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.  
+In short, Durable Objects are distributed V8 isolates that can run across Cloudflare’s global network. Once a Durable Object is created and mapped to a namespace, it keeps the same location, which makes it easy to persist state.
 
-Because they are V8 instances, they can also hibernate and scale down to zero when idle. That means Erebus runs serverless by design, so you only pay for what you actually use.  
+Because they are V8 instances, they can also hibernate and scale down to zero when idle. That means Erebus runs serverless by design, so you only pay for what you actually use.
 
 A deep dive into the choices behind Erebus infrastructure check our blog [Why Cloudflare Durable Objects?](/blog/dive/why-cloudflare-durable-objects).
 
@@ -39,17 +41,18 @@ A deep dive into the choices behind Erebus infrastructure check our blog [Why Cl
 Get up and running in minutes:
 
 ### 1. Install the SDK
+
 ```bash
 npm install @erebus-sh/sdk
 ```
 
 ### 2. Choose Your Path
 
-| Your App | Recommended Approach | Time to First Message |
-|----------|---------------------|----------------------|
-| **React/Next.js** | [React SDK](/docs/get-started/next.js/quickstart-example) | ~5 minutes |
-| **Any Framework** | [Core SDK](/docs/get-started/core/quickstart-example) | ~3 minutes |
-| **Type Safety Focus** | [Schema Facade](/docs/sdk/core/schema-facade) | ~3 minutes |
+| Your App              | Recommended Approach                                      | Time to First Message |
+| --------------------- | --------------------------------------------------------- | --------------------- |
+| **React/Next.js**     | [React SDK](/docs/get-started/next.js/quickstart-example) | ~5 minutes            |
+| **Any Framework**     | [Core SDK](/docs/get-started/core/quickstart-example)     | ~3 minutes            |
+| **Type Safety Focus** | [Schema Facade](/docs/sdk/core/schema-facade)             | ~3 minutes            |
 
 ### 3. Basic Example
 
@@ -58,7 +61,7 @@ import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
-  authBaseUrl: "https://your-auth-server.com"
+  authBaseUrl: "https://your-auth-server.com",
 });
 
 // Join a channel and connect
@@ -79,6 +82,7 @@ await client.publish("notifications", "Hello from Erebus! 👋");
 ## 🎯 Real-World Use Cases
 
 ### Chat & Messaging
+
 - **Real-time messages** with guaranteed ordering
 - **Presence tracking** to show who's online
 - **Message history** for catching up on missed conversations
@@ -91,6 +95,7 @@ await client.publish("chat:general", "Hello everyone!");
 ```
 
 ### Live Collaboration
+
 - **Operational transforms** for collaborative editing
 - **Cursor tracking** for multi-user editing
 - **Conflict resolution** with ULID sequences
@@ -98,12 +103,18 @@ await client.publish("chat:general", "Hello everyone!");
 ```ts
 // Document collaboration
 await client.subscribe("doc:123", applyEdit);
-await client.publish("doc:123", JSON.stringify({
-  type: "insert", position: 10, text: "Hello"
-}));
+await client.publish(
+  "doc:123",
+  JSON.stringify({
+    type: "insert",
+    position: 10,
+    text: "Hello",
+  }),
+);
 ```
 
 ### Real-time Notifications
+
 - **Targeted delivery** to specific users
 - **Delivery confirmations** with acknowledgments
 - **Push notification** integration
@@ -113,20 +124,26 @@ await client.publish("doc:123", JSON.stringify({
 await client.publishWithAck(
   `user:${userId}`,
   JSON.stringify({ title: "New Message", urgent: true }),
-  (ack) => console.log("Delivered:", ack.success)
+  (ack) => console.log("Delivered:", ack.success),
 );
 ```
 
 ### Live Analytics
+
 - **Real-time metrics** streaming
 - **Event aggregation** across multiple clients
 - **Dashboard updates** without polling
 
 ```ts
 // Stream analytics events
-client.publish("analytics:pageview", JSON.stringify({
-  page: "/dashboard", userId, timestamp: Date.now()
-}));
+client.publish(
+  "analytics:pageview",
+  JSON.stringify({
+    page: "/dashboard",
+    userId,
+    timestamp: Date.now(),
+  }),
+);
 ```
 
 ---
@@ -134,16 +151,19 @@ client.publish("analytics:pageview", JSON.stringify({
 ## 🏗️ Architecture Benefits
 
 ### Edge-First Design
+
 - **Global distribution** with Cloudflare's 300+ locations
 - **Automatic scaling** with Durable Objects
 - **Zero-cost idle** - pay only for active usage
 
 ### Developer Experience
+
 - **TypeScript-first** with full type safety
 - **Framework agnostic** - works with any JavaScript runtime
 - **Production ready** with error handling and reconnection
 
 ### Reliability Features
+
 - **Message ordering** guaranteed with ULID sequences
 - **Automatic reconnection** with exponential backoff
 - **QoS 1 support** - at-least-once delivery with acknowledgments
@@ -152,16 +172,17 @@ client.publish("analytics:pageview", JSON.stringify({
 
 ## 📚 What's in the Documentation
 
-| Section | Description | Best For |
-|---------|-------------|----------|
-| **[Installation](/docs/get-started/install)** | Setup guide with troubleshooting | First-time setup |
-| **[Quickstart Guide](/docs/quickstart-example)** | Decision tree and examples | Choosing approach |
-| **[Core SDK Reference](/docs/sdk/core/getting-started-api)** | Complete API documentation | Building with Core SDK |
-| **[React SDK](/docs/get-started/next.js/quickstart-example)** | React hooks and patterns | React/Next.js apps |
-| **[Message History](/docs/sdk/core/history)** | Pagination and catch-up | Chat and audit trails |
-| **[Presence](/docs/sdk/core/presence)** | User awareness features | Social and collaborative apps |
+| Section                                                       | Description                      | Best For                      |
+| ------------------------------------------------------------- | -------------------------------- | ----------------------------- |
+| **[Installation](/docs/get-started/install)**                 | Setup guide with troubleshooting | First-time setup              |
+| **[Quickstart Guide](/docs/quickstart-example)**              | Decision tree and examples       | Choosing approach             |
+| **[Core SDK Reference](/docs/sdk/core/getting-started-api)**  | Complete API documentation       | Building with Core SDK        |
+| **[React SDK](/docs/get-started/next.js/quickstart-example)** | React hooks and patterns         | React/Next.js apps            |
+| **[Message History](/docs/sdk/core/history)**                 | Pagination and catch-up          | Chat and audit trails         |
+| **[Presence](/docs/sdk/core/presence)**                       | User awareness features          | Social and collaborative apps |
 
 ### Advanced Topics
+
 - **[Schema Validation](/docs/sdk/core/schema-facade)** - Type-safe messaging with Zod
 - **[Connection Management](/docs/sdk/core/connection-management)** - Robust connection handling
 - **[Error Patterns](/docs/sdk/core/connection-management#error-handling)** - Production-ready error handling
@@ -171,25 +192,33 @@ client.publish("analytics:pageview", JSON.stringify({
 ## 🎯 Choose Your Starting Point
 
 ### I want to build something quickly
+
 → **[Core SDK Quickstart](/docs/get-started/core/quickstart-example)**
+
 - Working example in 3 minutes
 - Copy-paste authentication server
 - Immediate publish/subscribe functionality
 
 ### I'm building a React app
+
 → **[React SDK Quickstart](/docs/get-started/next.js/quickstart-example)**
+
 - React hooks integration
 - Declarative subscriptions
 - Built-in state management
 
 ### I need bulletproof type safety
+
 → **[Schema Facade Guide](/docs/sdk/core/schema-facade)**
+
 - Runtime validation with Zod
 - Prevent payload mismatches
 - IDE autocompletion for message types
 
 ### I'm integrating into existing infrastructure
+
 → **[Installation Guide](/docs/get-started/install)**
+
 - Framework-specific setup
 - Environment configuration
 - Production deployment patterns

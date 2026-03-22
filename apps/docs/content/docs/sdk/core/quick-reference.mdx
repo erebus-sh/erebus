@@ -16,7 +16,7 @@ import { ErebusClient, ErebusClientState } from "@erebus-sh/sdk/client";
 const client = ErebusClient.createClient({
   client: ErebusClientState.PubSub,
   authBaseUrl: "https://your-auth.com",
-  wsBaseUrl: "wss://gateway.erebus.sh" // optional
+  wsBaseUrl: "wss://gateway.erebus.sh", // optional
 });
 
 // Connect
@@ -32,6 +32,7 @@ client.close();
 ## Real-Time Messaging
 
 ### Subscribe
+
 ```ts
 await client.subscribe("topic", (msg) => {
   console.log(msg.payload);
@@ -39,6 +40,7 @@ await client.subscribe("topic", (msg) => {
 ```
 
 ### Publish
+
 ```ts
 // Without ack
 await client.publish("topic", "Hello!");
@@ -47,17 +49,20 @@ await client.publish("topic", "Hello!");
 await client.publishWithAck(
   "topic",
   "Hello!",
-  (ack) => console.log(ack.success ? "Success" : `Failed: ${ack.error?.message}`),
-  3000 // timeout
+  (ack) =>
+    console.log(ack.success ? "Success" : `Failed: ${ack.error?.message}`),
+  3000, // timeout
 );
 ```
 
 ### Unsubscribe
+
 ```ts
 client.unsubscribe("topic");
 ```
 
 ### Advanced Subscribe/Unsubscribe
+
 ```ts
 // Subscribe with ACK and options
 client.subscribeWithCallback(
@@ -65,13 +70,12 @@ client.subscribeWithCallback(
   (msg) => console.log(msg.payload),
   (response) => console.log("Subscribed:", response.success),
   10000,
-  { streamOldMessages: true }
+  { streamOldMessages: true },
 );
 
 // Unsubscribe with ACK
-client.unsubscribeWithCallback(
-  "topic",
-  (response) => console.log("Unsubscribed:", response.success)
+client.unsubscribeWithCallback("topic", (response) =>
+  console.log("Unsubscribed:", response.success),
 );
 ```
 
@@ -80,34 +84,38 @@ client.unsubscribeWithCallback(
 ## Message History
 
 ### Get Latest Messages
+
 ```ts
 const history = await client.getHistory("topic");
 // Returns 50 newest messages by default
 ```
 
 ### Pagination
+
 ```ts
 const page1 = await client.getHistory("topic", {
   limit: 20,
-  direction: "backward"
+  direction: "backward",
 });
 
 const page2 = await client.getHistory("topic", {
   cursor: page1.nextCursor,
   limit: 20,
-  direction: "backward"
+  direction: "backward",
 });
 ```
 
 ### Iterator
+
 ```ts
 const getNext = client.createHistoryIterator("topic", { limit: 50 });
 const batch1 = await getNext(); // { items: [...], hasMore: true }
 const batch2 = await getNext(); // { items: [...], hasMore: false }
-const done = await getNext();   // null
+const done = await getNext(); // null
 ```
 
 ### All History
+
 ```ts
 let cursor = null;
 const all = [];
@@ -115,7 +123,7 @@ const all = [];
 do {
   const page = await client.getHistory("topic", {
     cursor,
-    limit: 1000
+    limit: 1000,
   });
   all.push(...page.items);
   cursor = page.nextCursor;
@@ -127,6 +135,7 @@ do {
 ## Presence Tracking
 
 ### Subscribe to Presence
+
 ```ts
 await client.onPresence("topic", (presence) => {
   console.log(presence.clientId, presence.status);
@@ -135,6 +144,7 @@ await client.onPresence("topic", (presence) => {
 ```
 
 ### Unsubscribe
+
 ```ts
 client.offPresence("topic", handler);
 client.clearPresenceHandlers("topic"); // all handlers
@@ -145,6 +155,7 @@ client.clearPresenceHandlers("topic"); // all handlers
 ## Typed Schema Facade
 
 ### Setup
+
 ```ts
 import { ErebusPubSubSchemas } from "@erebus-sh/sdk/client";
 import { z } from "zod";
@@ -160,25 +171,28 @@ const typed = new ErebusPubSubSchemas(client, schemas);
 ```
 
 ### Publish (Typed)
+
 ```ts
 typed.publish("chat", "room-1", {
   text: "Hello!",
-  username: "Alice"
+  username: "Alice",
 });
 ```
 
 ### Subscribe (Typed)
+
 ```ts
 await typed.subscribe("chat", "room-1", (msg) => {
-  console.log(msg.payload.text);     // ✅ string
+  console.log(msg.payload.text); // ✅ string
   console.log(msg.payload.username); // ✅ string
 });
 ```
 
 ### History (Typed)
+
 ```ts
 const history = await typed.getHistory("chat", "room-1");
-history.items.forEach(msg => {
+history.items.forEach((msg) => {
   console.log(msg.payload.text); // ✅ validated & typed
 });
 ```
@@ -189,9 +203,9 @@ history.items.forEach(msg => {
 
 ```ts
 // Connection state checks
-client.isConnected  // boolean - WebSocket connected
-client.isReadable   // boolean - Can receive messages  
-client.isWritable   // boolean - Can send messages
+client.isConnected; // boolean - WebSocket connected
+client.isReadable; // boolean - Can receive messages
+client.isWritable; // boolean - Can send messages
 
 // Connection management
 await client.connect(10000); // with timeout
@@ -211,12 +225,12 @@ setInterval(() => {
 
 ```ts
 interface MessageBody {
-  id: string;           // Unique message ID
-  topic: string;        // Topic name
-  senderId: string;     // Sender's client ID
-  seq: string;          // Sequence (ULID)
-  sentAt: Date;         // Timestamp
-  payload: string;      // Message content
+  id: string; // Unique message ID
+  topic: string; // Topic name
+  senderId: string; // Sender's client ID
+  seq: string; // Sequence (ULID)
+  sentAt: Date; // Timestamp
+  payload: string; // Message content
   clientMsgId?: string; // Optional correlation ID
 }
 ```
@@ -226,6 +240,7 @@ interface MessageBody {
 ## Common Patterns
 
 ### Reconnect Logic
+
 ```ts
 async function connectWithRetry(maxRetries = 3) {
   for (let i = 0; i < maxRetries; i++) {
@@ -233,7 +248,7 @@ async function connectWithRetry(maxRetries = 3) {
       await client.connect();
       return;
     } catch (error) {
-      await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      await new Promise((r) => setTimeout(r, 1000 * (i + 1)));
     }
   }
   throw new Error("Failed to connect");
@@ -241,14 +256,15 @@ async function connectWithRetry(maxRetries = 3) {
 ```
 
 ### Catch-Up After Disconnect
+
 ```ts
 const lastSeq = localStorage.getItem("lastSeq");
 const missed = await client.getHistory("topic", {
   cursor: lastSeq || undefined,
-  direction: "forward"
+  direction: "forward",
 });
 
-missed.items.forEach(msg => process(msg));
+missed.items.forEach((msg) => process(msg));
 
 await client.subscribe("topic", (msg) => {
   process(msg);
@@ -257,18 +273,19 @@ await client.subscribe("topic", (msg) => {
 ```
 
 ### Load More Button
+
 ```ts
 let cursor = null;
 
 async function loadMore() {
   const history = await client.getHistory("topic", {
     cursor,
-    limit: 20
+    limit: 20,
   });
-  
-  history.items.forEach(msg => appendToUI(msg));
+
+  history.items.forEach((msg) => appendToUI(msg));
   cursor = history.nextCursor;
-  
+
   if (!cursor) {
     hideLoadMoreButton();
   }
@@ -295,14 +312,14 @@ try {
 
 ## Limits & Constraints
 
-| Item | Limit |
-|------|-------|
-| Message retention | 3 days |
-| Messages per topic | 100 (buffered) |
-| History page size | 1-1000 messages |
-| Default page size | 50 messages |
-| Connection timeout | 30 seconds (default) |
-| Publish ack timeout | 3 seconds (default) |
+| Item                | Limit                |
+| ------------------- | -------------------- |
+| Message retention   | 3 days               |
+| Messages per topic  | 100 (buffered)       |
+| History page size   | 1-1000 messages      |
+| Default page size   | 50 messages          |
+| Connection timeout  | 30 seconds (default) |
+| Publish ack timeout | 3 seconds (default)  |
 
 ---
 
@@ -312,4 +329,3 @@ try {
 - [Message History Guide](/docs/sdk/core/history)
 - [Schema Facade](/docs/sdk/core/schema-facade)
 - [GitHub Examples](https://github.com/erebus-sh/erebus/tree/master/examples)
-
