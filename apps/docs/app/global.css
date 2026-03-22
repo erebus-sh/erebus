@@ -247,6 +247,19 @@
   :target {
     scroll-margin-top: 2rem;
   }
+
+  /* Reset letter-spacing for code — tight tracking breaks monospace readability */
+  code,
+  pre,
+  kbd {
+    letter-spacing: 0;
+    font-size: 0.875rem;
+  }
+
+  /* Inline code styling */
+  :not(pre) > code {
+    font-size: 0.85em;
+  }
 }
 
 @theme inline {
